@@ -1,0 +1,71 @@
+// Place global declarations here.
+chan ch1_alpha, ch1_beta, ch1_gamma;
+chan go_FuncA1, go_FuncB1;
+
+process Main() {
+clock Timer1;
+state
+    start,
+    L0,
+    L1,
+    end;
+init
+    start;
+trans
+    L1 -> end { guard Timer1 >= 1; },
+    L0 -> L1 { sync go_FuncB1!; },
+    start -> L0 { sync go_FuncA1!; };
+}
+
+process FuncA(chan &go_FuncA, chan &ch_alpha, chan &ch_gamma) {
+
+state
+    start,
+    end,
+    L0,
+    L1;
+init
+    start;
+trans
+    start -> L1 { sync go_FuncA?; },
+    L1 -> L0 { sync ch_alpha!; },
+    L0 -> end { sync ch_gamma?; };
+}
+
+process FuncB(chan &go_FuncB, chan &ch_beta) {
+
+state
+    L0,
+    end,
+    start;
+init
+    start;
+trans
+    start -> L0 { sync go_FuncB?; },
+    L0 -> end { sync ch_beta?; };
+}
+
+process Channel(chan &ch_alpha, chan &ch_beta, chan &ch_gamma) {
+// Place local declarations here.
+
+state
+    idle,
+    L0,
+    L1;
+init
+    idle;
+trans
+    L1 -> idle { sync ch_gamma!; },
+    L0 -> L1 { sync ch_beta!; },
+    idle -> L0 { sync ch_alpha?; };
+}
+// Place template instantiations here.
+Ch1 = Channel(ch1_alpha, ch1_beta, ch1_gamma);
+
+Main1 = Main();
+
+FuncA1 = FuncA(go_FuncA1, ch1_alpha, ch1_gamma);
+FuncB1 = FuncB(go_FuncB1, ch1_beta);
+// List one or more processes to be composed into a system.
+system Ch1, Main1, FuncA1, FuncB1;
+    

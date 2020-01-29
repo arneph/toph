@@ -1,0 +1,33 @@
+prog{
+  scope{
+    main = 0xc00009a0a0 = func{
+      args: 
+      results: 
+      scope{
+        ch = 0xc000014460 = chan{}
+        0xc00009a140 = func{
+          args: 
+          results: 
+          scope{
+          }
+          stmts{
+            send 0xc000014460
+          }
+        }
+        0xc00009a1e0 = func{
+          args: 
+          results: 
+          scope{
+          }
+          stmts{
+            receive 0xc000014460
+          }
+        }
+      }
+      stmts{
+        go 0xc00009a140
+        go 0xc00009a1e0
+      }
+    }
+  }
+}

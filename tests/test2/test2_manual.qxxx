@@ -1,0 +1,26 @@
+//This file was generated from (Academic) UPPAAL 4.1.24 (rev. 29A3ECA4E5FB0808), November 2019
+
+/*
+
+*/
+E<> FuncB1.end
+
+/*
+
+*/
+E<> Main1.end
+
+/*
+
+*/
+E<> FuncA1.end
+
+/*
+
+*/
+A[] not (Main1.end and (not FuncA1.end or not FuncB1.end))
+
+/*
+
+*/
+A[] not (not Ch1.idle and Main1.end and FuncA1.end and FuncB1.end)
