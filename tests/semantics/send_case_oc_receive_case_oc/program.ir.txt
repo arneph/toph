@@ -1,0 +1,104 @@
+prog{
+  scope{
+    var fid_var88_main Func = 45
+  }
+  funcs{
+    func{
+      index: 45
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var89_chA Chan = -1
+        var cid_var90_chB Chan = -1
+      }
+      stmts{
+        cid_var89_chA <- make(chan, 0)
+        cid_var90_chB <- make(chan, 0)
+        close cid_var90_chB
+        go 46()
+        go 47()
+      }
+    }
+    func{
+      index: 46
+      args: 
+      captures: cid_var91_chA <- &(cid_var89_chA), cid_var92_chB <- &(cid_var90_chB)
+      results: 
+      scope{
+        var cid_var91_chA Chan = -1
+        var cid_var92_chB Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case send cid_var91_chA {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var92_chB {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 47
+      args: 
+      captures: cid_var93_chA <- &(cid_var89_chA), cid_var94_chB <- &(cid_var90_chB)
+      results: 
+      scope{
+        var cid_var93_chA Chan = -1
+        var cid_var94_chB Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var93_chA {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var94_chB {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

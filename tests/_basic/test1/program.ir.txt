@@ -1,0 +1,77 @@
+prog{
+  scope{
+    var cid_var0_ch Chan = -1
+    var fid_var1_testA Func = 0
+    var fid_var2_testB Func = 1
+    var fid_var3_main Func = 2
+  }
+  funcs{
+    func{
+      index: 0
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var4_b Chan = -1
+      }
+      stmts{
+        cid_var4_b <- make(chan, 0)
+        cid_var4_b <- make(chan, 0)
+        send cid_var4_b
+        send cid_var4_b
+      }
+    }
+    func{
+      index: 1
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var5_ch Chan = -1
+        var fid_var6_f Func = -1
+        var fid_var8 Func = 3
+      }
+      stmts{
+        fid_var6_f <- fid_var8
+        send cid_var5_ch
+      }
+    }
+    func{
+      index: 2
+      args: 
+      captures: 
+      results: 
+      scope{
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 3
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var7 Chan = -1
+      }
+      stmts{
+        cid_var7 <- make(chan, 0)
+        return 0: cid_var7
+      }
+    }
+  }
+}

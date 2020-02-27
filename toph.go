@@ -2,44 +2,93 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+	"strings"
+
+	"github.com/arneph/toph/builder"
+	"github.com/arneph/toph/translator"
 )
 
+func ignore(info os.FileInfo) bool {
+	return !info.IsDir() ||
+		strings.HasPrefix(info.Name(), ".") ||
+		strings.HasPrefix(info.Name(), "_")
+}
+
 func main() {
-	for i := 1; i <= 3; i++ {
-		path := fmt.Sprintf("tests/test%d/", i)
-		fmt.Printf("running test %d\n", i)
+	dirs, err := ioutil.ReadDir("tests/")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not read 'tests/' dir: %v", err)
+		return
+	}
 
-		prog, err := buildProg(path)
-		if err != nil {
-			fmt.Printf("could not parse input: %v\n", err)
+	for _, dir := range dirs {
+		if ignore(dir) {
+			continue
 		}
 
-		progFile, err := os.Create(path + "prog.ir.txt")
+		dirPath := "tests/" + dir.Name() + "/"
+		tests, err := ioutil.ReadDir(dirPath)
 		if err != nil {
-			fmt.Printf("could not write tprog.txt file: %v", err)
-		} else {
-			fmt.Fprintln(progFile, prog)
+			fmt.Fprintf(os.Stderr, "could not read %q dir: %v", dirPath, err)
+			continue
 		}
 
-		sys, err := translateProg(prog)
-		if err != nil {
-			fmt.Printf("could not translate to xta: %v\n", err)
-		}
+		for _, test := range tests {
+			if ignore(test) {
+				continue
+			}
 
-		sysTxtFile, err := os.Create(path + "sys.xta.txt")
-		if err != nil {
-			fmt.Printf("could not write tprog.txt file: %v", err)
-		} else {
-			fmt.Fprintln(sysTxtFile, sys)
-		}
-
-		sysXtaFile, err := os.Create(path + "sys.xta")
-		if err != nil {
-			fmt.Printf("could not write tprog.xta file: %v", err)
-		} else {
-			fmt.Fprintln(sysXtaFile, sys)
+			testPath := dirPath + test.Name() + "/"
+			runTest(testPath)
 		}
 	}
+
 	fmt.Println("done")
+}
+
+func runTest(path string) {
+	fmt.Printf("running: %s\n", path)
+	defer fmt.Fprintln(os.Stderr)
+
+	program, errs := builder.BuildProgram(path)
+	for _, err := range errs {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	if program == nil {
+		return
+	}
+
+	programFile, err := os.Create(path + "program.ir.txt")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not write tprog.txt file: %v\n", err)
+	}
+	defer programFile.Close()
+
+	fmt.Fprintln(programFile, program)
+
+	sys, errs := translator.TranslateProg(program)
+	for _, err := range errs {
+		fmt.Fprintln(os.Stderr, err)
+	}
+	if sys == nil {
+		return
+	}
+
+	sysTxtFile, err := os.Create(path + "sys.xta.txt")
+	if err != nil {
+		fmt.Printf("could not write tprog.txt file: %v", err)
+	}
+	defer sysTxtFile.Close()
+
+	fmt.Fprintln(sysTxtFile, sys)
+
+	sysXtaFile, err := os.Create(path + "sys.xta")
+	if err != nil {
+		fmt.Printf("could not write tprog.xta file: %v", err)
+	}
+	defer sysXtaFile.Close()
+
+	fmt.Fprintln(sysXtaFile, sys)
 }

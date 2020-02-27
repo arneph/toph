@@ -1,0 +1,82 @@
+prog{
+  scope{
+    var fid_var161_main Func = 84
+  }
+  funcs{
+    func{
+      index: 84
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var162_chA Chan = -1
+        var cid_var163_chB Chan = -1
+      }
+      stmts{
+        cid_var162_chA <- make(chan, 0)
+        cid_var163_chB <- make(chan, 0)
+        close cid_var163_chB
+        go 85()
+        go 86()
+      }
+    }
+    func{
+      index: 85
+      args: 
+      captures: cid_var164_chA <- &(cid_var162_chA)
+      results: 
+      scope{
+        var cid_var164_chA Chan = -1
+      }
+      stmts{
+        send cid_var164_chA
+      }
+    }
+    func{
+      index: 86
+      args: 
+      captures: cid_var165_chA <- &(cid_var162_chA), cid_var166_chB <- &(cid_var163_chB)
+      results: 
+      scope{
+        var cid_var165_chA Chan = -1
+        var cid_var166_chB Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var165_chA {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var166_chB {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              default {
+                scope{
+                }
+                stmts{
+                }
+              }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

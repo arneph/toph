@@ -1,0 +1,208 @@
+// Place global declarations here.
+int fid_var62_process2 = 34;
+int fid_var63_main = 35;
+
+int process2_count = 0;
+int res_process2_0_Chan[1];
+chan async_process2[1];
+chan sync_process2[1];
+int make_process2() {
+    int pid = process2_count;
+    process2_count++;
+    return pid;
+}
+
+int func36_count = 0;
+int cap_cid_var65_c[1];
+chan async_func36[1];
+chan sync_func36[1];
+int make_func36() {
+    int pid = func36_count;
+    func36_count++;
+    return pid;
+}
+
+int chan_count = 0;
+int chan_counter[10];
+int chan_buffer[10];
+chan sender_alpha[10];
+chan sender_omega[10];
+chan receiver_alpha[10];
+chan receiver_omega[10];
+chan close[10];
+
+int make_chan(int buffer) {
+    int cid = chan_count;
+    chan_count++;
+    chan_counter[cid] = 0;
+    chan_buffer[cid] = buffer;
+    return cid;
+}
+
+
+process main() {
+// Place local declarations here.
+bool is_sync;
+int p = -1;
+int cid_var66_c = -1;
+int cid_var67_interrupt = -1;
+int cid_var68_timeout = -1;
+
+state
+    enter_loop_body0,
+    exit_loop_body0,
+    exit_loop0,
+    starting,
+    started,
+    ended,
+    enter_loop_cond0,
+    exit_loop_cond0,
+    ending,
+    created_process2_0,
+    started_process2_0,
+    awaited_process2_0;
+init
+    starting;
+trans
+    started -> created_process2_0 { assign p = make_process2(); },
+    created_process2_0 -> started_process2_0 { sync sync_process2[p]!; },
+    started_process2_0 -> awaited_process2_0 { sync sync_process2[p]?; assign cid_var66_c = res_process2_0_Chan[p]; },
+    enter_loop_cond0 -> exit_loop_cond0 { },
+    enter_loop_body0 -> exit_loop_body0 { },
+    awaited_process2_0 -> enter_loop_cond0 { },
+    exit_loop_cond0 -> enter_loop_body0 { },
+    exit_loop_cond0 -> exit_loop0 { },
+    exit_loop_body0 -> enter_loop_cond0 { },
+    exit_loop0 -> ending { },
+    starting -> started { },
+    ending -> ended { };
+}
+
+process func36(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync;
+int p = -1;
+int cid_var65_c = -1;
+void initialize() {
+    cid_var65_c = cap_cid_var65_c[pid];
+}
+
+state
+    exit_loop_body0,
+    sending_cid_var65_c_0,
+    started,
+    enter_loop_body0,
+    ended,
+    enter_loop_cond0,
+    exit_loop_cond0,
+    exit_loop0,
+    sent_cid_var65_c_0,
+    starting,
+    ending;
+init
+    starting;
+trans
+    enter_loop_cond0 -> exit_loop_cond0 { },
+    enter_loop_body0 -> sending_cid_var65_c_0 { sync sender_alpha[cid_var65_c]!; },
+    sending_cid_var65_c_0 -> sent_cid_var65_c_0 { sync sender_omega[cid_var65_c]?; },
+    sent_cid_var65_c_0 -> exit_loop_body0 { },
+    started -> enter_loop_cond0 { },
+    exit_loop_cond0 -> enter_loop_body0 { },
+    exit_loop_cond0 -> exit_loop0 { },
+    exit_loop_body0 -> enter_loop_cond0 { },
+    exit_loop0 -> ending { },
+    starting -> started { sync async_func36[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_func36[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_func36[pid]!; };
+}
+
+process Channel(int[0, 9] i) {
+// Place local declarations here.
+
+state
+    confirming_b,
+    new_sender,
+    confirming_a,
+    new_receiver,
+    confirming_closing,
+    closing,
+    closed,
+    confirming_closed,
+    bad,
+    idle;
+commit
+    new_sender,
+    confirming_b,
+    confirming_closed,
+    confirming_a,
+    new_receiver,
+    confirming_closing,
+    closing;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_alpha[i]?; assign chan_counter[i]++; },
+    new_sender -> idle { guard chan_counter[i] > chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= chan_buffer[i]; sync sender_omega[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_omega[i]!; },
+    idle -> new_receiver { sync receiver_alpha[i]?; assign chan_counter[i]--; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_omega[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= chan_buffer[i]; sync sender_omega[i]!; },
+    idle -> confirming_closing { guard chan_counter[i] < 0; sync close[i]?; },
+    confirming_closing -> confirming_closing { guard chan_counter[i] < 0; sync receiver_omega[i]!; assign chan_counter[i]++; },
+    confirming_closing -> closing { guard chan_counter[i] == 0; },
+    idle -> closing { guard 0 <= chan_counter[i] && chan_counter[i] <= chan_buffer[i]; sync close[i]?; },
+    idle -> bad { guard chan_counter[i] > chan_buffer[i]; sync close[i]?; },
+    closing -> closed { assign chan_counter[i] = 1,
+chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_alpha[i]?; },
+    confirming_closed -> closed { sync receiver_omega[i]!; },
+    closed -> bad { sync sender_alpha[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+process process2(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync;
+int p = -1;
+int cid_var64_c = -1;
+
+state
+    started_func36_0,
+    starting,
+    started,
+    ending,
+    ended,
+    made_cid_var64_c_0,
+    created_func36_0;
+init
+    starting;
+trans
+    started -> made_cid_var64_c_0 { assign cid_var64_c = make_chan(0); },
+    made_cid_var64_c_0 -> created_func36_0 { assign p = make_func36(), cap_cid_var65_c[p] = cid_var64_c; },
+    created_func36_0 -> started_func36_0 { sync async_func36[p]!; },
+    started_func36_0 -> ending { assign res_process2_0_Chan[pid] = cid_var64_c; },
+    starting -> started { sync async_process2[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_process2[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_process2[pid]!; };
+}
+
+Channel0 = Channel(0);
+Channel1 = Channel(1);
+Channel2 = Channel(2);
+Channel3 = Channel(3);
+Channel4 = Channel(4);
+Channel5 = Channel(5);
+Channel6 = Channel(6);
+Channel7 = Channel(7);
+Channel8 = Channel(8);
+Channel9 = Channel(9);
+func360 = func36(0);
+process20 = process2(0);
+system Channel0, Channel1, Channel2, Channel3, Channel4, Channel5, Channel6, Channel7, Channel8, Channel9, func360, main, process20;
+

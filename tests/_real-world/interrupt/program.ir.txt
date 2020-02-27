@@ -1,0 +1,76 @@
+prog{
+  scope{
+    var fid_var62_process2 Func = 34
+    var fid_var63_main Func = 35
+  }
+  funcs{
+    func{
+      index: 34
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var64_c Chan = -1
+      }
+      stmts{
+        cid_var64_c <- make(chan, 0)
+        go 36()
+        return 0: cid_var64_c
+      }
+    }
+    func{
+      index: 35
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var66_c Chan = -1
+        var cid_var67_interrupt Chan = -1
+        var cid_var68_timeout Chan = -1
+      }
+      stmts{
+        , 0: var cid_var66_c Chan = -1 <- call 34()
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 36
+      args: 
+      captures: cid_var65_c <- &(cid_var64_c)
+      results: 
+      scope{
+        var cid_var65_c Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var65_c
+            }
+          }
+        }
+      }
+    }
+  }
+}

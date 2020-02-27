@@ -1,0 +1,229 @@
+// Place global declarations here.
+int cid_var0_ch = -1;
+int fid_var1_testA = 0;
+int fid_var2_testB = 1;
+int fid_var3_main = 2;
+
+int testA_count = 0;
+chan async_testA[1];
+chan sync_testA[1];
+int make_testA() {
+    int pid = testA_count;
+    testA_count++;
+    return pid;
+}
+
+int testB_count = 0;
+chan async_testB[1];
+chan sync_testB[1];
+int make_testB() {
+    int pid = testB_count;
+    testB_count++;
+    return pid;
+}
+
+int func3_count = 0;
+int res_func3_0_Chan[1];
+chan async_func3[1];
+chan sync_func3[1];
+int make_func3() {
+    int pid = func3_count;
+    func3_count++;
+    return pid;
+}
+
+int chan_count = 0;
+int chan_counter[10];
+int chan_buffer[10];
+chan sender_alpha[10];
+chan sender_omega[10];
+chan receiver_alpha[10];
+chan receiver_omega[10];
+chan close[10];
+
+int make_chan(int buffer) {
+    int cid = chan_count;
+    chan_count++;
+    chan_counter[cid] = 0;
+    chan_buffer[cid] = buffer;
+    return cid;
+}
+
+
+process testA(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync;
+int p = -1;
+int cid_var4_b = -1;
+
+state
+    started,
+    ending,
+    sending_cid_var4_b_0,
+    sent_cid_var4_b_0,
+    sending_cid_var4_b_1,
+    sent_cid_var4_b_1,
+    starting,
+    ended,
+    made_cid_var4_b_0,
+    made_cid_var4_b_1;
+init
+    starting;
+trans
+    started -> made_cid_var4_b_0 { assign cid_var4_b = make_chan(0); },
+    made_cid_var4_b_0 -> made_cid_var4_b_1 { assign cid_var4_b = make_chan(0); },
+    made_cid_var4_b_1 -> sending_cid_var4_b_0 { sync sender_alpha[cid_var4_b]!; },
+    sending_cid_var4_b_0 -> sent_cid_var4_b_0 { sync sender_omega[cid_var4_b]?; },
+    sent_cid_var4_b_0 -> sending_cid_var4_b_1 { sync sender_alpha[cid_var4_b]!; },
+    sending_cid_var4_b_1 -> sent_cid_var4_b_1 { sync sender_omega[cid_var4_b]?; },
+    sent_cid_var4_b_1 -> ending { },
+    starting -> started { sync async_testA[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_testA[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_testA[pid]!; };
+}
+
+process testB(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync;
+int p = -1;
+int cid_var5_ch = -1;
+int fid_var6_f = -1;
+int fid_var8 = 3;
+
+state
+    ended,
+    assigned_fid_var6_f_0,
+    sending_cid_var5_ch_0,
+    sent_cid_var5_ch_0,
+    starting,
+    started,
+    ending;
+init
+    starting;
+trans
+    started -> assigned_fid_var6_f_0 { assign fid_var6_f = fid_var8; },
+    assigned_fid_var6_f_0 -> sending_cid_var5_ch_0 { sync sender_alpha[cid_var5_ch]!; },
+    sending_cid_var5_ch_0 -> sent_cid_var5_ch_0 { sync sender_omega[cid_var5_ch]?; },
+    sent_cid_var5_ch_0 -> ending { },
+    starting -> started { sync async_testB[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_testB[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_testB[pid]!; };
+}
+
+process main() {
+// Place local declarations here.
+bool is_sync;
+int p = -1;
+
+state
+    enter_loop_body0,
+    exit_loop0,
+    started,
+    ending,
+    enter_loop_cond0,
+    exit_loop_body0,
+    starting,
+    ended,
+    exit_loop_cond0;
+init
+    starting;
+trans
+    enter_loop_cond0 -> exit_loop_cond0 { },
+    enter_loop_body0 -> exit_loop_body0 { },
+    started -> enter_loop_cond0 { },
+    exit_loop_cond0 -> enter_loop_body0 { },
+    exit_loop_cond0 -> exit_loop0 { },
+    exit_loop_body0 -> enter_loop_cond0 { },
+    exit_loop0 -> ending { },
+    starting -> started { },
+    ending -> ended { };
+}
+
+process func3(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync;
+int p = -1;
+int cid_var7 = -1;
+
+state
+    starting,
+    started,
+    ending,
+    ended,
+    made_cid_var7_0;
+init
+    starting;
+trans
+    started -> made_cid_var7_0 { assign cid_var7 = make_chan(0); },
+    made_cid_var7_0 -> ending { assign res_func3_0_Chan[pid] = cid_var7; },
+    starting -> started { sync async_func3[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_func3[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_func3[pid]!; };
+}
+
+process Channel(int[0, 9] i) {
+// Place local declarations here.
+
+state
+    idle,
+    new_sender,
+    confirming_a,
+    new_receiver,
+    confirming_b,
+    confirming_closing,
+    closing,
+    closed,
+    confirming_closed,
+    bad;
+commit
+    new_sender,
+    confirming_a,
+    new_receiver,
+    confirming_b,
+    confirming_closing,
+    closing,
+    confirming_closed;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_alpha[i]?; assign chan_counter[i]++; },
+    new_sender -> idle { guard chan_counter[i] > chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= chan_buffer[i]; sync sender_omega[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_omega[i]!; },
+    idle -> new_receiver { sync receiver_alpha[i]?; assign chan_counter[i]--; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_omega[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= chan_buffer[i]; sync sender_omega[i]!; },
+    idle -> confirming_closing { guard chan_counter[i] < 0; sync close[i]?; },
+    confirming_closing -> confirming_closing { guard chan_counter[i] < 0; sync receiver_omega[i]!; assign chan_counter[i]++; },
+    confirming_closing -> closing { guard chan_counter[i] == 0; },
+    idle -> closing { guard 0 <= chan_counter[i] && chan_counter[i] <= chan_buffer[i]; sync close[i]?; },
+    idle -> bad { guard chan_counter[i] > chan_buffer[i]; sync close[i]?; },
+    closing -> closed { assign chan_counter[i] = 1,
+chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_alpha[i]?; },
+    confirming_closed -> closed { sync receiver_omega[i]!; },
+    closed -> bad { sync sender_alpha[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+Channel0 = Channel(0);
+Channel1 = Channel(1);
+Channel2 = Channel(2);
+Channel3 = Channel(3);
+Channel4 = Channel(4);
+Channel5 = Channel(5);
+Channel6 = Channel(6);
+Channel7 = Channel(7);
+Channel8 = Channel(8);
+Channel9 = Channel(9);
+func30 = func3(0);
+testA0 = testA(0);
+testB0 = testB(0);
+system Channel0, Channel1, Channel2, Channel3, Channel4, Channel5, Channel6, Channel7, Channel8, Channel9, func30, main, testA0, testB0;
+
