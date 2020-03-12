@@ -1,0 +1,82 @@
+prog{
+  scope{
+    var fid_var532_main Func = 294
+  }
+  funcs{
+    func{
+      index: 297
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var538_chA Chan = -1
+        var cid_var539_chB Chan = -1
+      }
+      stmts{
+        cid_var538_chA <- make(chan, 0)
+        cid_var539_chB <- make(chan, 0)
+        close cid_var539_chB
+        go 298() ['chA' <- &(cid_var538_chA)]
+        go 299() ['chA' <- &(cid_var538_chA), 'chB' <- &(cid_var539_chB)]
+      }
+    }
+    func{
+      index: 298
+      args: 
+      captures: cid_var540_chA <- *'chA'
+      results: 
+      scope{
+        var cid_var540_chA Chan = -1
+      }
+      stmts{
+        send cid_var540_chA
+      }
+    }
+    func{
+      index: 299
+      args: 
+      captures: cid_var541_chA <- *'chA', cid_var542_chB <- *'chB'
+      results: 
+      scope{
+        var cid_var541_chA Chan = -1
+        var cid_var542_chB Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var541_chA {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var542_chB {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              default {
+                scope{
+                }
+                stmts{
+                }
+              }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

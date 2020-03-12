@@ -1,0 +1,110 @@
+prog{
+  scope{
+    var fid_var329_main Func = 180
+  }
+  funcs{
+    func{
+      index: 180
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var330_chA Chan = -1
+        var cid_var331_chB Chan = -1
+      }
+      stmts{
+        cid_var330_chA <- make(chan, 0)
+        cid_var331_chB <- make(chan, 0)
+        close cid_var331_chB
+        go 181() ['chA' <- &(cid_var330_chA), 'chB' <- &(cid_var331_chB)]
+        go 182() ['chA' <- &(cid_var330_chA), 'chB' <- &(cid_var331_chB)]
+      }
+    }
+    func{
+      index: 181
+      args: 
+      captures: cid_var332_chA <- *'chA', cid_var333_chB <- *'chB'
+      results: 
+      scope{
+        var cid_var332_chA Chan = -1
+        var cid_var333_chB Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case send cid_var332_chA {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var333_chB {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              default {
+                scope{
+                }
+                stmts{
+                }
+              }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 182
+      args: 
+      captures: cid_var334_chA <- *'chA', cid_var335_chB <- *'chB'
+      results: 
+      scope{
+        var cid_var334_chA Chan = -1
+        var cid_var335_chB Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var334_chA {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var335_chB {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

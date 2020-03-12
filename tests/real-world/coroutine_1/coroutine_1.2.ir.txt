@@ -1,0 +1,85 @@
+prog{
+  scope{
+    var fid_var111_rnd_time_loop Func = 66
+    var fid_var112_main Func = 67
+  }
+  funcs{
+    func{
+      index: 69
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var116_c Chan = -1
+      }
+      stmts{
+        cid_var116_c <- make(chan, 0)
+        go 71() ['c' <- &(cid_var116_c)]
+        return 0: cid_var116_c
+      }
+    }
+    func{
+      index: 70
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var117_c Chan = -1
+      }
+      stmts{
+        inlined call rnd_time_loop {
+          scope{
+            var cid_var118_c Chan = -1
+          }
+          stmts{
+            cid_var118_c <- make(chan, 0)
+            go 71() ['c' <- &(cid_var118_c)]
+            cid_var117_c <- cid_var118_c
+            return
+          }
+        }
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              receive cid_var117_c
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 71
+      args: 
+      captures: cid_var119_c <- *'c'
+      results: 
+      scope{
+        var cid_var119_c Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var119_c
+            }
+          }
+        }
+      }
+    }
+  }
+}

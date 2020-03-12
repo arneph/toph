@@ -15,7 +15,7 @@ type Func struct {
 	index       FuncIndex
 	name        string
 	args        map[int]*Variable
-	captures    map[*Variable]*Variable
+	captures    map[string]*Variable
 	resultTypes map[int]Type
 	results     map[int]*Variable
 	scope       Scope
@@ -24,20 +24,20 @@ type Func struct {
 
 // NewFunc creates a new blank function.
 func NewFunc(name string, superScope *Scope) *Func {
+	if strings.HasSuffix(name, "_func") {
+		name = fmt.Sprintf("%s%d", name, funcCount)
+	}
+
 	f := new(Func)
 	f.index = FuncIndex(funcCount)
 	f.name = name
 	f.args = make(map[int]*Variable)
-	f.captures = make(map[*Variable]*Variable)
+	f.captures = make(map[string]*Variable)
 	f.resultTypes = make(map[int]Type)
 	f.results = make(map[int]*Variable)
 	f.scope.init()
 	f.scope.superScope = superScope
 	f.body.initWithScope(&f.scope)
-
-	if f.name == "" {
-		f.name = fmt.Sprintf("func%d", f.index)
-	}
 
 	funcCount++
 
@@ -65,20 +65,30 @@ func (f *Func) AddArg(index int, arg *Variable) {
 	f.scope.AddVariable(arg)
 }
 
+// DefineArg sets an existing variable of the function as an argument.
+func (f *Func) DefineArg(index int, arg *Variable) {
+	f.args[index] = arg
+}
+
 // Captures returns all variables caputered by the function.
-func (f *Func) Captures() map[*Variable]*Variable {
+func (f *Func) Captures() map[string]*Variable {
 	return f.captures
 }
 
 // GetCapturer returns the capturing varibale for the captured variable.
-func (f *Func) GetCapturer(captured *Variable) *Variable {
-	return f.captures[captured]
+func (f *Func) GetCapturer(capturing string) *Variable {
+	return f.captures[capturing]
 }
 
 // AddCapture adds a capturer to the function and its scope.
-func (f *Func) AddCapture(captured, capturer *Variable) {
-	f.captures[captured] = capturer
+func (f *Func) AddCapture(capturing string, capturer *Variable) {
+	f.captures[capturing] = capturer
 	f.scope.AddVariable(capturer)
+}
+
+// DefineCapture sets an existing variable of the function as a capturer.
+func (f *Func) DefineCapture(capturing string, capturer *Variable) {
+	f.captures[capturing] = capturer
 }
 
 // ResultTypes returns a map from index to result types of the function.
@@ -101,6 +111,12 @@ func (f *Func) AddResult(index int, result *Variable) {
 	f.resultTypes[index] = result.Type()
 	f.results[index] = result
 	f.scope.AddVariable(result)
+}
+
+// DefineResult sets an existing variable of the function as a result variable.
+func (f *Func) DefineResult(index int, result *Variable) {
+	f.resultTypes[index] = result.Type()
+	f.results[index] = result
 }
 
 // Scope returns the function scope.
@@ -129,13 +145,13 @@ func (f *Func) String() string {
 	s += "\n"
 	s += "  captures: "
 	firstCapture := true
-	for v, w := range f.captures {
+	for capturing, capturer := range f.captures {
 		if firstCapture {
 			firstCapture = false
 		} else {
 			s += ", "
 		}
-		s += w.Handle() + " <- &(" + v.Handle() + ")"
+		s += capturer.Handle() + " <- *'" + capturing + "'"
 	}
 	s += "\n"
 	s += "  results: "

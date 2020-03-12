@@ -1,6 +1,10 @@
 package analyzer
 
-import "github.com/arneph/toph/ir"
+import (
+	"fmt"
+
+	"github.com/arneph/toph/ir"
+)
 
 // SCC represents the strongly connected component an ir.Func belongs to.
 type SCC int
@@ -9,6 +13,7 @@ type SCC int
 // function via the function call graph.
 const FuncNotCalled SCC = 0
 
+// FuncCallGraph represents a directed call graph of functions.
 type FuncCallGraph struct {
 	entry *ir.Func
 
@@ -18,6 +23,33 @@ type FuncCallGraph struct {
 	// Strongly connected components:
 	sccsOk bool
 	sccs   map[*ir.Func]SCC
+}
+
+// CalculateFuncCallGraph returns a new function call graph for the given
+// program, program entry function, and call kind. Only calls of the given call
+// kind are contained in the graph.
+func CalculateFuncCallGraph(prog *ir.Program, entry *ir.Func, callKind ir.CallKind) *FuncCallGraph {
+	fcg := newFuncCallGraph(entry)
+
+	for _, caller := range prog.Funcs() {
+		for callee := range findCalleesOfFunc(caller, callKind) {
+			fcg.addCall(caller, callee)
+		}
+	}
+
+	return fcg
+}
+
+func findCalleesOfFunc(caller *ir.Func, callKind ir.CallKind) map[*ir.Func]struct{} {
+	callees := make(map[*ir.Func]struct{})
+	caller.Body().WalkStmts(func(stmt *ir.Stmt, scope *ir.Scope) {
+		callStmt, ok := (*stmt).(*ir.CallStmt)
+		if !ok || callStmt.Kind() != callKind {
+			return
+		}
+		callees[callStmt.Callee()] = struct{}{}
+	})
+	return callees
 }
 
 func newFuncCallGraph(entry *ir.Func) *FuncCallGraph {
@@ -32,6 +64,38 @@ func newFuncCallGraph(entry *ir.Func) *FuncCallGraph {
 	return fcg
 }
 
+// ContainsEdge returns if the function call graph has an edge from the given
+// caller to the given callee.
+func (fcg *FuncCallGraph) ContainsEdge(caller, callee *ir.Func) bool {
+	_, ok := fcg.callerToCallees[caller][callee]
+	return ok
+}
+
+// Callees returns all callees of the given caller.
+func (fcg *FuncCallGraph) Callees(caller *ir.Func) []*ir.Func {
+	var callees []*ir.Func
+	for callee := range fcg.callerToCallees[caller] {
+		callees = append(callees, callee)
+	}
+	return callees
+}
+
+// Callers returns all callers of the given callee.
+func (fcg *FuncCallGraph) Callers(callee *ir.Func) []*ir.Func {
+	var callers []*ir.Func
+	for caller := range fcg.calleeToCallers[callee] {
+		callers = append(callers, caller)
+	}
+	return callers
+}
+
+// SCC returns the strongly connected component of the given function in the
+// function call graph.
+func (fcg *FuncCallGraph) SCC(f *ir.Func) SCC {
+	fcg.updateSCCs()
+	return fcg.sccs[f]
+}
+
 func (fcg *FuncCallGraph) addFunc(f *ir.Func) {
 	_, ok := fcg.callerToCallees[f]
 	if ok {
@@ -40,6 +104,8 @@ func (fcg *FuncCallGraph) addFunc(f *ir.Func) {
 
 	fcg.callerToCallees[f] = make(map[*ir.Func]struct{})
 	fcg.calleeToCallers[f] = make(map[*ir.Func]struct{})
+
+	fcg.sccsOk = false
 }
 
 func (fcg *FuncCallGraph) addCall(caller, callee *ir.Func) {
@@ -50,6 +116,8 @@ func (fcg *FuncCallGraph) addCall(caller, callee *ir.Func) {
 	callees[callee] = struct{}{}
 	callers := fcg.calleeToCallers[callee]
 	callers[caller] = struct{}{}
+
+	fcg.sccsOk = false
 }
 
 func (fcg *FuncCallGraph) updateSCCs() {
@@ -113,9 +181,29 @@ func (fcg *FuncCallGraph) updateSCCs() {
 		}
 	}
 
-	// Note: The original algorithm calls strongConnect with every node in the
-	// graph that has not been visited yet. Calling strongConnect only on the
-	// entry function ensures that unreachable functions are not assigned to a
-	// strongly connected component (keep FuncNotCalled).
-	strongConnect(fcg.entry)
+	for f := range fcg.callerToCallees {
+		if _, ok := indices[f]; !ok {
+			strongConnect(f)
+		}
+	}
+}
+
+func (fcg *FuncCallGraph) String() string {
+	fcg.updateSCCs()
+	str := ""
+	for caller, callees := range fcg.callerToCallees {
+		str += caller.Name()
+		str += fmt.Sprintf(" (%d) -> ", fcg.sccs[caller])
+		firstCallee := true
+		for callee := range callees {
+			if firstCallee {
+				firstCallee = false
+			} else {
+				str += ", "
+			}
+			str += callee.Name()
+		}
+		str += "\n"
+	}
+	return str
 }

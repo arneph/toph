@@ -1,0 +1,104 @@
+prog{
+  scope{
+    var fid_var399_main Func = 216
+  }
+  funcs{
+    func{
+      index: 219
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var406_chA Chan = -1
+        var cid_var407_chB Chan = -1
+      }
+      stmts{
+        cid_var406_chA <- make(chan, 0)
+        cid_var407_chB <- make(chan, 0)
+        close cid_var407_chB
+        go 220() ['chA' <- &(cid_var406_chA), 'chB' <- &(cid_var407_chB)]
+        go 221() ['chB' <- &(cid_var407_chB), 'chA' <- &(cid_var406_chA)]
+      }
+    }
+    func{
+      index: 220
+      args: 
+      captures: cid_var408_chA <- *'chA', cid_var409_chB <- *'chB'
+      results: 
+      scope{
+        var cid_var408_chA Chan = -1
+        var cid_var409_chB Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case send cid_var408_chA {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var409_chB {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 221
+      args: 
+      captures: cid_var410_chA <- *'chA', cid_var411_chB <- *'chB'
+      results: 
+      scope{
+        var cid_var410_chA Chan = -1
+        var cid_var411_chB Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var410_chA {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var411_chB {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

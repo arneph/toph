@@ -78,12 +78,15 @@ func (b *builder) addWarning(err error) {
 }
 
 type context struct {
+	cmap ast.CommentMap
+
 	body           *ir.Body
 	enclosingFuncs []*ir.Func
 }
 
-func makeContext(f *ir.Func) context {
+func makeContext(cmap ast.CommentMap, f *ir.Func) context {
 	return context{
+		cmap:           cmap,
 		body:           f.Body(),
 		enclosingFuncs: []*ir.Func{f},
 	}
@@ -96,6 +99,7 @@ func (c context) currentFunc() *ir.Func {
 
 func (c context) subContextForBody(containedBody *ir.Body) context {
 	return context{
+		cmap:           c.cmap,
 		body:           containedBody,
 		enclosingFuncs: c.enclosingFuncs,
 	}
@@ -103,12 +107,15 @@ func (c context) subContextForBody(containedBody *ir.Body) context {
 
 func (c context) subContextForFunc(containedFunc *ir.Func) context {
 	return context{
+		cmap:           c.cmap,
 		body:           containedFunc.Body(),
 		enclosingFuncs: append(c.enclosingFuncs, containedFunc),
 	}
 }
 
 func (b *builder) processFile(file *ast.File) {
+	cmap := ast.NewCommentMap(b.fset, file, file.Comments)
+
 	// Process function declarations:
 	for _, d := range file.Decls {
 		switch decl := d.(type) {
@@ -120,7 +127,7 @@ func (b *builder) processFile(file *ast.File) {
 			funcType := b.info.Defs[decl.Name].(*types.Func)
 			f := ir.NewFunc(name, b.program.Scope())
 			v := ir.NewVariable(name, ir.FuncType, f.FuncValue())
-			b.program.AddNamedFunc(name, f)
+			b.program.AddFunc(f)
 			b.program.Scope().AddVariable(v)
 			b.funcTypes[funcType] = f
 		}
@@ -134,8 +141,8 @@ func (b *builder) processFile(file *ast.File) {
 		}
 
 		name := funcDecl.Name.Name
-		f := b.program.GetNamedFunc(name)
-		b.processFunc(funcDecl.Type, funcDecl.Body, makeContext(f))
+		f := b.program.GetFunc(name)
+		b.processFunc(funcDecl.Type, funcDecl.Body, makeContext(cmap, f))
 	}
 }
 

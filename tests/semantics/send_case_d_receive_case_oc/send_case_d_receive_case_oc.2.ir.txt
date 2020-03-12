@@ -1,0 +1,103 @@
+prog{
+  scope{
+    var fid_var265_main Func = 144
+  }
+  funcs{
+    func{
+      index: 147
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var271_chA Chan = -1
+        var cid_var272_chB Chan = -1
+      }
+      stmts{
+        cid_var271_chA <- make(chan, 0)
+        cid_var272_chB <- make(chan, 0)
+        close cid_var272_chB
+        go 148() ['chA' <- &(cid_var271_chA)]
+        go 149() ['chA' <- &(cid_var271_chA), 'chB' <- &(cid_var272_chB)]
+      }
+    }
+    func{
+      index: 148
+      args: 
+      captures: cid_var273_chA <- *'chA'
+      results: 
+      scope{
+        var cid_var273_chA Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case send cid_var273_chA {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              default {
+                scope{
+                }
+                stmts{
+                }
+              }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 149
+      args: 
+      captures: cid_var274_chA <- *'chA', cid_var275_chB <- *'chB'
+      results: 
+      scope{
+        var cid_var274_chA Chan = -1
+        var cid_var275_chB Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var274_chA {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var275_chB {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

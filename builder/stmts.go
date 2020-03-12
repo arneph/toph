@@ -169,6 +169,10 @@ func (b *builder) processForStmt(stmt *ast.ForStmt, ctx context) {
 	if stmt.Cond != nil {
 		b.processExpr(stmt.Cond, ctx.subContextForBody(forStmt.Cond()))
 	}
+	min, max := b.findIterationBounds(stmt, ctx)
+	forStmt.SetIsInfinite(stmt.Cond == nil)
+	forStmt.SetMinIterations(min)
+	forStmt.SetMaxIterations(max)
 
 	b.processStmt(stmt.Body, ctx.subContextForBody(forStmt.Body()))
 	if stmt.Post != nil {
@@ -212,6 +216,10 @@ func (b *builder) processGoStmt(stmt *ast.GoStmt, ctx context) {
 	for i, v := range argVars {
 		goStmt.AddArg(i, v)
 	}
+	for capturing := range callee.Captures() {
+		captured, _ := ctx.body.Scope().GetVariable(capturing)
+		goStmt.AddCapture(capturing, captured)
+	}
 
 	return
 }
@@ -231,9 +239,9 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx context) {
 
 	for _, stmt := range stmt.Body.List {
 		commClause := stmt.(*ast.CommClause)
+		reachReq := b.findReachabilityRequirement(commClause, ctx)
 
 		var body *ir.Body
-
 		switch stmt := commClause.Comm.(type) {
 		case *ast.SendStmt:
 			v := b.processExpr(stmt.Chan, ctx)
@@ -246,6 +254,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx context) {
 			}
 
 			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Send))
+			selectCase.SetReachReq(reachReq)
 			body = selectCase.Body()
 
 		case *ast.ExprStmt:
@@ -259,6 +268,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx context) {
 			}
 
 			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Receive))
+			selectCase.SetReachReq(reachReq)
 			body = selectCase.Body()
 
 		case *ast.AssignStmt:
@@ -272,6 +282,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx context) {
 			}
 
 			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Receive))
+			selectCase.SetReachReq(reachReq)
 			body = selectCase.Body()
 
 			// Create newly defined variable:

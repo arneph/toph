@@ -95,6 +95,8 @@ func (s *ChanOpStmt) String() string {
 type SelectCase struct {
 	op   *ChanOpStmt
 	body Body
+
+	reachReq ReachabilityRequirement
 }
 
 // OpStmt returns the operation of the select case.
@@ -105,6 +107,16 @@ func (c *SelectCase) OpStmt() *ChanOpStmt {
 // Body returns the body of the select case.
 func (c *SelectCase) Body() *Body {
 	return &c.body
+}
+
+// ReachReq returns the reachability requirement of the select case.
+func (c *SelectCase) ReachReq() ReachabilityRequirement {
+	return c.reachReq
+}
+
+// SetReachReq sets the reachability requirement of the select case.
+func (c *SelectCase) SetReachReq(reachReq ReachabilityRequirement) {
+	c.reachReq = reachReq
 }
 
 func (c *SelectCase) String() string {

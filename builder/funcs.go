@@ -60,8 +60,8 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx context) {
 }
 
 func (b *builder) processFuncLit(funcLit *ast.FuncLit, ctx context) *ir.Func {
-	f := ir.NewFunc("", ctx.body.Scope())
-	b.program.AddUnnamedFunc(f)
+	f := ir.NewFunc(ctx.currentFunc().Name()+"_func", ctx.body.Scope())
+	b.program.AddFunc(f)
 	b.processFunc(funcLit.Type, funcLit.Body, ctx.subContextForFunc(f))
 	return f
 }
@@ -95,8 +95,15 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx context) *ir.Func {
 		switch funcType := b.info.Uses[funcExpr.Sel].(type) {
 		case *types.Func:
 			switch funcType.Pkg().Name() {
-			case "fmt":
+			case "fmt", "math", "rand":
 				return nil
+			case "time":
+				if funcType.Name() == "Now" ||
+					funcType.Name() == "Sleep" ||
+					funcType.Name() == "UnixNano" ||
+					funcType.Name() == "Since" {
+					return nil
+				}
 			}
 
 			b.processExpr(funcExpr.X, ctx)
@@ -107,6 +114,10 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx context) *ir.Func {
 			return nil
 
 		case types.Object:
+			if funcType.Pkg().Name() == "time" &&
+				funcType.Name() == "Duration" {
+				return nil
+			}
 			b.processExpr(funcExpr.X, ctx)
 
 			p := b.fset.Position(funcExpr.Pos())
@@ -149,6 +160,18 @@ func (b *builder) processCallExpr(callExpr *ast.CallExpr, results map[int]*ir.Va
 	} else if ok && fIdent.Name == "close" {
 		b.processCloseExpr(callExpr, ctx)
 		return
+	} else if ok && (fIdent.Name == "append" ||
+		fIdent.Name == "cap" ||
+		fIdent.Name == "complex" ||
+		fIdent.Name == "copy" ||
+		fIdent.Name == "delete" ||
+		fIdent.Name == "imag" ||
+		fIdent.Name == "len" ||
+		fIdent.Name == "new" ||
+		fIdent.Name == "print" ||
+		fIdent.Name == "println" ||
+		fIdent.Name == "real") {
+		return
 	}
 
 	callee := b.findCallee(callExpr.Fun, ctx)
@@ -172,7 +195,10 @@ func (b *builder) processCallExpr(callExpr *ast.CallExpr, results map[int]*ir.Va
 	for i, v := range argVars {
 		callStmt.AddArg(i, v)
 	}
-
+	for capturing := range callee.Captures() {
+		captured, _ := ctx.body.Scope().GetVariable(capturing)
+		callStmt.AddCapture(capturing, captured)
+	}
 	for i, t := range callee.ResultTypes() {
 		v, ok := results[i]
 		if !ok {

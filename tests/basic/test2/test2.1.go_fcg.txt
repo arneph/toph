@@ -1,0 +1,5 @@
+main (3) -> 
+test (4) -> test_func12, test_func13
+test_func12 (1) -> 
+test_func13 (2) -> 
+

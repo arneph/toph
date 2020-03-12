@@ -1,0 +1,82 @@
+prog{
+  scope{
+    var fid_var229_timed_process Func = 120
+    var fid_var230_main Func = 121
+  }
+  funcs{
+    func{
+      index: 120
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var231_c Chan = -1
+      }
+      stmts{
+        cid_var231_c <- make(chan, 0)
+        go 122() ['c' <- &(cid_var231_c)]
+        return 0: cid_var231_c
+      }
+    }
+    func{
+      index: 121
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var233_c Chan = -1
+      }
+      stmts{
+        , 0: var cid_var233_c Chan = -1 <- call 120()
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var233_c {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 122
+      args: 
+      captures: cid_var232_c <- *'c'
+      results: 
+      scope{
+        var cid_var232_c Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var232_c
+            }
+          }
+        }
+      }
+    }
+  }
+}

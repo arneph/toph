@@ -124,6 +124,13 @@ func (b *builder) processIdent(ident *ast.Ident, ctx context) *ir.Variable {
 	}
 	u, ok := b.varTypes[varType]
 	if !ok || v != u {
+		for i := len(ctx.enclosingFuncs) - 1; i >= 0; i-- {
+			f := ctx.enclosingFuncs[i]
+			if f.GetCapturer(v.Name()) != nil {
+				return v
+			}
+		}
+
 		p := b.fset.Position(ident.Pos())
 		b.addWarning(
 			fmt.Errorf("%v: identifier does not refer to known variable with name: %s",
@@ -143,10 +150,10 @@ func (b *builder) processIdent(ident *ast.Ident, ctx context) *ir.Variable {
 			continue
 		}
 
-		w = f.GetCapturer(v)
+		w = f.GetCapturer(v.Name())
 		if w == nil {
 			w = ir.NewVariable(v.Name(), v.Type(), -1)
-			f.AddCapture(v, w)
+			f.AddCapture(v.Name(), w)
 		}
 		v = w
 	}

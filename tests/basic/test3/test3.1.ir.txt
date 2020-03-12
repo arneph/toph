@@ -1,0 +1,91 @@
+prog{
+  scope{
+    var fid_var31_producer Func = 18
+    var fid_var32_processor Func = 19
+    var fid_var33_consumer Func = 20
+    var fid_var34_main Func = 21
+  }
+  funcs{
+    func{
+      index: 18
+      args: cid_var35_out
+      captures: 
+      results: 
+      scope{
+        var cid_var35_out Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var35_out
+            }
+          }
+        }
+        close cid_var35_out
+      }
+    }
+    func{
+      index: 19
+      args: cid_var36_in, cid_var37_out
+      captures: 
+      results: 
+      scope{
+        var cid_var36_in Chan = -1
+        var cid_var37_out Chan = -1
+      }
+      stmts{
+        range cid_var36_in {
+          scope{
+          }
+          stmts{
+            send cid_var37_out
+          }
+        }
+        close cid_var37_out
+      }
+    }
+    func{
+      index: 20
+      args: cid_var38_in
+      captures: 
+      results: 
+      scope{
+        var cid_var38_in Chan = -1
+      }
+      stmts{
+        range cid_var38_in {
+          scope{
+          }
+          stmts{
+          }
+        }
+      }
+    }
+    func{
+      index: 21
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var39_ch1 Chan = -1
+        var cid_var40_ch2 Chan = -1
+      }
+      stmts{
+        cid_var39_ch1 <- make(chan, 0)
+        cid_var40_ch2 <- make(chan, 0)
+        go 18(0: var cid_var39_ch1 Chan = -1)
+        go 19(1: var cid_var40_ch2 Chan = -1, 0: var cid_var39_ch1 Chan = -1)
+        call 20(0: var cid_var40_ch2 Chan = -1)
+      }
+    }
+  }
+}

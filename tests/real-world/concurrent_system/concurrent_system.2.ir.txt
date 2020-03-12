@@ -1,0 +1,454 @@
+prog{
+  scope{
+    var fid_var55_fakeSearch Func = 30
+    var fid_var56_SequentialSearch Func = 31
+    var fid_var57_ConcurrentSearch Func = 32
+    var fid_var58_ConcurrentSearchWithCutOff Func = 33
+    var fid_var59_First Func = 34
+    var fid_var60_ReplicaSearch Func = 35
+    var fid_var61_main Func = 36
+  }
+  funcs{
+    func{
+      index: 48
+      args: 
+      captures: 
+      results: 
+      scope{
+        var fid_var81 Func = 37
+      }
+      stmts{
+        return 0: fid_var81
+      }
+    }
+    func{
+      index: 49
+      args: 
+      captures: 
+      results: 
+      scope{
+      }
+      stmts{
+        return
+      }
+    }
+    func{
+      index: 50
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var82_c Chan = -1
+      }
+      stmts{
+        cid_var82_c <- make(chan, 0)
+        go 56() ['c' <- &(cid_var82_c)]
+        go 57() ['c' <- &(cid_var82_c)]
+        go 58() ['c' <- &(cid_var82_c)]
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              receive cid_var82_c
+            }
+          }
+        }
+        return
+      }
+    }
+    func{
+      index: 51
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var83_c Chan = -1
+        var cid_var84_timeout Chan = -1
+      }
+      stmts{
+        cid_var83_c <- make(chan, 0)
+        go 59() ['c' <- &(cid_var83_c)]
+        go 60() ['c' <- &(cid_var83_c)]
+        go 61() ['c' <- &(cid_var83_c)]
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var83_c {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var84_timeout {
+                  scope{
+                  }
+                  stmts{
+                    return
+                  }
+                }
+              }
+            }
+          }
+        }
+        return
+      }
+    }
+    func{
+      index: 52
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var85_c Chan = -1
+        var fid_var86 Func = 44
+        var fid_var87_searchReplica Func = -1
+      }
+      stmts{
+        cid_var85_c <- make(chan, 0)
+        fid_var87_searchReplica <- fid_var86
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+            }
+          }
+        }
+        receive cid_var85_c
+        return
+      }
+    }
+    func{
+      index: 53
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var88_c Chan = -1
+        var cid_var89_timeout Chan = -1
+      }
+      stmts{
+        cid_var88_c <- make(chan, 0)
+        go 63() ['c' <- &(cid_var88_c)]
+        go 64() ['c' <- &(cid_var88_c)]
+        go 65() ['c' <- &(cid_var88_c)]
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var88_c {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var89_timeout {
+                  scope{
+                  }
+                  stmts{
+                    return
+                  }
+                }
+              }
+            }
+          }
+        }
+        return
+      }
+    }
+    func{
+      index: 54
+      args: 
+      captures: 
+      results: 
+      scope{
+      }
+      stmts{
+        inlined call ReplicaSearch {
+          scope{
+            var cid_var90_c Chan = -1
+            var cid_var91_timeout Chan = -1
+          }
+          stmts{
+            cid_var90_c <- make(chan, 0)
+            go 63() ['c' <- &(cid_var90_c)]
+            go 64() ['c' <- &(cid_var90_c)]
+            go 65() ['c' <- &(cid_var90_c)]
+            for{
+              cond{
+                scope{
+                }
+                stmts{
+                }
+              }
+              body{
+                scope{
+                }
+                stmts{
+                  select{
+                    case receive cid_var90_c {
+                      scope{
+                      }
+                      stmts{
+                      }
+                    }
+                    case receive cid_var91_timeout {
+                      scope{
+                      }
+                      stmts{
+                        return
+                      }
+                    }
+                  }
+                }
+              }
+            }
+            return
+          }
+        }
+      }
+    }
+    func{
+      index: 55
+      args: 
+      captures: 
+      results: 
+      scope{
+      }
+      stmts{
+        return
+      }
+    }
+    func{
+      index: 56
+      args: 
+      captures: cid_var92_c <- *'c'
+      results: 
+      scope{
+        var cid_var92_c Chan = -1
+      }
+      stmts{
+        send cid_var92_c
+      }
+    }
+    func{
+      index: 57
+      args: 
+      captures: cid_var93_c <- *'c'
+      results: 
+      scope{
+        var cid_var93_c Chan = -1
+      }
+      stmts{
+        send cid_var93_c
+      }
+    }
+    func{
+      index: 58
+      args: 
+      captures: cid_var94_c <- *'c'
+      results: 
+      scope{
+        var cid_var94_c Chan = -1
+      }
+      stmts{
+        send cid_var94_c
+      }
+    }
+    func{
+      index: 59
+      args: 
+      captures: cid_var95_c <- *'c'
+      results: 
+      scope{
+        var cid_var95_c Chan = -1
+      }
+      stmts{
+        send cid_var95_c
+      }
+    }
+    func{
+      index: 60
+      args: 
+      captures: cid_var96_c <- *'c'
+      results: 
+      scope{
+        var cid_var96_c Chan = -1
+      }
+      stmts{
+        send cid_var96_c
+      }
+    }
+    func{
+      index: 61
+      args: 
+      captures: cid_var97_c <- *'c'
+      results: 
+      scope{
+        var cid_var97_c Chan = -1
+      }
+      stmts{
+        send cid_var97_c
+      }
+    }
+    func{
+      index: 62
+      args: 
+      captures: cid_var98_c <- *'c'
+      results: 
+      scope{
+        var cid_var98_c Chan = -1
+      }
+      stmts{
+        send cid_var98_c
+      }
+    }
+    func{
+      index: 63
+      args: 
+      captures: cid_var99_c <- *'c'
+      results: 
+      scope{
+        var cid_var99_c Chan = -1
+      }
+      stmts{
+        inlined call First {
+          scope{
+            var cid_var100_c Chan = -1
+            var fid_var101 Func = 44
+            var fid_var102_searchReplica Func = -1
+          }
+          stmts{
+            cid_var100_c <- make(chan, 0)
+            fid_var102_searchReplica <- fid_var101
+            for{
+              cond{
+                scope{
+                }
+                stmts{
+                }
+              }
+              body{
+                scope{
+                }
+                stmts{
+                }
+              }
+            }
+            receive cid_var100_c
+            return
+          }
+        }
+        send cid_var99_c
+      }
+    }
+    func{
+      index: 64
+      args: 
+      captures: cid_var103_c <- *'c'
+      results: 
+      scope{
+        var cid_var103_c Chan = -1
+      }
+      stmts{
+        inlined call First {
+          scope{
+            var cid_var104_c Chan = -1
+            var fid_var105 Func = 44
+            var fid_var106_searchReplica Func = -1
+          }
+          stmts{
+            cid_var104_c <- make(chan, 0)
+            fid_var106_searchReplica <- fid_var105
+            for{
+              cond{
+                scope{
+                }
+                stmts{
+                }
+              }
+              body{
+                scope{
+                }
+                stmts{
+                }
+              }
+            }
+            receive cid_var104_c
+            return
+          }
+        }
+        send cid_var103_c
+      }
+    }
+    func{
+      index: 65
+      args: 
+      captures: cid_var107_c <- *'c'
+      results: 
+      scope{
+        var cid_var107_c Chan = -1
+      }
+      stmts{
+        inlined call First {
+          scope{
+            var cid_var108_c Chan = -1
+            var fid_var109 Func = 44
+            var fid_var110_searchReplica Func = -1
+          }
+          stmts{
+            cid_var108_c <- make(chan, 0)
+            fid_var110_searchReplica <- fid_var109
+            for{
+              cond{
+                scope{
+                }
+                stmts{
+                }
+              }
+              body{
+                scope{
+                }
+                stmts{
+                }
+              }
+            }
+            receive cid_var108_c
+            return
+          }
+        }
+        send cid_var107_c
+      }
+    }
+  }
+}

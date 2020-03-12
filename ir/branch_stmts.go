@@ -5,6 +5,20 @@ import (
 	"strings"
 )
 
+// ReachabilityRequirement defines the expected reachability (reachable,
+// unreachable or no requirement) for a point in the program.
+type ReachabilityRequirement int
+
+const (
+	// NoReachabilityRequirement indicates that no checks should be performed.
+	NoReachabilityRequirement ReachabilityRequirement = iota
+	// Reachable indicates that the marked point is expected to be reachable.
+	Reachable
+	// Unreachable indicates that the marked point is expected to be
+	// unreachable.
+	Unreachable
+)
+
 // IfStmt represents an if or else branch.
 type IfStmt struct {
 	ifBranch   Body
@@ -46,7 +60,10 @@ func (s *IfStmt) String() string {
 type ForStmt struct {
 	cond Body
 	body Body
-	inc  Body
+
+	isInfinite    bool
+	minIterations int
+	maxIterations int
 }
 
 // NewForStmt creates a new loop, embedded in the given enclosing scope.
@@ -56,6 +73,9 @@ func NewForStmt(superScope *Scope) *ForStmt {
 	s.cond.scope.superScope = superScope
 	s.body.init()
 	s.body.scope.superScope = superScope
+	s.isInfinite = false
+	s.minIterations = -1
+	s.maxIterations = -1
 
 	return s
 }
@@ -68,6 +88,52 @@ func (s *ForStmt) Cond() *Body {
 // Body returns the main body of the conditional loop.
 func (s *ForStmt) Body() *Body {
 	return &s.body
+}
+
+// IsInfinite returns whether the loop has no condition and runs forever unless
+// exited otherwise.
+func (s *ForStmt) IsInfinite() bool {
+	return s.isInfinite
+}
+
+// SetIsInfinite sets whether the loop has no condition and runs forver unless
+// exited otherwise.
+func (s *ForStmt) SetIsInfinite(isInfinite bool) {
+	s.isInfinite = isInfinite
+}
+
+// HasMinIterations returns whether a lower bound on the number of loop
+// iterations is known.
+func (s *ForStmt) HasMinIterations() bool {
+	return s.minIterations >= 0
+}
+
+// MinIterations returns the lower bound on the number of loop iterations.
+// A negative value indicates that no lower bound is known.
+func (s *ForStmt) MinIterations() int {
+	return s.minIterations
+}
+
+// SetMinIterations sets the lower bound on the number of loop iterations.
+func (s *ForStmt) SetMinIterations(minIterations int) {
+	s.minIterations = minIterations
+}
+
+// HasMaxIterations returns whether an upper bound on the number of loop
+// iterations is known.
+func (s *ForStmt) HasMaxIterations() bool {
+	return s.maxIterations >= 0
+}
+
+// MaxIterations returns the upper bound on the number of loop iterations.
+// A negative value indicates that no upper bound is known.
+func (s *ForStmt) MaxIterations() int {
+	return s.maxIterations
+}
+
+// SetMaxIterations sets the upper bound on the number of loop iterations.
+func (s *ForStmt) SetMaxIterations(maxIterations int) {
+	s.maxIterations = maxIterations
 }
 
 func (s *ForStmt) String() string {

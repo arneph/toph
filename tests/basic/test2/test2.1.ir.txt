@@ -1,0 +1,60 @@
+prog{
+  scope{
+    var fid_var19_test Func = 10
+    var fid_var20_main Func = 11
+  }
+  funcs{
+    func{
+      index: 10
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var21_ch Chan = -1
+      }
+      stmts{
+        cid_var21_ch <- make(chan, 0)
+        go 12() ['ch' <- &(cid_var21_ch)]
+        go 13() ['ch' <- &(cid_var21_ch)]
+      }
+    }
+    func{
+      index: 11
+      args: 
+      captures: 
+      results: 
+      scope{
+      }
+      stmts{
+        call 10()
+        call 10()
+        call 10()
+        call 10()
+      }
+    }
+    func{
+      index: 12
+      args: 
+      captures: cid_var22_ch <- *'ch'
+      results: 
+      scope{
+        var cid_var22_ch Chan = -1
+      }
+      stmts{
+        send cid_var22_ch
+      }
+    }
+    func{
+      index: 13
+      args: 
+      captures: cid_var23_ch <- *'ch'
+      results: 
+      scope{
+        var cid_var23_ch Chan = -1
+      }
+      stmts{
+        receive cid_var23_ch
+      }
+    }
+  }
+}

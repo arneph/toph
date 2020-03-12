@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"strings"
 )
 
 // CallKind represents whether a call is synchronous or asynchronous
@@ -26,12 +27,13 @@ func (k CallKind) String() string {
 	}
 }
 
-// CallStmt represents a direct function call (without the go keyword).
+// CallStmt represents a function call (with or without the go keyword).
 type CallStmt struct {
-	callee  *Func
-	kind    CallKind
-	args    map[int]*Variable
-	results map[int]*Variable // Variables to assign results to
+	callee   *Func
+	kind     CallKind
+	args     map[int]*Variable
+	captures map[string]*Variable
+	results  map[int]*Variable // Variables to assign results to
 }
 
 // NewCallStmt creates a new call statement to the given callee.
@@ -40,6 +42,7 @@ func NewCallStmt(callee *Func, kind CallKind) *CallStmt {
 	s.callee = callee
 	s.kind = kind
 	s.args = make(map[int]*Variable)
+	s.captures = make(map[string]*Variable)
 	s.results = make(map[int]*Variable)
 
 	return s
@@ -48,6 +51,11 @@ func NewCallStmt(callee *Func, kind CallKind) *CallStmt {
 // Callee returns the function called by the call statement.
 func (s *CallStmt) Callee() *Func {
 	return s.callee
+}
+
+// SetCallee sets the function called by the call statement.
+func (s *CallStmt) SetCallee(callee *Func) {
+	s.callee = callee
 }
 
 // Kind returns the kind of function call statement.
@@ -63,6 +71,21 @@ func (s *CallStmt) Args() map[int]*Variable {
 // AddArg adds an argument to the function call.
 func (s *CallStmt) AddArg(index int, arg *Variable) {
 	s.args[index] = arg
+}
+
+// Captures returns all variables caputered by the function call.
+func (s *CallStmt) Captures() map[string]*Variable {
+	return s.captures
+}
+
+// GetCaptured returns the captured varibale for the capturing variable.
+func (s *CallStmt) GetCaptured(capturing string) *Variable {
+	return s.captures[capturing]
+}
+
+// AddCapture adds a captioning relationship to the function call.
+func (s *CallStmt) AddCapture(capturing string, captured *Variable) {
+	s.captures[capturing] = captured
 }
 
 // Results returns all results processed by the function call.
@@ -101,6 +124,19 @@ func (s *CallStmt) String() string {
 		str += fmt.Sprintf("%d: %v", i, arg)
 	}
 	str += ")"
+	if len(s.captures) > 0 {
+		str += " ["
+		firstCapture := true
+		for capturing, captured := range s.captures {
+			if firstCapture {
+				firstCapture = false
+			} else {
+				str += ", "
+			}
+			str += "'" + capturing + "' <- &(" + captured.Handle() + ")"
+		}
+		str += "]"
+	}
 	return str
 }
 
@@ -139,5 +175,39 @@ func (s *ReturnStmt) String() string {
 		}
 		str += fmt.Sprintf("%d: %s", i, result.Handle())
 	}
+	return str
+}
+
+// InlinedCallStmt represents an inlined function call.
+type InlinedCallStmt struct {
+	calleeName string
+	body       Body
+}
+
+// NewInlinedCallStmt returns a new inlined call to the given function,
+// embedded in the given enclosing scope.
+func NewInlinedCallStmt(calleeName string, superScope *Scope) *InlinedCallStmt {
+	s := new(InlinedCallStmt)
+	s.calleeName = calleeName
+	s.body.init()
+	s.body.scope.superScope = superScope
+
+	return s
+}
+
+// CalleeName returns the name of the inlined function of the inlined call.
+func (s *InlinedCallStmt) CalleeName() string {
+	return s.calleeName
+}
+
+// Body returns the body of the inlined function call.
+func (s *InlinedCallStmt) Body() *Body {
+	return &s.body
+}
+
+func (s *InlinedCallStmt) String() string {
+	str := fmt.Sprintf("inlined call %v {\n", s.calleeName)
+	str += "  " + strings.ReplaceAll(s.body.String(), "\n", "\n  ") + "\n"
+	str += "}"
 	return str
 }

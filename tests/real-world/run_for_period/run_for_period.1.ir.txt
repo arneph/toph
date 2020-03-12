@@ -1,0 +1,89 @@
+prog{
+  scope{
+    var fid_var218_continuous_process Func = 114
+    var fid_var219_main Func = 115
+  }
+  funcs{
+    func{
+      index: 114
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var220_c Chan = -1
+      }
+      stmts{
+        cid_var220_c <- make(chan, 0)
+        go 116() ['c' <- &(cid_var220_c)]
+        return 0: cid_var220_c
+      }
+    }
+    func{
+      index: 115
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var222_c Chan = -1
+        var cid_var223_timeout Chan = -1
+      }
+      stmts{
+        , 0: var cid_var222_c Chan = -1 <- call 114()
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var222_c {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var223_timeout {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 116
+      args: 
+      captures: cid_var221_c <- *'c'
+      results: 
+      scope{
+        var cid_var221_c Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var221_c
+            }
+          }
+        }
+      }
+    }
+  }
+}

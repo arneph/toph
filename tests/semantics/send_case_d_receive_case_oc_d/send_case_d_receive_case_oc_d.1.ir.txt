@@ -1,0 +1,109 @@
+prog{
+  scope{
+    var fid_var276_main Func = 150
+  }
+  funcs{
+    func{
+      index: 150
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var277_chA Chan = -1
+        var cid_var278_chB Chan = -1
+      }
+      stmts{
+        cid_var277_chA <- make(chan, 0)
+        cid_var278_chB <- make(chan, 0)
+        close cid_var278_chB
+        go 151() ['chA' <- &(cid_var277_chA)]
+        go 152() ['chA' <- &(cid_var277_chA), 'chB' <- &(cid_var278_chB)]
+      }
+    }
+    func{
+      index: 151
+      args: 
+      captures: cid_var279_chA <- *'chA'
+      results: 
+      scope{
+        var cid_var279_chA Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case send cid_var279_chA {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              default {
+                scope{
+                }
+                stmts{
+                }
+              }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 152
+      args: 
+      captures: cid_var280_chA <- *'chA', cid_var281_chB <- *'chB'
+      results: 
+      scope{
+        var cid_var280_chA Chan = -1
+        var cid_var281_chB Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var280_chA {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var281_chB {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              default {
+                scope{
+                }
+                stmts{
+                }
+              }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

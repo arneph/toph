@@ -1,0 +1,219 @@
+prog{
+  scope{
+    var fid_var47_test Func = 26
+    var fid_var48_main Func = 27
+  }
+  funcs{
+    func{
+      index: 26
+      args: cid_var49_a, cid_var50_b
+      captures: 
+      results: 
+      scope{
+        var cid_var49_a Chan = -1
+        var cid_var50_b Chan = -1
+      }
+      stmts{
+        if{
+          scope{
+          }
+          stmts{
+            for{
+              cond{
+                scope{
+                }
+                stmts{
+                }
+              }
+              body{
+                scope{
+                }
+                stmts{
+                  for{
+                    cond{
+                      scope{
+                      }
+                      stmts{
+                      }
+                    }
+                    body{
+                      scope{
+                      }
+                      stmts{
+                        receive cid_var49_a
+                        if{
+                          scope{
+                          }
+                          stmts{
+                            send cid_var50_b
+                          }
+                        }else{
+                          scope{
+                          }
+                          stmts{
+                            select{
+                              case send cid_var50_b {
+                                scope{
+                                }
+                                stmts{
+                                }
+                              }
+                            default {
+                              scope{
+                              }
+                              stmts{
+                              }
+                            }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }else{
+          scope{
+          }
+          stmts{
+            if{
+              scope{
+              }
+              stmts{
+                select{
+                  case receive cid_var49_a {
+                    scope{
+                    }
+                    stmts{
+                      if{
+                        scope{
+                        }
+                        stmts{
+                          send cid_var50_b
+                        }
+                      }else{
+                        scope{
+                        }
+                        stmts{
+                        }
+                      }
+                    }
+                  }
+                default {
+                  scope{
+                  }
+                  stmts{
+                    for{
+                      cond{
+                        scope{
+                        }
+                        stmts{
+                        }
+                      }
+                      body{
+                        scope{
+                        }
+                        stmts{
+                          select{
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                }
+                select{
+                }
+              }
+            }else{
+              scope{
+              }
+              stmts{
+                for{
+                  cond{
+                    scope{
+                    }
+                    stmts{
+                    }
+                  }
+                  body{
+                    scope{
+                    }
+                    stmts{
+                      for{
+                        cond{
+                          scope{
+                          }
+                          stmts{
+                          }
+                        }
+                        body{
+                          scope{
+                          }
+                          stmts{
+                            receive cid_var50_b
+                            send cid_var49_a
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 27
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var51_ch Chan = -1
+      }
+      stmts{
+        cid_var51_ch <- make(chan, 0)
+        if{
+          scope{
+          }
+          stmts{
+            send cid_var51_ch
+          }
+        }else{
+          scope{
+          }
+          stmts{
+            if{
+              scope{
+              }
+              stmts{
+                send cid_var51_ch
+              }
+            }else{
+              scope{
+              }
+              stmts{
+                if{
+                  scope{
+                  }
+                  stmts{
+                  }
+                }else{
+                  scope{
+                  }
+                  stmts{
+                    send cid_var51_ch
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

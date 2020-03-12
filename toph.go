@@ -6,7 +6,10 @@ import (
 	"os"
 	"strings"
 
+	"github.com/arneph/toph/analyzer"
 	"github.com/arneph/toph/builder"
+	"github.com/arneph/toph/ir"
+	"github.com/arneph/toph/optimizer"
 	"github.com/arneph/toph/translator"
 )
 
@@ -41,17 +44,17 @@ func main() {
 			}
 
 			testPath := dirPath + test.Name() + "/"
-			runTest(testPath)
+			runTest(testPath, test.Name())
 		}
 	}
 
 	fmt.Println("done")
 }
 
-func runTest(path string) {
+func runTest(path, name string) {
 	fmt.Printf("running: %s\n", path)
-	defer fmt.Fprintln(os.Stderr)
 
+	// Builder
 	program, errs := builder.BuildProgram(path)
 	for _, err := range errs {
 		fmt.Fprintln(os.Stderr, err)
@@ -60,14 +63,14 @@ func runTest(path string) {
 		return
 	}
 
-	programFile, err := os.Create(path + "program.ir.txt")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not write tprog.txt file: %v\n", err)
-	}
-	defer programFile.Close()
+	outputProgram(program, path, name, 1)
 
-	fmt.Fprintln(programFile, program)
+	// Inliner
+	optimizer.InlineFuncCalls(program)
 
+	outputProgram(program, path, name, 2)
+
+	// Translator
 	sys, errs := translator.TranslateProg(program)
 	for _, err := range errs {
 		fmt.Fprintln(os.Stderr, err)
@@ -76,19 +79,71 @@ func runTest(path string) {
 		return
 	}
 
-	sysTxtFile, err := os.Create(path + "sys.xta.txt")
+	// XTA file
+	sysXTAFile, err := os.Create(path + name + ".xta")
 	if err != nil {
-		fmt.Printf("could not write tprog.txt file: %v", err)
+		fmt.Fprintf(os.Stderr, "could not write xta file: %v\n", err)
+		return
 	}
-	defer sysTxtFile.Close()
+	defer sysXTAFile.Close()
 
-	fmt.Fprintln(sysTxtFile, sys)
+	fmt.Fprintln(sysXTAFile, sys.AsXTA())
 
-	sysXtaFile, err := os.Create(path + "sys.xta")
+	// UGI file
+	sysUGIFile, err := os.Create(path + name + ".ugi")
 	if err != nil {
-		fmt.Printf("could not write tprog.xta file: %v", err)
+		fmt.Fprintf(os.Stderr, "could not write ugi file: %v\n", err)
+		return
 	}
-	defer sysXtaFile.Close()
+	defer sysUGIFile.Close()
 
-	fmt.Fprintln(sysXtaFile, sys)
+	fmt.Fprintln(sysUGIFile, sys.AsUGI())
+
+	// Q file
+	sysQFile, err := os.Create(path + name + ".q")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not write q file: %v\n", err)
+		return
+	}
+	defer sysQFile.Close()
+
+	fmt.Fprintln(sysQFile, sys.AsQ())
+}
+
+func outputProgram(program *ir.Program, path, name string, index int) {
+	mainFunc := program.GetFunc("main")
+	callFCG := analyzer.CalculateFuncCallGraph(program, mainFunc, ir.Call)
+	goFCG := analyzer.CalculateFuncCallGraph(program, mainFunc, ir.Go)
+
+	// IR file
+	programPath := fmt.Sprintf("%s%s.%d.ir.txt", path, name, index)
+	programFile, err := os.Create(programPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not write ir.txt file: %v\n", err)
+		return
+	}
+	defer programFile.Close()
+
+	fmt.Fprintln(programFile, program)
+
+	// FCG files
+	callFCGPath := fmt.Sprintf("%s%s.%d.call_fcg.txt", path, name, index)
+	callFCGFile, err := os.Create(callFCGPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not write call_fcg.txt file: %v\n", err)
+		return
+	}
+	defer callFCGFile.Close()
+
+	fmt.Fprintln(callFCGFile, callFCG)
+
+	goFCGPath := fmt.Sprintf("%s%s.%d.go_fcg.txt", path, name, index)
+	goFCGFile, err := os.Create(goFCGPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not write go_fcg.txt file: %v\n", err)
+		return
+	}
+	defer goFCGFile.Close()
+
+	fmt.Fprintln(goFCGFile, goFCG)
 }

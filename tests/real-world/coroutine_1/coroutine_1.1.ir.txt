@@ -1,0 +1,75 @@
+prog{
+  scope{
+    var fid_var111_rnd_time_loop Func = 66
+    var fid_var112_main Func = 67
+  }
+  funcs{
+    func{
+      index: 66
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var113_c Chan = -1
+      }
+      stmts{
+        cid_var113_c <- make(chan, 0)
+        go 68() ['c' <- &(cid_var113_c)]
+        return 0: cid_var113_c
+      }
+    }
+    func{
+      index: 67
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var115_c Chan = -1
+      }
+      stmts{
+        , 0: var cid_var115_c Chan = -1 <- call 66()
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              receive cid_var115_c
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 68
+      args: 
+      captures: cid_var114_c <- *'c'
+      results: 
+      scope{
+        var cid_var114_c Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var114_c
+            }
+          }
+        }
+      }
+    }
+  }
+}

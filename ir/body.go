@@ -1,6 +1,7 @@
 package ir
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -29,6 +30,40 @@ func (b *Body) Scope() *Scope {
 // Stmts returns the statements inside the body.
 func (b *Body) Stmts() []Stmt {
 	return b.stmts
+}
+
+// WalkStmts calls the given visitor function for every statement in the body,
+// including statements contained in other statements, for example loops.
+// The visitor function takes a point to a statement which enables it to
+// replace the statement in place.
+func (b *Body) WalkStmts(visitFunc func(stmt *Stmt, scope *Scope)) {
+	for i, stmt := range b.stmts {
+		visitFunc(&b.stmts[i], b.Scope())
+
+		switch stmt := stmt.(type) {
+		case *AssignStmt,
+			*MakeChanStmt, *ChanOpStmt,
+			*CallStmt, *ReturnStmt:
+			continue
+		case *InlinedCallStmt:
+			stmt.Body().WalkStmts(visitFunc)
+		case *SelectStmt:
+			for _, c := range stmt.Cases() {
+				c.Body().WalkStmts(visitFunc)
+			}
+			stmt.DefaultBody().WalkStmts(visitFunc)
+		case *IfStmt:
+			stmt.IfBranch().WalkStmts(visitFunc)
+			stmt.ElseBranch().WalkStmts(visitFunc)
+		case *ForStmt:
+			stmt.Cond().WalkStmts(visitFunc)
+			stmt.Body().WalkStmts(visitFunc)
+		case *RangeStmt:
+			stmt.Body().WalkStmts(visitFunc)
+		default:
+			panic(fmt.Errorf("WalkStmts encountered unknown Stmt: %T", stmt))
+		}
+	}
 }
 
 // AddStmt appends the given statement at the end of the body.

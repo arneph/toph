@@ -27,22 +27,30 @@ func (p *Program) Funcs() []*Func {
 	return p.funcs
 }
 
-// GetNamedFunc returns the function with the given name.
-func (p *Program) GetNamedFunc(name string) *Func {
+// GetFunc returns the function with the given name.
+func (p *Program) GetFunc(name string) *Func {
 	return p.funcNameLookup[name]
 }
 
-// AddNamedFunc adds the given, named function to the program.
-func (p *Program) AddNamedFunc(name string, f *Func) {
+// AddFunc adds the given function to the program.
+func (p *Program) AddFunc(f *Func) {
 	p.funcs = append(p.funcs, f)
 	p.funcIndexLookup[f.index] = f
-	p.funcNameLookup[name] = f
+	p.funcNameLookup[f.name] = f
 }
 
-// AddUnnamedFunc adds the given, unnamed function to the program.
-func (p *Program) AddUnnamedFunc(f *Func) {
-	p.funcs = append(p.funcs, f)
-	p.funcIndexLookup[f.index] = f
+// AddFuncs adds all the given functions to the program.
+func (p *Program) AddFuncs(funcs []*Func) {
+	for _, f := range funcs {
+		p.AddFunc(f)
+	}
+}
+
+// RemoveFuncs removes all functions from the program.
+func (p *Program) RemoveFuncs() {
+	p.funcs = nil
+	p.funcIndexLookup = make(map[FuncIndex]*Func)
+	p.funcNameLookup = make(map[string]*Func)
 }
 
 // Scope returns the global scope of the program.
