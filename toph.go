@@ -9,7 +9,6 @@ import (
 	"github.com/arneph/toph/analyzer"
 	"github.com/arneph/toph/builder"
 	"github.com/arneph/toph/ir"
-	"github.com/arneph/toph/optimizer"
 	"github.com/arneph/toph/translator"
 )
 
@@ -64,11 +63,11 @@ func runTest(path, name string) {
 	}
 
 	outputProgram(program, path, name, 1)
+	/*
+		// Inliner
+		optimizer.InlineFuncCalls(program)
 
-	// Inliner
-	optimizer.InlineFuncCalls(program)
-
-	outputProgram(program, path, name, 2)
+		outputProgram(program, path, name, 2)*/
 
 	// Translator
 	sys, errs := translator.TranslateProg(program)
@@ -112,8 +111,8 @@ func runTest(path, name string) {
 
 func outputProgram(program *ir.Program, path, name string, index int) {
 	mainFunc := program.GetFunc("main")
-	callFCG := analyzer.CalculateFuncCallGraph(program, mainFunc, ir.Call)
-	goFCG := analyzer.CalculateFuncCallGraph(program, mainFunc, ir.Go)
+	callFCG := analyzer.BuildFuncCallGraph(program, mainFunc, ir.Call)
+	goFCG := analyzer.BuildFuncCallGraph(program, mainFunc, ir.Go)
 
 	// IR file
 	programPath := fmt.Sprintf("%s%s.%d.ir.txt", path, name, index)
@@ -124,7 +123,7 @@ func outputProgram(program *ir.Program, path, name string, index int) {
 	}
 	defer programFile.Close()
 
-	fmt.Fprintln(programFile, program)
+	fmt.Fprintln(programFile, program.String())
 
 	// FCG files
 	callFCGPath := fmt.Sprintf("%s%s.%d.call_fcg.txt", path, name, index)
@@ -135,7 +134,7 @@ func outputProgram(program *ir.Program, path, name string, index int) {
 	}
 	defer callFCGFile.Close()
 
-	fmt.Fprintln(callFCGFile, callFCG)
+	fmt.Fprintln(callFCGFile, callFCG.String())
 
 	goFCGPath := fmt.Sprintf("%s%s.%d.go_fcg.txt", path, name, index)
 	goFCGFile, err := os.Create(goFCGPath)
@@ -145,5 +144,5 @@ func outputProgram(program *ir.Program, path, name string, index int) {
 	}
 	defer goFCGFile.Close()
 
-	fmt.Fprintln(goFCGFile, goFCG)
+	fmt.Fprintln(goFCGFile, goFCG.String())
 }

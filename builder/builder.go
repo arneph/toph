@@ -127,6 +127,9 @@ func (b *builder) processFile(file *ast.File) {
 			funcType := b.info.Defs[decl.Name].(*types.Func)
 			f := ir.NewFunc(name, b.program.Scope())
 			v := ir.NewVariable(name, ir.FuncType, f.FuncValue())
+
+			b.processFuncType(decl.Type, makeContext(cmap, f))
+
 			b.program.AddFunc(f)
 			b.program.Scope().AddVariable(v)
 			b.funcTypes[funcType] = f
@@ -142,7 +145,7 @@ func (b *builder) processFile(file *ast.File) {
 
 		name := funcDecl.Name.Name
 		f := b.program.GetFunc(name)
-		b.processFunc(funcDecl.Type, funcDecl.Body, makeContext(cmap, f))
+		b.processStmt(funcDecl.Body, makeContext(cmap, f))
 	}
 }
 

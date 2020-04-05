@@ -80,6 +80,7 @@ func (b *builder) processExpr(expr ast.Expr, ctx context) *ir.Variable {
 			if v == nil {
 				p := b.fset.Position(e.X.Pos())
 				b.addWarning(fmt.Errorf("%v: could not resolve channel expr: %v", p, e.X))
+				return nil
 			}
 
 			ctx.body.AddStmt(ir.NewChanOpStmt(v, ir.Receive))

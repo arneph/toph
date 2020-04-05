@@ -8,11 +8,6 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
-func (b *builder) processFunc(funcType *ast.FuncType, funcBody *ast.BlockStmt, ctx context) {
-	b.processFuncType(funcType, ctx)
-	b.processStmt(funcBody, ctx)
-}
-
 func (b *builder) processFuncType(funcType *ast.FuncType, ctx context) {
 	f := ctx.currentFunc()
 
@@ -62,7 +57,9 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx context) {
 func (b *builder) processFuncLit(funcLit *ast.FuncLit, ctx context) *ir.Func {
 	f := ir.NewFunc(ctx.currentFunc().Name()+"_func", ctx.body.Scope())
 	b.program.AddFunc(f)
-	b.processFunc(funcLit.Type, funcLit.Body, ctx.subContextForFunc(f))
+	subCtx := ctx.subContextForFunc(f)
+	b.processFuncType(funcLit.Type, subCtx)
+	b.processStmt(funcLit.Body, subCtx)
 	return f
 }
 

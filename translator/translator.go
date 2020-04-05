@@ -3,9 +3,13 @@ package translator
 import (
 	"fmt"
 
+	"github.com/arneph/toph/analyzer"
 	"github.com/arneph/toph/ir"
 	"github.com/arneph/toph/uppaal"
 )
+
+const maxProcessCount = 10
+const maxChannelCount = 100
 
 // TranslateProg translates an ir.Prog to a uppaal.System.
 func TranslateProg(program *ir.Program) (*uppaal.System, []error) {
@@ -14,6 +18,7 @@ func TranslateProg(program *ir.Program) (*uppaal.System, []error) {
 	t.mainFunc = program.GetFunc("main")
 	t.funcToProcess = make(map[*ir.Func]*uppaal.Process)
 	t.system = uppaal.NewSystem()
+	t.fcg = analyzer.BuildFuncCallGraph(program, t.mainFunc, ir.Call|ir.Go)
 
 	if t.mainFunc == nil {
 		t.addWarning(fmt.Errorf("program has no main function"))
@@ -31,6 +36,8 @@ type translator struct {
 
 	system         *uppaal.System
 	channelProcess *uppaal.Process
+
+	fcg *analyzer.FuncCallGraph
 
 	warnings []error
 }
@@ -163,7 +170,6 @@ func (c *context) addLocationsFromSubContext(s *context) {
 
 func (t *translator) translateProgram() {
 	t.translateScope(t.program.Scope(), t.system.Declarations())
-	t.system.Declarations().AddVariableDeclaration("")
 	t.system.Declarations().SetInitFuncName("global_initialize")
 
 	for _, f := range t.program.Funcs() {
@@ -176,11 +182,14 @@ func (t *translator) translateProgram() {
 	t.addChannels()
 }
 
-func (t *translator) translateScope(scope *ir.Scope, decls *uppaal.Declarations) {
-	for _, v := range scope.Variables() {
-		varDecl := fmt.Sprintf("int %s = %d;", v.Handle(), v.InitialValue())
-		decls.AddVariableDeclaration(varDecl)
+func (t translator) callCount(f *ir.Func) int {
+	callCount := t.fcg.CallCount(f)
+	if callCount < 1 {
+		callCount = 1
+	} else if callCount > maxProcessCount {
+		callCount = maxProcessCount
 	}
+	return callCount
 }
 
 func (t *translator) prepareProcess(f *ir.Func) {
@@ -188,11 +197,11 @@ func (t *translator) prepareProcess(f *ir.Func) {
 	proc := t.system.AddProcess(name, uppaal.NoRenaming)
 	t.funcToProcess[f] = proc
 	if f == t.mainFunc {
-		t.system.AddProcessInstance(name, name, uppaal.NoRenaming)
+		t.system.AddProcessInstance(proc.Name(), name, uppaal.NoRenaming)
 	} else {
-		for i := 0; i < maxProcessCount; i++ {
+		for i := 0; i < t.callCount(f); i++ {
 			instName := fmt.Sprintf("%s%d", name, i)
-			inst := t.system.AddProcessInstance(name, instName, uppaal.NoRenaming)
+			inst := t.system.AddProcessInstance(name, instName, uppaal.Renaming)
 			inst.AddParameter(fmt.Sprintf("%d", i))
 		}
 	}
@@ -201,15 +210,44 @@ func (t *translator) prepareProcess(f *ir.Func) {
 	}
 }
 
+func (t translator) addProcessDeclarations(f *ir.Func, p *uppaal.Process) {
+	t.system.Declarations().AddVariable(p.Name()+"_count", "int", "0")
+	t.system.Declarations().AddArray("async_"+p.Name(), t.callCount(f), "chan")
+	t.system.Declarations().AddArray("sync_"+p.Name(), t.callCount(f), "chan")
+
+	for _, arg := range f.Args() {
+		t.system.Declarations().AddArray("arg_"+arg.Handle(), t.callCount(f), "int")
+	}
+	for _, cap := range f.Captures() {
+		t.system.Declarations().AddArray("cap_"+cap.Handle(), t.callCount(f), "int")
+	}
+	for i, res := range f.ResultTypes() {
+		name := fmt.Sprintf("res_%s_%d_%v", p.Name(), i, res)
+		t.system.Declarations().AddArray(name, t.callCount(f), "int")
+	}
+
+	t.system.Declarations().AddSpace()
+
+	t.system.Declarations().AddFunc(
+		fmt.Sprintf(`int make_%[1]s() {
+	int pid = %[1]s_count;
+	%[1]s_count++;
+	return pid;
+}`, p.Name()))
+}
+
 func (t *translator) translateFunc(f *ir.Func) {
 	proc := t.funcToProcess[f]
 
 	if f != t.mainFunc {
-		proc.AddParameter(fmt.Sprintf("int[0, %d] pid", maxProcessCount-1))
+		proc.AddParameter(fmt.Sprintf("int[0, %d] pid", t.callCount(f)-1))
 	}
 
-	proc.Declarations().AddVariableDeclaration("bool is_sync;")
-	proc.Declarations().AddVariableDeclaration("int p = -1;")
+	// Internal helper variables:
+	proc.Declarations().AddVariable("is_sync", "bool", "false")
+	proc.Declarations().AddVariable("p", "int", "-1")
+	proc.Declarations().AddVariable("was_pending", "bool", "false")
+	proc.Declarations().AddSpace()
 
 	starting := proc.AddState("starting", uppaal.NoRenaming)
 	starting.SetLocationAndResetNameLocation(uppaal.Location{0, 0})
@@ -308,35 +346,12 @@ func (t *translator) translateBody(b *ir.Body, ctx *context) {
 	}
 }
 
-const maxProcessCount = 1
-
-func (t translator) addProcessDeclarations(f *ir.Func, p *uppaal.Process) {
-	t.system.Declarations().AddVariableDeclaration(
-		fmt.Sprintf("int %s_count = 0;", p.Name()))
-
-	for _, arg := range f.Args() {
-		t.system.Declarations().AddVariableDeclaration(
-			fmt.Sprintf("int arg_%s[%d];", arg.Handle(), maxProcessCount))
+func (t *translator) translateScope(scope *ir.Scope, decls *uppaal.Declarations) {
+	for _, v := range scope.Variables() {
+		initialValue := fmt.Sprintf("%d", v.InitialValue())
+		decls.AddVariable(v.Handle(), "int", initialValue)
 	}
-	for _, cap := range f.Captures() {
-		t.system.Declarations().AddVariableDeclaration(
-			fmt.Sprintf("int cap_%s[%d];", cap.Handle(), maxProcessCount))
+	if len(scope.Variables()) > 0 {
+		decls.AddSpace()
 	}
-	for i, res := range f.ResultTypes() {
-		t.system.Declarations().AddVariableDeclaration(
-			fmt.Sprintf("int res_%s_%d_%v[%d];", p.Name(), i, res, maxProcessCount))
-	}
-
-	t.system.Declarations().AddVariableDeclaration(
-		fmt.Sprintf("chan async_%s[%d];", p.Name(), maxProcessCount))
-	t.system.Declarations().AddVariableDeclaration(
-		fmt.Sprintf("chan sync_%s[%d];", p.Name(), maxProcessCount))
-
-	t.system.Declarations().AddVariableDeclaration(fmt.Sprintf(
-		`int make_%[1]s() {
-    int pid = %[1]s_count;
-    %[1]s_count++;
-    return pid;
-}
-`, p.Name()))
 }

@@ -10,7 +10,7 @@ import (
 // InlineFuncCalls inlines every function call in the given program.
 func InlineFuncCalls(prog *ir.Program) {
 	origMainFunc := prog.GetFunc("main")
-	fcg := analyzer.CalculateFuncCallGraph(prog, origMainFunc, ir.Call)
+	fcg := analyzer.BuildFuncCallGraph(prog, origMainFunc, ir.Call)
 
 	in := inliner{
 		fcg:     fcg,

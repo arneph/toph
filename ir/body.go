@@ -34,7 +34,7 @@ func (b *Body) Stmts() []Stmt {
 
 // WalkStmts calls the given visitor function for every statement in the body,
 // including statements contained in other statements, for example loops.
-// The visitor function takes a point to a statement which enables it to
+// The visitor function takes a pointer to a statement which enables it to
 // replace the statement in place.
 func (b *Body) WalkStmts(visitFunc func(stmt *Stmt, scope *Scope)) {
 	for i, stmt := range b.stmts {

@@ -156,13 +156,18 @@ func (f *Func) String() string {
 	s += "\n"
 	s += "  results: "
 	firstResult := true
-	for _, result := range f.results {
+	for i, resultType := range f.resultTypes {
+		result, ok := f.results[i]
 		if firstResult {
 			firstResult = false
 		} else {
 			s += ", "
 		}
-		s += result.Handle()
+		if ok {
+			s += result.Handle()
+		} else {
+			s += resultType.String()
+		}
 	}
 	s += "\n"
 	s += "  " + strings.ReplaceAll(f.body.String(), "\n", "\n  ") + "\n"

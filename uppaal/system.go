@@ -67,7 +67,7 @@ func (s *System) AddProcess(name string, opt RenamingOption) *Process {
 func (s *System) AddProcessInstance(procName, instName string, opt RenamingOption) *ProcessInstance {
 	if opt == NoRenaming {
 		if _, ok := s.instances[instName]; ok {
-			panic("naming collision when adding process")
+			panic("naming collision when adding process instance")
 		}
 
 	} else if opt == Renaming {

@@ -12,31 +12,36 @@ func (t *translator) addChannels() {
 	t.addChannelProcessInstances()
 }
 
-const maxChannelCount = 10
+func (t *translator) channelCount() int {
+	channelCount := t.fcg.MakeChanCount()
+	if channelCount > maxChannelCount {
+		channelCount = maxChannelCount
+	}
+	return channelCount
+}
 
 func (t *translator) addChannelDeclarations() {
-	t.system.Declarations().AddVariableDeclaration(fmt.Sprintf(
-		`int chan_count = 0;
-int chan_counter[%[1]d];
-int chan_buffer[%[1]d];
-chan sender_trigger[%[1]d];
-chan sender_confirm[%[1]d];
-chan receiver_trigger[%[1]d];
-chan receiver_confirm[%[1]d];
-chan close[%[1]d];
-
-int make_chan(int buffer) {
-    int cid = chan_count;
-    chan_count++;
-    chan_counter[cid] = 0;
-    chan_buffer[cid] = buffer;
-    return cid;
-}
-`, maxChannelCount))
+	t.system.Declarations().AddVariable("chan_count", "int", "0")
+	t.system.Declarations().AddArray("chan_counter", t.channelCount(), "int")
+	t.system.Declarations().AddArray("chan_buffer", t.channelCount(), "int")
+	t.system.Declarations().AddArray("sender_trigger", t.channelCount(), "chan")
+	t.system.Declarations().AddArray("sender_confirm", t.channelCount(), "chan")
+	t.system.Declarations().AddArray("receiver_trigger", t.channelCount(), "chan")
+	t.system.Declarations().AddArray("receiver_confirm", t.channelCount(), "chan")
+	t.system.Declarations().AddArray("close", t.channelCount(), "chan")
+	t.system.Declarations().AddFunc(
+		`int make_chan(int buffer) {
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}`)
+	t.system.Declarations().AddSpace()
 }
 
 func (t *translator) addChannelProcessInstances() {
-	for i := 0; i < maxChannelCount; i++ {
+	for i := 0; i < t.channelCount(); i++ {
 		instName := fmt.Sprintf("%s%d", t.channelProcess.Name(), i)
 		inst := t.system.AddProcessInstance(
 			t.channelProcess.Name(),
@@ -50,8 +55,7 @@ func (t *translator) addChannelProcess() {
 	t.channelProcess = proc
 
 	// Parameters:
-	proc.AddParameter(fmt.Sprintf("int[0, %d] i",
-		maxChannelCount-1))
+	proc.AddParameter(fmt.Sprintf("int[0, %d] i", t.channelCount()-1))
 
 	// Queries:
 	proc.AddQuery(uppaal.MakeQuery(
@@ -182,7 +186,6 @@ func (t *translator) addChannelProcess() {
 
 	trans13 := proc.AddTrans(closing, closed)
 	trans13.SetGuard("chan_counter[i] >= 0")
-	trans13.AddUpdate("chan_counter[i] = 1")
 	trans13.SetGuardLocation(uppaal.Location{276, -2})
 	trans13.SetUpdateLocation(uppaal.Location{276, 14})
 

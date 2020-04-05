@@ -6,12 +6,12 @@ import (
 )
 
 // CallKind represents whether a call is synchronous or asynchronous
-// (go statement).
+// (go statement). Multiple call kinds can be used in a bit map.
 type CallKind int
 
 const (
 	// Call is the CallKind of a synchronous call.
-	Call CallKind = iota
+	Call CallKind = 1 << iota
 	// Go is the CallKind of an asynchronous call (go statement).
 	Go
 )

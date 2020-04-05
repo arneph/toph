@@ -6,6 +6,9 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
+// MaxCallCounts defines the maximum number of calls to a function that get counted.
+const MaxCallCounts = 100
+
 // SCC represents the strongly connected component an ir.Func belongs to.
 type SCC int
 
@@ -20,36 +23,14 @@ type FuncCallGraph struct {
 	callerToCallees map[*ir.Func]map[*ir.Func]struct{}
 	calleeToCallers map[*ir.Func]map[*ir.Func]struct{}
 
+	funcCallCounts map[*ir.Func]int
+	makeChanCount  int
+
 	// Strongly connected components:
-	sccsOk bool
-	sccs   map[*ir.Func]SCC
-}
-
-// CalculateFuncCallGraph returns a new function call graph for the given
-// program, program entry function, and call kind. Only calls of the given call
-// kind are contained in the graph.
-func CalculateFuncCallGraph(prog *ir.Program, entry *ir.Func, callKind ir.CallKind) *FuncCallGraph {
-	fcg := newFuncCallGraph(entry)
-
-	for _, caller := range prog.Funcs() {
-		for callee := range findCalleesOfFunc(caller, callKind) {
-			fcg.addCall(caller, callee)
-		}
-	}
-
-	return fcg
-}
-
-func findCalleesOfFunc(caller *ir.Func, callKind ir.CallKind) map[*ir.Func]struct{} {
-	callees := make(map[*ir.Func]struct{})
-	caller.Body().WalkStmts(func(stmt *ir.Stmt, scope *ir.Scope) {
-		callStmt, ok := (*stmt).(*ir.CallStmt)
-		if !ok || callStmt.Kind() != callKind {
-			return
-		}
-		callees[callStmt.Callee()] = struct{}{}
-	})
-	return callees
+	sccsOk     bool
+	sccCount   int
+	funcToSCCs map[*ir.Func]SCC
+	sccToFuncs map[SCC][]*ir.Func
 }
 
 func newFuncCallGraph(entry *ir.Func) *FuncCallGraph {
@@ -57,6 +38,8 @@ func newFuncCallGraph(entry *ir.Func) *FuncCallGraph {
 	fcg.entry = entry
 	fcg.callerToCallees = make(map[*ir.Func]map[*ir.Func]struct{})
 	fcg.calleeToCallers = make(map[*ir.Func]map[*ir.Func]struct{})
+	fcg.funcCallCounts = make(map[*ir.Func]int)
+	fcg.makeChanCount = 0
 	fcg.sccsOk = false
 
 	fcg.addFunc(entry)
@@ -89,11 +72,28 @@ func (fcg *FuncCallGraph) Callers(callee *ir.Func) []*ir.Func {
 	return callers
 }
 
-// SCC returns the strongly connected component of the given function in the
+// CallCount returns how many times a function gets called.
+func (fcg *FuncCallGraph) CallCount(callee *ir.Func) int {
+	return fcg.funcCallCounts[callee]
+}
+
+// MakeChanCount returns how many times a channel gets created.
+func (fcg *FuncCallGraph) MakeChanCount() int {
+	return fcg.makeChanCount
+}
+
+// SCCOfFunc returns the strongly connected component of the given function in the
 // function call graph.
-func (fcg *FuncCallGraph) SCC(f *ir.Func) SCC {
+func (fcg *FuncCallGraph) SCCOfFunc(f *ir.Func) SCC {
 	fcg.updateSCCs()
-	return fcg.sccs[f]
+	return fcg.funcToSCCs[f]
+}
+
+// FuncsInSCC returns all functions that are part of the given strongly
+// connected component in the function call graph.
+func (fcg *FuncCallGraph) FuncsInSCC(scc SCC) []*ir.Func {
+	fcg.updateSCCs()
+	return fcg.sccToFuncs[scc]
 }
 
 func (fcg *FuncCallGraph) addFunc(f *ir.Func) {
@@ -120,14 +120,29 @@ func (fcg *FuncCallGraph) addCall(caller, callee *ir.Func) {
 	fcg.sccsOk = false
 }
 
+func (fcg *FuncCallGraph) addCallCount(callee *ir.Func, count int) {
+	fcg.funcCallCounts[callee] += count
+	if fcg.funcCallCounts[callee] > MaxCallCounts {
+		fcg.funcCallCounts[callee] = MaxCallCounts
+	}
+}
+
+func (fcg *FuncCallGraph) addMakeChanCallCount(count int) {
+	fcg.makeChanCount += count
+	if fcg.makeChanCount > MaxCallCounts {
+		fcg.makeChanCount = MaxCallCounts
+	}
+}
+
 func (fcg *FuncCallGraph) updateSCCs() {
 	if fcg.sccsOk {
 		return
 	}
 	fcg.sccsOk = true
-	fcg.sccs = make(map[*ir.Func]SCC)
+	fcg.funcToSCCs = make(map[*ir.Func]SCC)
+	fcg.sccToFuncs = make(map[SCC][]*ir.Func)
 
-	sccCount := 1 // FuncNotCalled has value 0
+	fcg.sccCount = 1 // FuncNotCalled has value 0
 
 	index := 0
 	indices := make(map[*ir.Func]int)
@@ -166,8 +181,8 @@ func (fcg *FuncCallGraph) updateSCCs() {
 
 		// If v is a root node, pop the stack and generate a SCC
 		if lowLinks[v] == indices[v] {
-			scc := SCC(sccCount)
-			sccCount++
+			scc := SCC(fcg.sccCount)
+			fcg.sccCount++
 
 			var w *ir.Func
 			for v != w {
@@ -176,7 +191,8 @@ func (fcg *FuncCallGraph) updateSCCs() {
 				stack = stack[:i]
 				stackSet[w] = false
 
-				fcg.sccs[w] = scc
+				fcg.funcToSCCs[w] = scc
+				fcg.sccToFuncs[scc] = append(fcg.sccToFuncs[scc], w)
 			}
 		}
 	}
@@ -193,7 +209,7 @@ func (fcg *FuncCallGraph) String() string {
 	str := ""
 	for caller, callees := range fcg.callerToCallees {
 		str += caller.Name()
-		str += fmt.Sprintf(" (%d) -> ", fcg.sccs[caller])
+		str += fmt.Sprintf(" (%d) -> ", fcg.funcToSCCs[caller])
 		firstCallee := true
 		for callee := range callees {
 			if firstCallee {

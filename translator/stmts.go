@@ -2,7 +2,6 @@ package translator
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/arneph/toph/ir"
 	"github.com/arneph/toph/uppaal"
@@ -234,7 +233,7 @@ func (t *translator) translateForStmt(stmt *ir.ForStmt, ctx *context) {
 	if stmt.HasMinIterations() || stmt.HasMaxIterations() {
 		loopCount := len(ctx.continueLoopStates)
 		counterVar = fmt.Sprintf("i%d", loopCount)
-		ctx.proc.Declarations().AddVariableDeclaration("int " + counterVar + " = 0;")
+		ctx.proc.Declarations().AddVariable(counterVar, "int", "0")
 	}
 
 	trans1 := ctx.proc.AddTrans(ctx.currentState, condEnter)
@@ -287,11 +286,12 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	receiving := ctx.proc.AddState("range_receiving_"+h+"_", uppaal.Renaming)
 	receiving.SetLocationAndResetNameLocation(
 		rangeEnter.Location().Add(uppaal.Location{0, 136}))
-	request := ctx.proc.AddTrans(rangeEnter, receiving)
-	request.SetSync("receiver_trigger[" + h + "]!")
-	request.AddUpdate("chan_counter[" + h + "]--")
-	request.SetSyncLocation(rangeEnter.Location().Add(uppaal.Location{4, 48}))
-	request.SetUpdateLocation(rangeEnter.Location().Add(uppaal.Location{4, 64}))
+	trigger := ctx.proc.AddTrans(rangeEnter, receiving)
+	trigger.SetSync("receiver_trigger[" + h + "]!")
+	trigger.AddUpdate("chan_counter[" + h + "]--")
+	trigger.AddUpdate("was_pending = chan_counter[" + h + "] < 0")
+	trigger.SetSyncLocation(rangeEnter.Location().Add(uppaal.Location{4, 48}))
+	trigger.SetUpdateLocation(rangeEnter.Location().Add(uppaal.Location{4, 64}))
 	received := ctx.proc.AddState("range_received_"+h+"_", uppaal.Renaming)
 	received.SetType(uppaal.Committed)
 	received.SetLocationAndResetNameLocation(
@@ -319,11 +319,11 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	trans1 := ctx.proc.AddTrans(ctx.currentState, rangeEnter)
 	trans1.AddNail(ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	trans2 := ctx.proc.AddTrans(received, bodyEnter)
-	trans2.SetGuard("chan_buffer[" + h + "] >= 0")
+	trans2.SetGuard("chan_buffer[" + h + "] >= 0 || !was_pending")
 	trans2.SetGuardLocation(
 		received.Location().Add(uppaal.Location{4, 48}))
 	trans3 := ctx.proc.AddTrans(received, loopExit)
-	trans3.SetGuard("chan_buffer[" + h + "] < 0")
+	trans3.SetGuard("chan_buffer[" + h + "] < 0 && was_pending")
 	trans3.AddNail(received.Location().Add(uppaal.Location{-136, 0}))
 	trans3.SetGuardLocation(
 		received.Location().Add(uppaal.Location{-132, 64}))
@@ -339,299 +339,4 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	ctx.addLocation(bodyExit.Location())
 	ctx.addLocation(loopExit.Location())
 	ctx.addLocationsFromSubContext(bodySubCtx)
-}
-
-func (t *translator) translateMakeChanStmt(stmt *ir.MakeChanStmt, ctx *context) {
-	h := stmt.Channel().Handle()
-	b := stmt.BufferSize()
-
-	made := ctx.proc.AddState("made_"+h+"_", uppaal.Renaming)
-	made.SetLocationAndResetNameLocation(
-		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-	make := ctx.proc.AddTrans(ctx.currentState, made)
-	make.AddUpdate(fmt.Sprintf("%s = make_chan(%d)", h, b))
-	make.SetUpdateLocation(
-		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
-	ctx.currentState = made
-	ctx.addLocation(made.Location())
-}
-
-func (t *translator) translateChanOpStmt(stmt *ir.ChanOpStmt, ctx *context) {
-	h := stmt.Channel().Handle()
-
-	switch stmt.Op() {
-	case ir.Send:
-		sending := ctx.proc.AddState("sending_"+h+"_", uppaal.Renaming)
-		sending.SetLocationAndResetNameLocation(
-			ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-		request := ctx.proc.AddTrans(ctx.currentState, sending)
-		request.SetSync("sender_trigger[" + h + "]!")
-		request.AddUpdate("chan_counter[" + h + "]++")
-		request.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
-		request.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
-		sent := ctx.proc.AddState("sent_"+h+"_", uppaal.Renaming)
-		sent.SetLocationAndResetNameLocation(
-			sending.Location().Add(uppaal.Location{0, 136}))
-		confirm := ctx.proc.AddTrans(sending, sent)
-		confirm.SetSync("sender_confirm[" + h + "]?")
-		confirm.SetSyncLocation(
-			sending.Location().Add(uppaal.Location{4, 60}))
-		ctx.currentState = sent
-		ctx.addLocation(sending.Location())
-		ctx.addLocation(sent.Location())
-
-	case ir.Receive:
-		receiving := ctx.proc.AddState("receiving_"+h+"_", uppaal.Renaming)
-		receiving.SetLocationAndResetNameLocation(
-			ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-		request := ctx.proc.AddTrans(ctx.currentState, receiving)
-		request.SetSync("receiver_trigger[" + h + "]!")
-		request.AddUpdate("chan_counter[" + h + "]--")
-		request.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
-		request.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
-		received := ctx.proc.AddState("received_"+h+"_", uppaal.Renaming)
-		received.SetLocationAndResetNameLocation(
-			receiving.Location().Add(uppaal.Location{0, 136}))
-		confirm := ctx.proc.AddTrans(receiving, received)
-		confirm.SetSync("receiver_confirm[" + h + "]?")
-		confirm.SetSyncLocation(
-			receiving.Location().Add(uppaal.Location{4, 60}))
-		ctx.currentState = received
-		ctx.addLocation(receiving.Location())
-		ctx.addLocation(received.Location())
-
-	case ir.Close:
-		closing := ctx.proc.AddState("closed_"+h+"_", uppaal.Renaming)
-		closing.SetLocationAndResetNameLocation(
-			ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-		close := ctx.proc.AddTrans(ctx.currentState, closing)
-		close.SetSync("close[" + h + "]!")
-		close.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 60}))
-		ctx.currentState = closing
-		ctx.addLocation(closing.Location())
-
-	default:
-		t.addWarning(fmt.Errorf("unsupported ChanOp: %v", stmt.Op()))
-	}
-}
-
-func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
-	handles := make([]string, len(stmt.Cases()))
-	for i, c := range stmt.Cases() {
-		handles[i] = c.OpStmt().Channel().Handle()
-	}
-
-	exitSelect := ctx.proc.AddState("select_end_", uppaal.Renaming)
-
-	// Generate case bodies
-	caseXs := make([]int, len(stmt.Cases()))
-	maxY := ctx.currentState.Location()[1] + 408
-
-	var exitPass1 *uppaal.State
-	if stmt.HasDefault() {
-		defaultEnter := ctx.proc.AddState("select_default_enter_", uppaal.Renaming)
-		defaultEnter.SetLocationAndResetNameLocation(
-			ctx.currentState.Location().Add(uppaal.Location{0, 408}))
-
-		bodySubCtx := ctx.subContextForBody(defaultEnter, exitSelect)
-		t.translateBody(stmt.DefaultBody(), bodySubCtx)
-
-		if len(stmt.Cases()) > 0 {
-			caseXs[0] = bodySubCtx.maxLoc[0] + 136
-		}
-		if maxY < bodySubCtx.maxLoc[1] {
-			maxY = bodySubCtx.maxLoc[1]
-		}
-
-		ctx.addLocation(defaultEnter.Location())
-		ctx.addLocationsFromSubContext(bodySubCtx)
-
-		exitPass1 = defaultEnter
-
-	} else {
-		if len(stmt.Cases()) > 0 {
-			caseXs[0] = ctx.currentState.Location()[0] + 136
-		}
-
-		exitPass1 = ctx.proc.AddState("select_pass_2_", uppaal.Renaming)
-		exitPass1.SetLocationAndResetNameLocation(
-			ctx.currentState.Location().Add(uppaal.Location{0, 272}))
-
-		ctx.addLocation(exitPass1.Location())
-	}
-
-	caseEnters := make([]*uppaal.State, len(stmt.Cases()))
-	for i, c := range stmt.Cases() {
-		caseEnter := ctx.proc.AddState(fmt.Sprintf("select_case_%d_enter_", i+1), uppaal.Renaming)
-		caseEnter.SetLocationAndResetNameLocation(uppaal.Location{caseXs[i], ctx.currentState.Location()[1] + 408})
-		caseEnters[i] = caseEnter
-
-		if c.ReachReq() == ir.Reachable {
-			ctx.proc.AddQuery(uppaal.MakeQuery(
-				"E<> $."+caseEnter.Name(),
-				"check reachable: "+ctx.proc.Name()+"."+caseEnter.Name()))
-		} else if c.ReachReq() == ir.Unreachable {
-			ctx.proc.AddQuery(uppaal.MakeQuery(
-				"A[] not $."+caseEnter.Name(),
-				"check unreachable: "+ctx.proc.Name()+"."+caseEnter.Name()))
-		}
-
-		bodySubCtx := ctx.subContextForBody(caseEnter, exitSelect)
-		t.translateBody(c.Body(), bodySubCtx)
-
-		if i < len(stmt.Cases())-1 {
-			caseXs[i+1] = bodySubCtx.maxLoc[0] + 136
-		}
-		if maxY < bodySubCtx.maxLoc[1] {
-			maxY = bodySubCtx.maxLoc[1]
-		}
-
-		ctx.addLocation(caseEnter.Location())
-		ctx.addLocationsFromSubContext(bodySubCtx)
-	}
-
-	exitSelect.SetLocationAndResetNameLocation(
-		uppaal.Location{ctx.currentState.Location()[0], maxY + 136})
-
-	// Update counters:
-	pass1 := ctx.proc.AddState("select_pass_1_", uppaal.Renaming)
-	pass1.SetType(uppaal.Committed)
-	pass1.SetLocationAndResetNameLocation(
-		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-	enteringPass1 := ctx.proc.AddTrans(ctx.currentState, pass1)
-	for i, c := range stmt.Cases() {
-		switch c.OpStmt().Op() {
-		case ir.Send:
-			enteringPass1.AddUpdate("chan_counter[" + handles[i] + "]++")
-		case ir.Receive:
-			enteringPass1.AddUpdate("chan_counter[" + handles[i] + "]--")
-		default:
-			panic("unexpected select case channel op")
-		}
-	}
-	enteringPass1.SetUpdateLocation(
-		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
-
-	// Poll channels (pass 1):
-	inverseGuards := make([]string, len(stmt.Cases()))
-	for i, c := range stmt.Cases() {
-		closedGuard := "chan_buffer[" + handles[i] + "] < 0"
-		var opPossibleGuard string
-		switch c.OpStmt().Op() {
-		case ir.Send:
-			opPossibleGuard = "chan_counter[" + handles[i] + "] <= chan_buffer[" + handles[i] + "]"
-		case ir.Receive:
-			opPossibleGuard = "chan_counter[" + handles[i] + "] >= 0"
-		default:
-			panic("unexpected select case channel op")
-		}
-		guard := closedGuard + " || " + opPossibleGuard
-
-		triggeredCase := ctx.proc.AddState(fmt.Sprintf("select_case_%d_trigger_", i+1), uppaal.Renaming)
-		triggeredCase.SetLocationAndResetNameLocation(
-			uppaal.Location{caseXs[i], ctx.currentState.Location()[1] + 272})
-		triggeringCase := ctx.proc.AddTrans(pass1, triggeredCase)
-		triggeringCase.SetGuard(guard)
-		triggeringCase.SetGuardLocation(
-			triggeredCase.Location().Sub(uppaal.Location{
-				32 * (len(stmt.Cases()) - i), 32 * (len(stmt.Cases()) - i)}))
-		enteringCase := ctx.proc.AddTrans(triggeredCase, caseEnters[i])
-		switch c.OpStmt().Op() {
-		case ir.Send:
-			triggeringCase.SetSync("sender_trigger[" + handles[i] + "]!")
-			enteringCase.SetSync("sender_confirm[" + handles[i] + "]?")
-		case ir.Receive:
-			triggeringCase.SetSync("receiver_trigger[" + handles[i] + "]!")
-			enteringCase.SetSync("receiver_confirm[" + handles[i] + "]?")
-		default:
-			panic("unexpected select case channel op")
-		}
-		triggeringCase.SetSyncLocation(
-			triggeredCase.Location().Sub(uppaal.Location{
-				32 * (len(stmt.Cases()) - i), 32*(len(stmt.Cases())-i) - 16}))
-		enteringCase.SetSyncLocation(
-			caseEnters[i].Location().Sub(uppaal.Location{
-				-4, 32 * (len(stmt.Cases()) - i)}))
-
-		// Undo all other counters when entering case:
-		for j, d := range stmt.Cases() {
-			if i == j {
-				continue
-			}
-
-			switch d.OpStmt().Op() {
-			case ir.Send:
-				enteringCase.AddUpdate("chan_counter[" + handles[j] + "]--")
-			case ir.Receive:
-				enteringCase.AddUpdate("chan_counter[" + handles[j] + "]++")
-			default:
-				panic("unexpected select case channel op")
-			}
-		}
-		enteringCase.SetUpdateLocation(
-			caseEnters[i].Location().Sub(uppaal.Location{
-				-4, 32*(len(stmt.Cases())-i) - 16}))
-
-		inverseGuards[i] = "!(" + guard + ")"
-	}
-
-	exitingPass1 := ctx.proc.AddTrans(pass1, exitPass1)
-	exitingPass1.SetGuard(strings.Join(inverseGuards, " && "))
-	exitingPass1.SetGuardLocation(
-		exitPass1.Location().Sub(uppaal.Location{-4, len(stmt.Cases())*32 + 32}))
-	if stmt.HasDefault() {
-		// Undo all counters when entering default case:
-		for i, c := range stmt.Cases() {
-			switch c.OpStmt().Op() {
-			case ir.Send:
-				exitingPass1.AddUpdate("chan_counter[" + handles[i] + "]--")
-			case ir.Receive:
-				exitingPass1.AddUpdate("chan_counter[" + handles[i] + "]++")
-			default:
-				panic("unexpected select case channel op")
-			}
-		}
-		exitingPass1.SetUpdateLocation(
-			exitPass1.Location().Sub(uppaal.Location{-4, len(stmt.Cases())*32 + 16}))
-
-	} else {
-		// Wait for channel (pass 2):
-		pass2 := exitPass1
-		for i, c := range stmt.Cases() {
-			enteringCase := ctx.proc.AddTrans(pass2, caseEnters[i])
-			switch c.OpStmt().Op() {
-			case ir.Send:
-				enteringCase.SetSync("sender_confirm[" + handles[i] + "]?")
-			case ir.Receive:
-				enteringCase.SetSync("receiver_confirm[" + handles[i] + "]?")
-			default:
-				panic("unexpected select case channel op")
-			}
-			enteringCase.SetSyncLocation(
-				caseEnters[i].Location().Sub(uppaal.Location{
-					-4, 32 * (len(stmt.Cases()) - i)}))
-
-			// Undo all other counters when entering case:
-			for j, d := range stmt.Cases() {
-				if i == j {
-					continue
-				}
-
-				switch d.OpStmt().Op() {
-				case ir.Send:
-					enteringCase.AddUpdate("chan_counter[" + handles[j] + "]--")
-				case ir.Receive:
-					enteringCase.AddUpdate("chan_counter[" + handles[j] + "]++")
-				default:
-					panic("unexpected select case channel op")
-				}
-			}
-			enteringCase.SetUpdateLocation(
-				caseEnters[i].Location().Sub(uppaal.Location{
-					-4, 32*(len(stmt.Cases())-i) - 16}))
-		}
-	}
-
-	ctx.currentState = exitSelect
-	ctx.addLocation(exitSelect.Location())
 }
