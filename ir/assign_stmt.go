@@ -4,14 +4,14 @@ import "fmt"
 
 // AssignStmt represents an assignment statement.
 type AssignStmt struct {
-	source      *Variable
+	source      RValue
 	destination *Variable
 }
 
 // NewAssignStmt createas a new assignment statement.
-func NewAssignStmt(source, destination *Variable) *AssignStmt {
+func NewAssignStmt(source RValue, destination *Variable) *AssignStmt {
 	if source == nil || destination == nil {
-		panic("tried to create AssignStmt with nil variable")
+		panic("tried to create AssignStmt with nil source or destination")
 	}
 
 	a := new(AssignStmt)
@@ -22,7 +22,7 @@ func NewAssignStmt(source, destination *Variable) *AssignStmt {
 }
 
 // Source returns the source variable of the assignment.
-func (a *AssignStmt) Source() *Variable {
+func (a *AssignStmt) Source() RValue {
 	return a.source
 }
 
@@ -32,6 +32,14 @@ func (a *AssignStmt) Destination() *Variable {
 }
 
 func (a *AssignStmt) String() string {
-	return fmt.Sprintf("%s <- %s",
-		a.destination.Handle(), a.source.Handle())
+	switch s := a.source.(type) {
+	case Value:
+		return fmt.Sprintf("%s <- %s",
+			a.destination.Handle(), s.String())
+	case *Variable:
+		return fmt.Sprintf("%s <- %s",
+			a.destination.Handle(), s.Handle())
+	default:
+		panic(fmt.Errorf("unexpected %T source type", s))
+	}
 }

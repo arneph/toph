@@ -188,3 +188,56 @@ type Loop interface {
 
 	Body() *Body
 }
+
+// BranchKind represents a continue or break, undertaken in a BranchStmt.
+type BranchKind int
+
+const (
+	// Continue is the BranchKind that causes a BranchStmt to return the
+	// program to the start of a loop.
+	Continue BranchKind = iota
+	// Break is the BranchKind that causes a BranchStmt to return the program
+	// to exit a loop.
+	Break
+)
+
+func (k BranchKind) String() string {
+	switch k {
+	case Continue:
+		return "continue"
+	case Break:
+		return "break"
+	default:
+		panic(fmt.Errorf("unknown branch kind: %v", k))
+	}
+}
+
+// BranchStmt represents a continue or break statement in a loop.
+type BranchStmt struct {
+	loop Loop
+	kind BranchKind
+}
+
+// NewBranchStmt creates a new continue or break statement in a loop.
+func NewBranchStmt(loop Loop, kind BranchKind) *BranchStmt {
+	b := new(BranchStmt)
+	b.loop = loop
+	b.kind = kind
+
+	return b
+}
+
+// Loop returns the loop that gets continued or exited by the branch statement.
+func (b *BranchStmt) Loop() Loop {
+	return b.loop
+}
+
+// Kind returns what kind of operation (continue or break) the branch statement
+// causes.
+func (b *BranchStmt) Kind() BranchKind {
+	return b.kind
+}
+
+func (b *BranchStmt) String() string {
+	return b.kind.String()
+}

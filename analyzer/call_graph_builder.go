@@ -130,7 +130,7 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind) (res calleesIn
 			res.addCalleesInfo(findCalleesInfoForRangeStmt(stmt, callKinds))
 		case *ir.InlinedCallStmt:
 			res.addCalleesInfo(findCalleesInfoForBody(stmt.Body(), callKinds))
-		case *ir.AssignStmt, *ir.ChanOpStmt, *ir.ReturnStmt:
+		case *ir.AssignStmt, *ir.BranchStmt, *ir.ChanOpStmt, *ir.ReturnStmt:
 			continue
 		default:
 			panic(fmt.Errorf("unexpected ir.Stmt type: %T", stmt))

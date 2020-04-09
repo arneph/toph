@@ -25,6 +25,9 @@ func main() {
 		return
 	}
 
+	attemptedTests := 0
+	perfectTests := 0
+
 	for _, dir := range dirs {
 		if ignore(dir) {
 			continue
@@ -43,19 +46,26 @@ func main() {
 			}
 
 			testPath := dirPath + test.Name() + "/"
-			runTest(testPath, test.Name())
+			perfect := runTest(testPath, test.Name())
+			attemptedTests++
+			if perfect {
+				perfectTests++
+			}
 		}
 	}
 
+	fmt.Printf("%d/%d tests ran without warnings\n", perfectTests, attemptedTests)
 	fmt.Println("done")
 }
 
-func runTest(path, name string) {
-	fmt.Printf("running: %s\n", path)
+func runTest(path, name string) (perfect bool) {
+	perfect = true
+	//fmt.Printf("running: %s\n", path)
 
 	// Builder
 	program, errs := builder.BuildProgram(path)
 	for _, err := range errs {
+		perfect = false
 		fmt.Fprintln(os.Stderr, err)
 	}
 	if program == nil {
@@ -72,6 +82,7 @@ func runTest(path, name string) {
 	// Translator
 	sys, errs := translator.TranslateProg(program)
 	for _, err := range errs {
+		perfect = false
 		fmt.Fprintln(os.Stderr, err)
 	}
 	if sys == nil {
@@ -81,7 +92,7 @@ func runTest(path, name string) {
 	// XTA file
 	sysXTAFile, err := os.Create(path + name + ".xta")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not write xta file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "\tcould not write xta file: %v\n", err)
 		return
 	}
 	defer sysXTAFile.Close()
@@ -91,7 +102,7 @@ func runTest(path, name string) {
 	// UGI file
 	sysUGIFile, err := os.Create(path + name + ".ugi")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not write ugi file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "\tcould not write ugi file: %v\n", err)
 		return
 	}
 	defer sysUGIFile.Close()
@@ -101,12 +112,14 @@ func runTest(path, name string) {
 	// Q file
 	sysQFile, err := os.Create(path + name + ".q")
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not write q file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "\tcould not write q file: %v\n", err)
 		return
 	}
 	defer sysQFile.Close()
 
 	fmt.Fprintln(sysQFile, sys.AsQ())
+
+	return
 }
 
 func outputProgram(program *ir.Program, path, name string, index int) {

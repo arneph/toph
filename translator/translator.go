@@ -2,13 +2,14 @@ package translator
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/arneph/toph/analyzer"
 	"github.com/arneph/toph/ir"
 	"github.com/arneph/toph/uppaal"
 )
 
-const maxProcessCount = 10
+const maxProcessCount = 100
 const maxChannelCount = 100
 
 // TranslateProg translates an ir.Prog to a uppaal.System.
@@ -22,6 +23,8 @@ func TranslateProg(program *ir.Program) (*uppaal.System, []error) {
 
 	if t.mainFunc == nil {
 		t.addWarning(fmt.Errorf("program has no main function"))
+	} else if len(t.fcg.Callers(t.mainFunc)) > 0 {
+		t.addWarning(fmt.Errorf("main function gets called within program"))
 	}
 
 	t.translateProgram()
@@ -48,6 +51,7 @@ func (t *translator) addWarning(err error) {
 
 type context struct {
 	f    *ir.Func
+	body *ir.Body
 	proc *uppaal.Process
 
 	currentState *uppaal.State
@@ -63,6 +67,7 @@ type context struct {
 func newContext(f *ir.Func, p *uppaal.Process, current, exit *uppaal.State) *context {
 	ctx := new(context)
 	ctx.f = f
+	ctx.body = f.Body()
 	ctx.proc = p
 
 	ctx.currentState = current
@@ -92,10 +97,11 @@ func (c *context) isInSpecialControlFlowState() bool {
 	return false
 }
 
-func (c *context) subContextForBody(current, exit *uppaal.State) *context {
+func (c *context) subContextForBody(body *ir.Body, current, exit *uppaal.State) *context {
 	ctx := new(context)
 
 	ctx.f = c.f
+	ctx.body = body
 	ctx.proc = c.proc
 
 	ctx.currentState = current
@@ -111,10 +117,11 @@ func (c *context) subContextForBody(current, exit *uppaal.State) *context {
 	return ctx
 }
 
-func (c *context) subContextForInlinedCallBody(current, exit *uppaal.State) *context {
+func (c *context) subContextForInlinedCallBody(body *ir.Body, current, exit *uppaal.State) *context {
 	ctx := new(context)
 
 	ctx.f = c.f
+	ctx.body = body
 	ctx.proc = c.proc
 
 	ctx.currentState = current
@@ -133,6 +140,7 @@ func (c *context) subContextForInlinedCallBody(current, exit *uppaal.State) *con
 func (c *context) subContextForLoopBody(loop ir.Loop, current, continueLoop, breakLoop *uppaal.State) *context {
 	ctx := new(context)
 	ctx.f = c.f
+	ctx.body = loop.Body()
 	ctx.proc = c.proc
 
 	ctx.currentState = current
@@ -169,7 +177,7 @@ func (c *context) addLocationsFromSubContext(s *context) {
 }
 
 func (t *translator) translateProgram() {
-	t.translateScope(t.program.Scope(), t.system.Declarations())
+	t.translateGlobalScope()
 	t.system.Declarations().SetInitFuncName("global_initialize")
 
 	for _, f := range t.program.Funcs() {
@@ -194,14 +202,19 @@ func (t translator) callCount(f *ir.Func) int {
 
 func (t *translator) prepareProcess(f *ir.Func) {
 	name := f.Name()
-	proc := t.system.AddProcess(name, uppaal.NoRenaming)
+	proc := t.system.AddProcess(name)
 	t.funcToProcess[f] = proc
 	if f == t.mainFunc {
-		t.system.AddProcessInstance(proc.Name(), name, uppaal.NoRenaming)
+		t.system.AddProcessInstance(proc.Name(), name)
 	} else {
+		c := t.callCount(f)
+		if c > 1 {
+			c--
+		}
+		d := fmt.Sprintf("%d", int(math.Log10(float64(c))+1))
 		for i := 0; i < t.callCount(f); i++ {
-			instName := fmt.Sprintf("%s%d", name, i)
-			inst := t.system.AddProcessInstance(name, instName, uppaal.Renaming)
+			instName := fmt.Sprintf("%s_%0"+d+"d", name, i)
+			inst := t.system.AddProcessInstance(name, instName)
 			inst.AddParameter(fmt.Sprintf("%d", i))
 		}
 	}
@@ -215,25 +228,36 @@ func (t translator) addProcessDeclarations(f *ir.Func, p *uppaal.Process) {
 	t.system.Declarations().AddArray("async_"+p.Name(), t.callCount(f), "chan")
 	t.system.Declarations().AddArray("sync_"+p.Name(), t.callCount(f), "chan")
 
+	if f.EnclosingFunc() != nil {
+		t.system.Declarations().AddArray("par_pid_"+p.Name(), t.callCount(f), "int")
+	}
 	for _, arg := range f.Args() {
-		t.system.Declarations().AddArray("arg_"+arg.Handle(), t.callCount(f), "int")
+		name := t.translateArgName(arg)
+		t.system.Declarations().AddArray(name, t.callCount(f), "int")
 	}
-	for _, cap := range f.Captures() {
-		t.system.Declarations().AddArray("cap_"+cap.Handle(), t.callCount(f), "int")
-	}
-	for i, res := range f.ResultTypes() {
-		name := fmt.Sprintf("res_%s_%d_%v", p.Name(), i, res)
+	for i := range f.ResultTypes() {
+		name := t.translateResultName(f, i)
 		t.system.Declarations().AddArray(name, t.callCount(f), "int")
 	}
 
 	t.system.Declarations().AddSpace()
 
-	t.system.Declarations().AddFunc(
-		fmt.Sprintf(`int make_%[1]s() {
+	if f.EnclosingFunc() == nil {
+		t.system.Declarations().AddFunc(
+			fmt.Sprintf(`int make_%[1]s() {
 	int pid = %[1]s_count;
 	%[1]s_count++;
 	return pid;
 }`, p.Name()))
+	} else {
+		t.system.Declarations().AddFunc(
+			fmt.Sprintf(`int make_%[1]s(int par_pid) {
+	int pid = %[1]s_count;
+	%[1]s_count++;
+	par_pid_%[1]s[pid] = par_pid;
+	return pid;
+}`, p.Name()))
+	}
 }
 
 func (t *translator) translateFunc(f *ir.Func) {
@@ -241,6 +265,8 @@ func (t *translator) translateFunc(f *ir.Func) {
 
 	if f != t.mainFunc {
 		proc.AddParameter(fmt.Sprintf("int[0, %d] pid", t.callCount(f)-1))
+	} else {
+		proc.Declarations().AddVariable("pid", "int", "0")
 	}
 
 	// Internal helper variables:
@@ -268,12 +294,10 @@ func (t *translator) translateFunc(f *ir.Func) {
 	ended.SetLocationAndResetNameLocation(uppaal.Location{0, endingY + 136})
 
 	for _, arg := range f.Args() {
+		argStr := t.translateArg(arg, "pid")
+		varStr := t.translateVariable(arg, bodyCtx)
 		proc.Declarations().AddInitFuncStmt(
-			fmt.Sprintf("%[1]s = arg_%[1]s[pid];", arg.Handle()))
-	}
-	for _, cap := range f.Captures() {
-		proc.Declarations().AddInitFuncStmt(
-			fmt.Sprintf("%[1]s = cap_%[1]s[pid];", cap.Handle()))
+			fmt.Sprintf("%s = %s;", varStr, argStr))
 	}
 
 	if f == t.mainFunc {
@@ -331,7 +355,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 }
 
 func (t *translator) translateBody(b *ir.Body, ctx *context) {
-	t.translateScope(b.Scope(), ctx.proc.Declarations())
+	t.translateScope(ctx)
 
 	for _, stmt := range b.Stmts() {
 		t.translateStmt(stmt, ctx)
@@ -343,15 +367,5 @@ func (t *translator) translateBody(b *ir.Body, ctx *context) {
 
 	if !ctx.isInSpecialControlFlowState() {
 		ctx.proc.AddTrans(ctx.currentState, ctx.exitState)
-	}
-}
-
-func (t *translator) translateScope(scope *ir.Scope, decls *uppaal.Declarations) {
-	for _, v := range scope.Variables() {
-		initialValue := fmt.Sprintf("%d", v.InitialValue())
-		decls.AddVariable(v.Handle(), "int", initialValue)
-	}
-	if len(scope.Variables()) > 0 {
-		decls.AddSpace()
 	}
 }

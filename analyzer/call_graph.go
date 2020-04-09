@@ -7,7 +7,7 @@ import (
 )
 
 // MaxCallCounts defines the maximum number of calls to a function that get counted.
-const MaxCallCounts = 100
+const MaxCallCounts = 500
 
 // SCC represents the strongly connected component an ir.Func belongs to.
 type SCC int

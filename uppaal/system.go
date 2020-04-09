@@ -1,7 +1,6 @@
 package uppaal
 
 import (
-	"fmt"
 	"sort"
 )
 
@@ -31,29 +30,12 @@ func (s *System) Declarations() *Declarations {
 
 // AddProcess adds a process with the given name (after possible renaming to
 // avoid naming conflicts) to the system and returns the new process.
-func (s *System) AddProcess(name string, opt RenamingOption) *Process {
-	if opt == NoRenaming {
-		if _, ok := s.processes[name]; ok {
-			panic("naming collision when adding process")
-		}
-		if _, ok := s.instances[name]; ok {
-			panic("naming collision when adding process")
-		}
-
-	} else if opt == Renaming {
-		baseName := name
-		if baseName == "" {
-			baseName = "Proc"
-		}
-		for i := 0; ; i++ {
-			name = fmt.Sprintf("%s%c", baseName, rune('A'+i))
-			if _, ok := s.processes[name]; ok {
-				continue
-			} else if _, ok := s.instances[name]; ok {
-				continue
-			}
-			break
-		}
+func (s *System) AddProcess(name string) *Process {
+	if _, ok := s.processes[name]; ok {
+		panic("naming collision when adding process")
+	}
+	if _, ok := s.instances[name]; ok {
+		panic("naming collision when adding process")
 	}
 
 	proc := newProcess(name)
@@ -64,26 +46,9 @@ func (s *System) AddProcess(name string, opt RenamingOption) *Process {
 // AddProcessInstance adds an instance of a process with the given name (after
 // possible renaming to avoid naming conflicts) to the system and returns the
 // new instance.
-func (s *System) AddProcessInstance(procName, instName string, opt RenamingOption) *ProcessInstance {
-	if opt == NoRenaming {
-		if _, ok := s.instances[instName]; ok {
-			panic("naming collision when adding process instance")
-		}
-
-	} else if opt == Renaming {
-		baseName := instName
-		if baseName == "" {
-			baseName = procName
-		}
-		for i := 1; ; i++ {
-			instName = fmt.Sprintf("%s%d", baseName, i)
-			if _, ok := s.processes[instName]; ok {
-				continue
-			} else if _, ok := s.instances[instName]; ok {
-				continue
-			}
-			break
-		}
+func (s *System) AddProcessInstance(procName, instName string) *ProcessInstance {
+	if _, ok := s.instances[instName]; ok {
+		panic("naming collision when adding process instance")
 	}
 	if _, ok := s.processes[procName]; !ok {
 		panic("tried to instantiate non-existent process")

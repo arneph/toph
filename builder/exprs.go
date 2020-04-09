@@ -10,8 +10,8 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
-func (b *builder) processExprs(exprs []ast.Expr, ctx context) map[int]*ir.Variable {
-	results := make(map[int]*ir.Variable)
+func (b *builder) processExprs(exprs []ast.Expr, ctx *context) map[int]ir.RValue {
+	results := make(map[int]ir.RValue)
 
 	for i, expr := range exprs {
 		v := b.processExpr(expr, ctx)
@@ -23,23 +23,22 @@ func (b *builder) processExprs(exprs []ast.Expr, ctx context) map[int]*ir.Variab
 	return results
 }
 
-func (b *builder) processExpr(expr ast.Expr, ctx context) *ir.Variable {
+func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 	switch e := expr.(type) {
 	case *ast.BasicLit:
+		if e.Value == "nil" {
+			return ir.Value(-1)
+		}
 		return nil
 	case *ast.BinaryExpr:
 		b.processExprs([]ast.Expr{e.X, e.Y}, ctx)
 		return nil
 	case *ast.CallExpr:
-		results := make(map[int]*ir.Variable)
-		b.processCallExpr(e, results, ctx)
-		if len(results) == 0 {
-			return nil
-		} else if len(results) == 1 {
-			return results[0]
-		} else {
-			panic("attempted to use call expr as single expr")
+		v := b.processCallExpr(e, ctx)
+		if v != nil {
+			return ir.RValue(v)
 		}
+		return nil
 	case *ast.CompositeLit:
 		b.processExprs(append([]ast.Expr{e.Type}, e.Elts...), ctx)
 		return nil
@@ -52,7 +51,11 @@ func (b *builder) processExpr(expr ast.Expr, ctx context) *ir.Variable {
 		ctx.body.Scope().AddVariable(v)
 		return v
 	case *ast.Ident:
-		return b.processIdent(e, ctx)
+		v := b.processIdent(e, ctx)
+		if v != nil {
+			return ir.RValue(v)
+		}
+		return nil
 	case *ast.IndexExpr:
 		b.processExprs([]ast.Expr{e.X, e.Index}, ctx)
 		return nil
@@ -76,8 +79,9 @@ func (b *builder) processExpr(expr ast.Expr, ctx context) *ir.Variable {
 		return nil
 	case *ast.UnaryExpr:
 		if e.Op == token.ARROW {
-			v := b.processExpr(e.X, ctx)
-			if v == nil {
+			rv := b.processExpr(e.X, ctx)
+			v, ok := rv.(*ir.Variable)
+			if !ok || v == nil {
 				p := b.fset.Position(e.X.Pos())
 				b.addWarning(fmt.Errorf("%v: could not resolve channel expr: %v", p, e.X))
 				return nil
@@ -104,10 +108,9 @@ func (b *builder) processExpr(expr ast.Expr, ctx context) *ir.Variable {
 	}
 }
 
-func (b *builder) processIdent(ident *ast.Ident, ctx context) *ir.Variable {
+func (b *builder) processIdent(ident *ast.Ident, ctx *context) *ir.Variable {
 	v, s := ctx.body.Scope().GetVariable(ident.Name)
 	if v == nil {
-		// Name not found in scope
 		return nil
 	}
 
@@ -115,54 +118,27 @@ func (b *builder) processIdent(ident *ast.Ident, ctx context) *ir.Variable {
 	if !ok {
 		varType, ok = b.info.Defs[ident].(*types.Var)
 	}
+	if ok {
+		u := b.varTypes[varType]
+		if u != v {
+			ok = false
+		}
+	}
 	if !ok {
 		p := b.fset.Position(ident.Pos())
 		b.addWarning(
 			fmt.Errorf("%v: identifier does not refer to known variable with name: %s",
 				p, ident.Name))
-
-		return nil
-	}
-	u, ok := b.varTypes[varType]
-	if !ok || v != u {
-		for i := len(ctx.enclosingFuncs) - 1; i >= 0; i-- {
-			f := ctx.enclosingFuncs[i]
-			if f.GetCapturer(v.Name()) != nil {
-				return v
-			}
-		}
-
-		p := b.fset.Position(ident.Pos())
-		b.addWarning(
-			fmt.Errorf("%v: identifier does not refer to known variable with name: %s",
-				p, ident.Name))
-
 		return nil
 	}
 
-	if s == b.program.Scope() {
-		return v
+	if s != b.program.Scope() && s.IsSuperScopeOf(ctx.currentFunc().Scope()) {
+		v.SetCaptured(true)
 	}
-
-	w := v
-	for _, f := range ctx.enclosingFuncs {
-		fScope := f.Scope()
-		if !s.IsSuperScopeOf(fScope) {
-			continue
-		}
-
-		w = f.GetCapturer(v.Name())
-		if w == nil {
-			w = ir.NewVariable(v.Name(), v.Type(), -1)
-			f.AddCapture(v.Name(), w)
-		}
-		v = w
-	}
-
-	return w
+	return v
 }
 
-func (b *builder) processMakeExpr(callExpr *ast.CallExpr, result *ir.Variable, ctx context) {
+func (b *builder) processMakeExpr(callExpr *ast.CallExpr, result *ir.Variable, ctx *context) {
 	_, ok := callExpr.Args[0].(*ast.ChanType)
 	if !ok {
 		return
@@ -192,9 +168,10 @@ func (b *builder) processMakeExpr(callExpr *ast.CallExpr, result *ir.Variable, c
 	ctx.body.AddStmt(makeStmt)
 }
 
-func (b *builder) processCloseExpr(callExpr *ast.CallExpr, ctx context) {
-	v := b.processExpr(callExpr.Args[0], ctx)
-	if v == nil {
+func (b *builder) processCloseExpr(callExpr *ast.CallExpr, ctx *context) {
+	rv := b.processExpr(callExpr.Args[0], ctx)
+	v, ok := rv.(*ir.Variable)
+	if !ok || v == nil {
 		return
 	}
 

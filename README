@@ -1,16 +1,6 @@
 TODO:
 
 - Function inlining
-- Captured variables -> flag everything that could cause errors (mutliple assignments, taking address...)
 - Mutexes
 - Wait groups
-- Timers
-- Whitelist all library function calls without channels or functions as args or results
 - Annoations for expected behaviour by libraries (when passed function)
-- Flag calls to function variables
-
-
-Improvements:
-- Capturing variables (builder/ir/inliner)
-- Renaming
-- Remove ir.Variable.Handle()

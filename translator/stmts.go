@@ -23,6 +23,8 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 		t.translateForStmt(stmt, ctx)
 	case *ir.RangeStmt:
 		t.translateRangeStmt(stmt, ctx)
+	case *ir.BranchStmt:
+		t.translateBranchStmt(stmt, ctx)
 	case *ir.MakeChanStmt:
 		t.translateMakeChanStmt(stmt, ctx)
 	case *ir.ChanOpStmt:
@@ -35,8 +37,8 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 }
 
 func (t *translator) translateAssignStmt(stmt *ir.AssignStmt, ctx *context) {
-	s := stmt.Source().Handle()
-	d := stmt.Destination().Handle()
+	s := t.translateRValue(stmt.Source(), ctx)
+	d := t.translateVariable(stmt.Destination(), ctx)
 
 	assigned := ctx.proc.AddState("assigned_"+d+"_", uppaal.Renaming)
 	assigned.SetLocationAndResetNameLocation(
@@ -57,21 +59,22 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 	createdInst.SetLocationAndResetNameLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	create := ctx.proc.AddTrans(ctx.currentState, createdInst)
-	create.AddUpdate("p = make_" + calleeProc.Name() + "()")
+	if calleeFunc.EnclosingFunc() != nil {
+		if calleeFunc.EnclosingFunc() != ctx.f {
+			panic("attempted to call enclosed function not from enclosing function")
+		}
+		create.AddUpdate("p = make_" + calleeProc.Name() + "(pid)")
+	} else {
+		create.AddUpdate("p = make_" + calleeProc.Name() + "()")
+	}
 	create.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 60}))
 
 	for i, calleeArg := range calleeFunc.Args() {
+		calleeArgStr := t.translateArg(calleeArg, "p")
 		callerArg := stmt.Args()[i]
+		callerArgStr := t.translateRValue(callerArg, ctx)
 		create.AddUpdate(
-			fmt.Sprintf("arg_%s[p] = %s",
-				calleeArg.Handle(), callerArg.Handle()))
-	}
-	for capturing, calleeCap := range calleeFunc.Captures() {
-		callerArg := stmt.GetCaptured(capturing)
-		create.AddUpdate(
-			fmt.Sprintf("cap_%s[p] = %s",
-				calleeCap.Handle(), callerArg.Handle()))
-		t.addWarning(fmt.Errorf("treating captured as regular arg"))
+			fmt.Sprintf("%s = %s", calleeArgStr, callerArgStr))
 	}
 
 	startedInst := ctx.proc.AddState("started_"+calleeProc.Name()+"_", uppaal.Renaming)
@@ -101,11 +104,11 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 		wait.SetSync(fmt.Sprintf("sync_%s[p]?", calleeProc.Name()))
 		wait.SetSyncLocation(startedInst.Location().Add(uppaal.Location{4, 48}))
 
-		for i, calleeRes := range calleeFunc.ResultTypes() {
-			callerRes := stmt.Results()[i]
+		for i := range calleeFunc.ResultTypes() {
+			calleeRes := t.translateResult(calleeFunc, i, "p")
+			callerRes := t.translateVariable(stmt.Results()[i], ctx)
 			wait.AddUpdate(
-				fmt.Sprintf("%s = res_%s_%d_%v[p]",
-					callerRes.Handle(), calleeProc.Name(), i, calleeRes))
+				fmt.Sprintf("%s = %s", callerRes, calleeRes))
 		}
 		wait.SetUpdateLocation(
 			startedInst.Location().Add(uppaal.Location{4, 64}))
@@ -127,7 +130,7 @@ func (t *translator) translateInlinedCallStmt(stmt *ir.InlinedCallStmt, ctx *con
 
 	inlinedExit := ctx.proc.AddState("exit_inlined_"+stmt.CalleeName()+"_", uppaal.Renaming)
 
-	inlinedSubCtx := ctx.subContextForInlinedCallBody(inlinedEnter, inlinedExit)
+	inlinedSubCtx := ctx.subContextForInlinedCallBody(stmt.Body(), inlinedEnter, inlinedExit)
 	t.translateBody(stmt.Body(), inlinedSubCtx)
 
 	inlinedExit.SetLocationAndResetNameLocation(
@@ -147,9 +150,10 @@ func (t *translator) translateReturnStmt(stmt *ir.ReturnStmt, ctx *context) {
 		if !ok {
 			resVar = ctx.f.Results()[i]
 		}
+		resStr := t.translateRValue(resVar, ctx)
 
 		ret.AddUpdate(fmt.Sprintf("res_%s_%d_%v[pid] = %s",
-			ctx.proc.Name(), i, resType, resVar.Handle()))
+			ctx.proc.Name(), i, resType, resStr))
 	}
 	ret.SetUpdateLocation(
 		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
@@ -167,14 +171,14 @@ func (t *translator) translateIfStmt(stmt *ir.IfStmt, ctx *context) {
 
 	ifExit := ctx.proc.AddState("exit_if_", uppaal.Renaming)
 
-	ifSubCtx := ctx.subContextForBody(ifEnter, ifExit)
+	ifSubCtx := ctx.subContextForBody(ifBody, ifEnter, ifExit)
 	t.translateBody(ifBody, ifSubCtx)
 
 	elseEnter := ctx.proc.AddState("enter_else_", uppaal.Renaming)
 	elseEnter.SetLocationAndResetNameLocation(
 		uppaal.Location{ifSubCtx.maxLoc[0] + 136, ctx.currentState.Location()[1] + 136})
 
-	elseSubCtx := ctx.subContextForBody(elseEnter, ifExit)
+	elseSubCtx := ctx.subContextForBody(elseBody, elseEnter, ifExit)
 	t.translateBody(elseBody, elseSubCtx)
 
 	var maxY int
@@ -207,7 +211,7 @@ func (t *translator) translateForStmt(stmt *ir.ForStmt, ctx *context) {
 		ctx.currentState.Location().Add(uppaal.Location{136, 136}))
 	condExit := ctx.proc.AddState("exit_loop_cond_", uppaal.Renaming)
 
-	condSubCtx := ctx.subContextForBody(condEnter, condExit)
+	condSubCtx := ctx.subContextForBody(cond, condEnter, condExit)
 	t.translateBody(cond, condSubCtx)
 
 	condExitY := condSubCtx.maxLoc[1] + 136
@@ -277,27 +281,28 @@ func (t *translator) translateForStmt(stmt *ir.ForStmt, ctx *context) {
 }
 
 func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
-	h := stmt.Channel().Handle()
+	handle := t.translateVariable(stmt.Channel(), ctx)
+	name := stmt.Channel().Handle()
 	body := stmt.Body()
 
 	rangeEnter := ctx.proc.AddState("range_enter_", uppaal.Renaming)
 	rangeEnter.SetLocationAndResetNameLocation(ctx.currentState.Location().Add(uppaal.Location{136, 136}))
 
-	receiving := ctx.proc.AddState("range_receiving_"+h+"_", uppaal.Renaming)
+	receiving := ctx.proc.AddState("range_receiving_"+name+"_", uppaal.Renaming)
 	receiving.SetLocationAndResetNameLocation(
 		rangeEnter.Location().Add(uppaal.Location{0, 136}))
 	trigger := ctx.proc.AddTrans(rangeEnter, receiving)
-	trigger.SetSync("receiver_trigger[" + h + "]!")
-	trigger.AddUpdate("chan_counter[" + h + "]--")
-	trigger.AddUpdate("was_pending = chan_counter[" + h + "] < 0")
+	trigger.SetSync("receiver_trigger[" + handle + "]!")
+	trigger.AddUpdate("chan_counter[" + handle + "]--")
+	trigger.AddUpdate("was_pending = chan_counter[" + handle + "] < 0")
 	trigger.SetSyncLocation(rangeEnter.Location().Add(uppaal.Location{4, 48}))
 	trigger.SetUpdateLocation(rangeEnter.Location().Add(uppaal.Location{4, 64}))
-	received := ctx.proc.AddState("range_received_"+h+"_", uppaal.Renaming)
+	received := ctx.proc.AddState("range_received_"+name+"_", uppaal.Renaming)
 	received.SetType(uppaal.Committed)
 	received.SetLocationAndResetNameLocation(
 		receiving.Location().Add(uppaal.Location{0, 136}))
 	confirm := ctx.proc.AddTrans(receiving, received)
-	confirm.SetSync("receiver_confirm[" + h + "]?")
+	confirm.SetSync("receiver_confirm[" + handle + "]?")
 	confirm.SetSyncLocation(
 		receiving.Location().Add(uppaal.Location{4, 60}))
 
@@ -319,11 +324,11 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	trans1 := ctx.proc.AddTrans(ctx.currentState, rangeEnter)
 	trans1.AddNail(ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	trans2 := ctx.proc.AddTrans(received, bodyEnter)
-	trans2.SetGuard("chan_buffer[" + h + "] >= 0 || !was_pending")
+	trans2.SetGuard("chan_buffer[" + handle + "] >= 0 || !was_pending")
 	trans2.SetGuardLocation(
 		received.Location().Add(uppaal.Location{4, 48}))
 	trans3 := ctx.proc.AddTrans(received, loopExit)
-	trans3.SetGuard("chan_buffer[" + h + "] < 0 && was_pending")
+	trans3.SetGuard("chan_buffer[" + handle + "] < 0 && was_pending")
 	trans3.AddNail(received.Location().Add(uppaal.Location{-136, 0}))
 	trans3.SetGuardLocation(
 		received.Location().Add(uppaal.Location{-132, 64}))
@@ -339,4 +344,23 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	ctx.addLocation(bodyExit.Location())
 	ctx.addLocation(loopExit.Location())
 	ctx.addLocationsFromSubContext(bodySubCtx)
+}
+
+func (t *translator) translateBranchStmt(stmt *ir.BranchStmt, ctx *context) {
+	var next *uppaal.State
+	var ok bool
+	switch stmt.Kind() {
+	case ir.Continue:
+		next, ok = ctx.continueLoopStates[stmt.Loop()]
+	case ir.Break:
+		next, ok = ctx.breakLoopStates[stmt.Loop()]
+	default:
+		panic(fmt.Errorf("unexpected ir.BranchKind: %v", stmt.Kind()))
+	}
+	if !ok || next == nil {
+		panic(fmt.Errorf("did not find next state for branch stmt: %v", stmt))
+	}
+
+	ctx.proc.AddTrans(ctx.currentState, next)
+	ctx.currentState = next
 }

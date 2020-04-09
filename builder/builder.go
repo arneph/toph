@@ -11,6 +11,10 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
+const mode = parser.ParseComments |
+	parser.DeclarationErrors |
+	parser.AllErrors
+
 // BuildProgram parses the Go files at the given path and builds an ir.Program.
 func BuildProgram(path string) (*ir.Program, []error) {
 	b := new(builder)
@@ -51,16 +55,15 @@ func BuildProgram(path string) (*ir.Program, []error) {
 	b.program = ir.NewProgram()
 	b.funcTypes = make(map[*types.Func]*ir.Func)
 	b.varTypes = make(map[*types.Var]*ir.Variable)
+
+	b.addedSubstitutes = make(map[*types.Func]*ir.Func)
+
 	for _, file := range files {
 		b.processFile(file)
 	}
 
 	return b.program, b.warnings
 }
-
-const mode = parser.ParseComments |
-	parser.DeclarationErrors |
-	parser.AllErrors
 
 type builder struct {
 	fset *token.FileSet
@@ -69,6 +72,8 @@ type builder struct {
 	program   *ir.Program
 	funcTypes map[*types.Func]*ir.Func
 	varTypes  map[*types.Var]*ir.Variable
+
+	addedSubstitutes map[*types.Func]*ir.Func
 
 	warnings []error
 }
@@ -82,53 +87,103 @@ type context struct {
 
 	body           *ir.Body
 	enclosingFuncs []*ir.Func
+
+	enclosingStmts      []ir.Stmt
+	enclosingStmtLabels map[string]ir.Stmt
 }
 
-func makeContext(cmap ast.CommentMap, f *ir.Func) context {
-	return context{
-		cmap:           cmap,
-		body:           f.Body(),
-		enclosingFuncs: []*ir.Func{f},
-	}
+func newContext(cmap ast.CommentMap, f *ir.Func) *context {
+	ctx := new(context)
+	ctx.cmap = cmap
+	ctx.body = f.Body()
+	ctx.enclosingFuncs = []*ir.Func{f}
+	ctx.enclosingStmts = []ir.Stmt{}
+	ctx.enclosingStmtLabels = make(map[string]ir.Stmt)
+
+	return ctx
 }
 
-func (c context) currentFunc() *ir.Func {
+func (c *context) currentFunc() *ir.Func {
 	n := len(c.enclosingFuncs)
 	return c.enclosingFuncs[n-1]
 }
 
-func (c context) subContextForBody(containedBody *ir.Body) context {
-	return context{
-		cmap:           c.cmap,
-		body:           containedBody,
-		enclosingFuncs: c.enclosingFuncs,
+func (c *context) currentLoop() ir.Loop {
+	if len(c.enclosingStmts) == 0 {
+		return nil
 	}
+	for i := len(c.enclosingStmts) - 1; i >= 0; i-- {
+		loop, ok := c.enclosingStmts[i].(ir.Loop)
+		if ok {
+			return loop
+		}
+	}
+	return nil
 }
 
-func (c context) subContextForFunc(containedFunc *ir.Func) context {
-	return context{
-		cmap:           c.cmap,
-		body:           containedFunc.Body(),
-		enclosingFuncs: append(c.enclosingFuncs, containedFunc),
+func (c *context) currentLabeledLoop(label string) ir.Loop {
+	stmt, ok := c.enclosingStmtLabels[label]
+	if !ok {
+		return nil
 	}
+	loop, ok := stmt.(ir.Loop)
+	if !ok {
+		return nil
+	}
+	return loop
+}
+
+func (c *context) subContextForBody(stmt ir.Stmt, label string, containedBody *ir.Body) *context {
+	ctx := new(context)
+	ctx.cmap = c.cmap
+	ctx.body = containedBody
+	ctx.enclosingFuncs = c.enclosingFuncs
+	ctx.enclosingStmts = append(c.enclosingStmts, stmt)
+	ctx.enclosingStmtLabels = make(map[string]ir.Stmt)
+	for l, s := range c.enclosingStmtLabels {
+		ctx.enclosingStmtLabels[l] = s
+	}
+	if label != "" {
+		ctx.enclosingStmtLabels[label] = stmt
+	}
+
+	return ctx
+}
+
+func (c *context) subContextForFunc(containedFunc *ir.Func) *context {
+	ctx := new(context)
+	ctx.cmap = c.cmap
+	ctx.body = containedFunc.Body()
+	ctx.enclosingFuncs = append(c.enclosingFuncs, containedFunc)
+	ctx.enclosingStmts = []ir.Stmt{}
+	ctx.enclosingStmtLabels = make(map[string]ir.Stmt)
+
+	return ctx
 }
 
 func (b *builder) processFile(file *ast.File) {
+	mainFunc := ir.NewOuterFunc("main", b.program.Scope())
 	cmap := ast.NewCommentMap(b.fset, file, file.Comments)
+	mainCtx := newContext(cmap, mainFunc)
 
-	// Process function declarations:
+	// Process declarations:
 	for _, d := range file.Decls {
 		switch decl := d.(type) {
 		case *ast.GenDecl:
-			b.processGenDecl(decl, b.program.Scope())
+			b.processGenDecl(decl, b.program.Scope(), mainCtx)
 
 		case *ast.FuncDecl:
 			name := decl.Name.Name
 			funcType := b.info.Defs[decl.Name].(*types.Func)
-			f := ir.NewFunc(name, b.program.Scope())
+			var f *ir.Func
+			if name == "main" {
+				f = mainFunc
+			} else {
+				f = ir.NewOuterFunc(name, b.program.Scope())
+			}
 			v := ir.NewVariable(name, ir.FuncType, f.FuncValue())
 
-			b.processFuncType(decl.Type, makeContext(cmap, f))
+			b.processFuncType(decl.Type, newContext(cmap, f))
 
 			b.program.AddFunc(f)
 			b.program.Scope().AddVariable(v)
@@ -145,28 +200,59 @@ func (b *builder) processFile(file *ast.File) {
 
 		name := funcDecl.Name.Name
 		f := b.program.GetFunc(name)
-		b.processStmt(funcDecl.Body, makeContext(cmap, f))
+		b.processStmt(funcDecl.Body, newContext(cmap, f))
 	}
 }
 
-func (b *builder) processGenDecl(genDecl *ast.GenDecl, scope *ir.Scope) {
+func (b *builder) processGenDecl(genDecl *ast.GenDecl, scope *ir.Scope, ctx *context) {
 	for _, spec := range genDecl.Specs {
 		valueSpec, ok := spec.(*ast.ValueSpec)
 		if !ok {
 			continue
 		}
 
-		t, ok := astTypeToIrType(valueSpec.Type)
-		if !ok {
+		lhs := make(map[int]*ir.Variable)
+		for i, nameIdent := range valueSpec.Names {
+			t, ok := typesTypeToIrType(b.info.TypeOf(nameIdent))
+			if !ok {
+				continue
+			}
+
+			varType := b.info.Defs[nameIdent].(*types.Var)
+			v := ir.NewVariable(nameIdent.Name, t, -1)
+			lhs[i] = v
+			scope.AddVariable(v)
+			b.varTypes[varType] = v
+		}
+
+		if len(valueSpec.Values) == 0 {
 			continue
 		}
 
-		for _, nameIdent := range valueSpec.Names {
-			name := nameIdent.Name
-			varType := b.info.Defs[nameIdent].(*types.Var)
-			v := ir.NewVariable(name, t, -1)
-			scope.AddVariable(v)
-			b.varTypes[varType] = v
+		// Handle single call expression:
+		callExpr, ok := valueSpec.Values[0].(*ast.CallExpr)
+		if ok && len(valueSpec.Values) == 1 {
+			b.processCallExprWithResultVars(callExpr, ir.Call, lhs, ctx)
+			return
+		}
+
+		// Handle value expressions:
+		for i, expr := range valueSpec.Values {
+			l := lhs[i]
+			r := b.processExpr(expr, ctx)
+			if l == nil && r == nil {
+				continue
+			} else if l == nil {
+				p := b.fset.Position(valueSpec.Names[i].Pos())
+				b.addWarning(fmt.Errorf("%v: could not handle lhs of assignment", p))
+			} else if r == nil {
+				p := b.fset.Position(valueSpec.Values[i].Pos())
+				b.addWarning(
+					fmt.Errorf("%v: could not handle rhs of assignment", p))
+			}
+
+			assignStmt := ir.NewAssignStmt(r, l)
+			ctx.body.AddStmt(assignStmt)
 		}
 	}
 }

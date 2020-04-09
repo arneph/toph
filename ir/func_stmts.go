@@ -29,11 +29,10 @@ func (k CallKind) String() string {
 
 // CallStmt represents a function call (with or without the go keyword).
 type CallStmt struct {
-	callee   *Func
-	kind     CallKind
-	args     map[int]*Variable
-	captures map[string]*Variable
-	results  map[int]*Variable // Variables to assign results to
+	callee  *Func
+	kind    CallKind
+	args    map[int]RValue
+	results map[int]*Variable // Variables to assign results to
 }
 
 // NewCallStmt creates a new call statement to the given callee.
@@ -41,8 +40,7 @@ func NewCallStmt(callee *Func, kind CallKind) *CallStmt {
 	s := new(CallStmt)
 	s.callee = callee
 	s.kind = kind
-	s.args = make(map[int]*Variable)
-	s.captures = make(map[string]*Variable)
+	s.args = make(map[int]RValue)
 	s.results = make(map[int]*Variable)
 
 	return s
@@ -64,28 +62,13 @@ func (s *CallStmt) Kind() CallKind {
 }
 
 // Args returns all results processed by the function call.
-func (s *CallStmt) Args() map[int]*Variable {
+func (s *CallStmt) Args() map[int]RValue {
 	return s.args
 }
 
 // AddArg adds an argument to the function call.
-func (s *CallStmt) AddArg(index int, arg *Variable) {
+func (s *CallStmt) AddArg(index int, arg RValue) {
 	s.args[index] = arg
-}
-
-// Captures returns all variables caputered by the function call.
-func (s *CallStmt) Captures() map[string]*Variable {
-	return s.captures
-}
-
-// GetCaptured returns the captured varibale for the capturing variable.
-func (s *CallStmt) GetCaptured(capturing string) *Variable {
-	return s.captures[capturing]
-}
-
-// AddCapture adds a captioning relationship to the function call.
-func (s *CallStmt) AddCapture(capturing string, captured *Variable) {
-	s.captures[capturing] = captured
 }
 
 // Results returns all results processed by the function call.
@@ -124,42 +107,36 @@ func (s *CallStmt) String() string {
 		str += fmt.Sprintf("%d: %v", i, arg)
 	}
 	str += ")"
-	if len(s.captures) > 0 {
-		str += " ["
-		firstCapture := true
-		for capturing, captured := range s.captures {
-			if firstCapture {
-				firstCapture = false
-			} else {
-				str += ", "
-			}
-			str += "'" + capturing + "' <- &(" + captured.Handle() + ")"
-		}
-		str += "]"
-	}
 	return str
 }
 
 // ReturnStmt represents a return statement inside a function.
 type ReturnStmt struct {
-	results map[int]*Variable
+	results map[int]RValue
 }
 
 // NewReturnStmt creates a new return statement.
 func NewReturnStmt() *ReturnStmt {
 	s := new(ReturnStmt)
-	s.results = make(map[int]*Variable)
+	s.results = make(map[int]RValue)
 
 	return s
 }
 
 // Results returns the variables holding the returned values.
-func (s *ReturnStmt) Results() map[int]*Variable {
+func (s *ReturnStmt) Results() map[int]RValue {
 	return s.results
 }
 
 // AddResult adds a result to the return statement.
-func (s *ReturnStmt) AddResult(index int, result *Variable) {
+func (s *ReturnStmt) AddResult(index int, result RValue) {
+	if result == nil {
+		panic("tried to add nil result to ReturnStmt")
+	}
+	v, ok := result.(*Variable)
+	if ok && v == nil {
+		panic("tried to add nil result to ReturnStmt")
+	}
 	s.results[index] = result
 }
 
@@ -173,7 +150,14 @@ func (s *ReturnStmt) String() string {
 		} else {
 			str += ", "
 		}
-		str += fmt.Sprintf("%d: %s", i, result.Handle())
+		switch result := result.(type) {
+		case Value:
+			str += fmt.Sprintf("%d: %s", i, result)
+		case *Variable:
+			str += fmt.Sprintf("%d: %s", i, result.Handle())
+		default:
+			panic(fmt.Errorf("unexpected %T rvalue type", result))
+		}
 	}
 	return str
 }

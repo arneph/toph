@@ -2,9 +2,6 @@ package ir
 
 import "fmt"
 
-// Value represents the value of a variable
-type Value int
-
 // Type represents the type of a variable
 type Type int
 
@@ -38,6 +35,13 @@ func (t Type) String() string {
 	}
 }
 
+// Value represents the value of a variable
+type Value int
+
+func (v Value) String() string {
+	return fmt.Sprintf("%d", v)
+}
+
 // VariableIndex represents the index of a variable.
 type VariableIndex int
 
@@ -49,6 +53,7 @@ type Variable struct {
 	name         string
 	t            Type
 	initialValue Value
+	captured     bool
 }
 
 // NewVariable creates a new variable with the given arguments.
@@ -58,6 +63,7 @@ func NewVariable(name string, t Type, initialValue Value) *Variable {
 	v.name = name
 	v.t = t
 	v.initialValue = initialValue
+	v.captured = false
 
 	variableCount++
 
@@ -80,6 +86,17 @@ func (v *Variable) InitialValue() Value {
 	return v.initialValue
 }
 
+// IsCaptured returns whether the variable gets captured by any inner
+// functions.
+func (v *Variable) IsCaptured() bool {
+	return v.captured
+}
+
+// SetCaptured sets whether the variabled gets captured by any inner functions.
+func (v *Variable) SetCaptured(captured bool) {
+	v.captured = captured
+}
+
 func (v *Variable) String() string {
 	return fmt.Sprintf("var %s %v = %d", v.Handle(), v.t, v.initialValue)
 }
@@ -93,3 +110,14 @@ func (v *Variable) Handle() string {
 	return fmt.Sprintf("%s_var%d_%s",
 		v.t.VariablePrefix(), v.index, v.name)
 }
+
+// RValue represents a value that can be assigned to a variable, either an
+// ir.Value or an ir.Variable.
+type RValue interface {
+	fmt.Stringer
+
+	rvalue()
+}
+
+func (v Value) rvalue()     {}
+func (v *Variable) rvalue() {}

@@ -8,7 +8,7 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
-func (b *builder) findIterationBounds(stmt ast.Stmt, ctx context) (min, max int) {
+func (b *builder) findIterationBounds(stmt ast.Stmt, ctx *context) (min, max int) {
 	min, max = -1, -1
 
 	for _, info := range b.findInfos(stmt, ctx) {
@@ -27,7 +27,7 @@ func (b *builder) findIterationBounds(stmt ast.Stmt, ctx context) (min, max int)
 	return
 }
 
-func (b *builder) findReachabilityRequirement(stmt ast.Stmt, ctx context) ir.ReachabilityRequirement {
+func (b *builder) findReachabilityRequirement(stmt ast.Stmt, ctx *context) ir.ReachabilityRequirement {
 	for _, info := range b.findInfos(stmt, ctx) {
 		if strings.HasPrefix(info, "check=") {
 			if info[6:] == "reachable" {
@@ -40,7 +40,7 @@ func (b *builder) findReachabilityRequirement(stmt ast.Stmt, ctx context) ir.Rea
 	return ir.NoReachabilityRequirement
 }
 
-func (b *builder) findInfos(stmt ast.Stmt, ctx context) (infos []string) {
+func (b *builder) findInfos(stmt ast.Stmt, ctx *context) (infos []string) {
 	for _, commentGroup := range ctx.cmap[stmt] {
 		text := commentGroup.Text()
 		for {

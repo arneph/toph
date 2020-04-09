@@ -3,31 +3,36 @@ package builder
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 	"go/types"
 
 	"github.com/arneph/toph/ir"
 )
 
-func (b *builder) processStmt(stmt ast.Stmt, ctx context) {
+func (b *builder) processStmt(stmt ast.Stmt, ctx *context) {
 	switch s := stmt.(type) {
 	case *ast.AssignStmt:
 		b.processAssignStmt(s, ctx)
 	case *ast.BlockStmt:
 		b.processBlockStmt(s, ctx)
+	case *ast.BranchStmt:
+		b.processBranchStmt(s, ctx)
 	case *ast.DeclStmt:
-		b.processGenDecl(s.Decl.(*ast.GenDecl), ctx.body.Scope())
+		b.processGenDecl(s.Decl.(*ast.GenDecl), ctx.body.Scope(), ctx)
 	case *ast.ExprStmt:
 		b.processExpr(s.X, ctx)
 	case *ast.ForStmt:
-		b.processForStmt(s, ctx)
+		b.processForStmt(s, "", ctx)
 	case *ast.GoStmt:
 		b.processGoStmt(s, ctx)
 	case *ast.IfStmt:
 		b.processIfStmt(s, ctx)
 	case *ast.IncDecStmt:
 		b.processExpr(s.X, ctx)
+	case *ast.LabeledStmt:
+		b.processLabeledStmt(s, ctx)
 	case *ast.RangeStmt:
-		b.processRangeStmt(s, ctx)
+		b.processRangeStmt(s, "", ctx)
 	case *ast.ReturnStmt:
 		b.processReturnStmt(s, ctx)
 	case *ast.SelectStmt:
@@ -40,15 +45,14 @@ func (b *builder) processStmt(stmt ast.Stmt, ctx context) {
 	}
 }
 
-func (b *builder) processAssignStmt(stmt *ast.AssignStmt, ctx context) {
-	// Create newly defined variables:
+func (b *builder) getDefinedVarsInAssignStmt(stmt *ast.AssignStmt) map[int]*ir.Variable {
 	definedVars := make(map[int]*ir.Variable)
 	for i, expr := range stmt.Lhs {
-		ident, ok := expr.(*ast.Ident)
+		nameIdent, ok := expr.(*ast.Ident)
 		if !ok {
 			continue
 		}
-		obj, ok := b.info.Defs[ident]
+		obj, ok := b.info.Defs[nameIdent]
 		if !ok {
 			continue
 		}
@@ -59,12 +63,14 @@ func (b *builder) processAssignStmt(stmt *ast.AssignStmt, ctx context) {
 			continue
 		}
 
-		v := ir.NewVariable(ident.Name, t, -1)
+		v := ir.NewVariable(nameIdent.Name, t, -1)
 		definedVars[i] = v
 		b.varTypes[varType] = v
 	}
+	return definedVars
+}
 
-	// Resolve assigned variables:
+func (b *builder) getAssignedVarsInAssignStmt(stmt *ast.AssignStmt, definedVars map[int]*ir.Variable, ctx *context) map[int]*ir.Variable {
 	lhs := make(map[int]*ir.Variable)
 	for i, expr := range stmt.Lhs {
 		definedVar, ok := definedVars[i]
@@ -84,6 +90,15 @@ func (b *builder) processAssignStmt(stmt *ast.AssignStmt, ctx context) {
 		}
 		lhs[i] = v
 	}
+	return lhs
+}
+
+func (b *builder) processAssignStmt(stmt *ast.AssignStmt, ctx *context) {
+	// Create newly defined variables:
+	definedVars := b.getDefinedVarsInAssignStmt(stmt)
+
+	// Resolve assigned variables:
+	lhs := b.getAssignedVarsInAssignStmt(stmt, definedVars, ctx)
 
 	defer func() {
 		// Handle Lhs expressions
@@ -103,31 +118,25 @@ func (b *builder) processAssignStmt(stmt *ast.AssignStmt, ctx context) {
 	// Handle single call expression:
 	callExpr, ok := stmt.Rhs[0].(*ast.CallExpr)
 	if ok && len(stmt.Rhs) == 1 {
-		b.processCallExpr(callExpr, lhs, ctx)
+		b.processCallExprWithResultVars(callExpr, ir.Call, lhs, ctx)
 		return
 	}
 
 	// Handle Rhs expressions:
 	for i, expr := range stmt.Rhs {
 		l := lhs[i]
-		callExpr, ok := expr.(*ast.CallExpr)
-		if ok {
-			results := make(map[int]*ir.Variable)
-			results[0] = l
-			b.processCallExpr(callExpr, results, ctx)
-			continue
-		}
-
 		r := b.processExpr(expr, ctx)
 		if l == nil && r == nil {
 			continue
 		} else if l == nil {
 			p := b.fset.Position(stmt.Lhs[i].Pos())
 			b.addWarning(fmt.Errorf("%v: could not handle lhs of assignment", p))
+			continue
 		} else if r == nil {
 			p := b.fset.Position(stmt.Rhs[i].Pos())
 			b.addWarning(
 				fmt.Errorf("%v: could not handle rhs of assignment", p))
+			continue
 		}
 
 		assignStmt := ir.NewAssignStmt(r, l)
@@ -135,13 +144,13 @@ func (b *builder) processAssignStmt(stmt *ast.AssignStmt, ctx context) {
 	}
 }
 
-func (b *builder) processBlockStmt(stmt *ast.BlockStmt, ctx context) {
+func (b *builder) processBlockStmt(stmt *ast.BlockStmt, ctx *context) {
 	for _, s := range stmt.List {
 		b.processStmt(s, ctx)
 	}
 }
 
-func (b *builder) processIfStmt(stmt *ast.IfStmt, ctx context) {
+func (b *builder) processIfStmt(stmt *ast.IfStmt, ctx *context) {
 	if stmt.Init != nil {
 		b.processStmt(stmt.Init, ctx)
 	}
@@ -151,14 +160,14 @@ func (b *builder) processIfStmt(stmt *ast.IfStmt, ctx context) {
 	ifStmt := ir.NewIfStmt(ctx.body.Scope())
 	ctx.body.AddStmt(ifStmt)
 
-	b.processStmt(stmt.Body, ctx.subContextForBody(ifStmt.IfBranch()))
+	b.processStmt(stmt.Body, ctx.subContextForBody(ifStmt, "", ifStmt.IfBranch()))
 
 	if stmt.Else != nil {
-		b.processStmt(stmt.Else, ctx.subContextForBody(ifStmt.ElseBranch()))
+		b.processStmt(stmt.Else, ctx.subContextForBody(ifStmt, "", ifStmt.ElseBranch()))
 	}
 }
 
-func (b *builder) processForStmt(stmt *ast.ForStmt, ctx context) {
+func (b *builder) processForStmt(stmt *ast.ForStmt, label string, ctx *context) {
 	if stmt.Init != nil {
 		b.processStmt(stmt.Init, ctx)
 	}
@@ -167,27 +176,28 @@ func (b *builder) processForStmt(stmt *ast.ForStmt, ctx context) {
 	ctx.body.AddStmt(forStmt)
 
 	if stmt.Cond != nil {
-		b.processExpr(stmt.Cond, ctx.subContextForBody(forStmt.Cond()))
+		b.processExpr(stmt.Cond, ctx.subContextForBody(forStmt, "", forStmt.Cond()))
 	}
 	min, max := b.findIterationBounds(stmt, ctx)
 	forStmt.SetIsInfinite(stmt.Cond == nil)
 	forStmt.SetMinIterations(min)
 	forStmt.SetMaxIterations(max)
 
-	b.processStmt(stmt.Body, ctx.subContextForBody(forStmt.Body()))
+	b.processStmt(stmt.Body, ctx.subContextForBody(forStmt, label, forStmt.Body()))
 	if stmt.Post != nil {
-		b.processStmt(stmt.Post, ctx.subContextForBody(forStmt.Body()))
+		b.processStmt(stmt.Post, ctx.subContextForBody(forStmt, "", forStmt.Body()))
 	}
 }
 
-func (b *builder) processRangeStmt(stmt *ast.RangeStmt, ctx context) {
-	v := b.processExpr(stmt.X, ctx)
-	if v != nil && v.Type() == ir.ChanType {
+func (b *builder) processRangeStmt(stmt *ast.RangeStmt, label string, ctx *context) {
+	rv := b.processExpr(stmt.X, ctx)
+	v, ok := rv.(*ir.Variable)
+	if ok && v != nil && v.Type() == ir.ChanType {
 		// Range over channel:
 		rangeStmt := ir.NewRangeStmt(v, ctx.body.Scope())
 		ctx.body.AddStmt(rangeStmt)
 
-		b.processStmt(stmt.Body, ctx.subContextForBody(rangeStmt.Body()))
+		b.processStmt(stmt.Body, ctx.subContextForBody(rangeStmt, label, rangeStmt.Body()))
 
 	} else {
 		// Fallback: for statement
@@ -196,35 +206,54 @@ func (b *builder) processRangeStmt(stmt *ast.RangeStmt, ctx context) {
 		forStmt := ir.NewForStmt(ctx.body.Scope())
 		ctx.body.AddStmt(forStmt)
 
-		b.processStmt(stmt.Body, ctx.subContextForBody(forStmt.Body()))
+		b.processStmt(stmt.Body, ctx.subContextForBody(forStmt, label, forStmt.Body()))
 	}
 }
 
-func (b *builder) processGoStmt(stmt *ast.GoStmt, ctx context) {
-	argVars := b.processExprs(stmt.Call.Args, ctx)
+func (b *builder) processLabeledStmt(labeledStmt *ast.LabeledStmt, ctx *context) {
+	label := labeledStmt.Label.Name
+	switch stmt := labeledStmt.Stmt.(type) {
+	case *ast.ForStmt:
+		b.processForStmt(stmt, label, ctx)
+	case *ast.RangeStmt:
+		b.processRangeStmt(stmt, label, ctx)
+	default:
+		p := b.fset.Position(labeledStmt.Pos())
+		b.addWarning(
+			fmt.Errorf("%v: ignoring label: %q", p, label))
 
-	callee := b.findCallee(stmt.Call.Fun, ctx)
-	if callee == nil {
-		p := b.fset.Position(stmt.Call.Fun.Pos())
-		b.addWarning(fmt.Errorf("%v: could not resolve callee for go stmt: %v", p, stmt.Call.Fun))
+		b.processStmt(stmt, ctx)
+	}
+}
+
+func (b *builder) processBranchStmt(branchStmt *ast.BranchStmt, ctx *context) {
+	switch branchStmt.Tok {
+	case token.BREAK, token.CONTINUE:
+		var kind ir.BranchKind
+		var loop ir.Loop
+		if branchStmt.Tok == token.CONTINUE {
+			kind = ir.Continue
+		} else {
+			kind = ir.Break
+		}
+		if branchStmt.Label == nil {
+			loop = ctx.currentLoop()
+		} else {
+			loop = ctx.currentLabeledLoop(branchStmt.Label.Name)
+		}
+
+		branchStmt := ir.NewBranchStmt(loop, kind)
+		ctx.body.AddStmt(branchStmt)
+
+	default:
+		p := b.fset.Position(branchStmt.Pos())
+		b.addWarning(
+			fmt.Errorf("%v: unsuported branch statement: %s", p, branchStmt.Tok))
 		return
 	}
-
-	goStmt := ir.NewCallStmt(callee, ir.Go)
-	ctx.body.AddStmt(goStmt)
-
-	for i, v := range argVars {
-		goStmt.AddArg(i, v)
-	}
-	for capturing := range callee.Captures() {
-		captured, _ := ctx.body.Scope().GetVariable(capturing)
-		goStmt.AddCapture(capturing, captured)
-	}
-
-	return
 }
 
-func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx context) {
+func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
 	resultVars := b.processExprs(stmt.Results, ctx)
 	returnStmt := ir.NewReturnStmt()
 	ctx.body.AddStmt(returnStmt)
@@ -234,7 +263,7 @@ func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx context) {
 	}
 }
 
-func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx context) {
+func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx *context) {
 	selectStmt := ir.NewSelectStmt(ctx.body.Scope())
 
 	for _, stmt := range stmt.Body.List {
@@ -244,10 +273,11 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx context) {
 		var body *ir.Body
 		switch stmt := commClause.Comm.(type) {
 		case *ast.SendStmt:
-			v := b.processExpr(stmt.Chan, ctx)
+			rv := b.processExpr(stmt.Chan, ctx)
 			b.processExpr(stmt.Value, ctx)
 
-			if v == nil {
+			v, ok := rv.(*ir.Variable)
+			if !ok || v == nil {
 				p := b.fset.Position(stmt.Chan.Pos())
 				b.addWarning(fmt.Errorf("%v: could not resolve channel expr: %v", p, stmt.Chan))
 				continue
@@ -259,9 +289,10 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx context) {
 
 		case *ast.ExprStmt:
 			expr := stmt.X.(*ast.UnaryExpr)
-			v := b.processExpr(expr.X, ctx)
+			rv := b.processExpr(expr.X, ctx)
 
-			if v == nil {
+			v, ok := rv.(*ir.Variable)
+			if !ok || v == nil {
 				p := b.fset.Position(expr.X.Pos())
 				b.addWarning(fmt.Errorf("%v: could not resolve channel expr: %v", p, expr.X))
 				continue
@@ -273,9 +304,10 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx context) {
 
 		case *ast.AssignStmt:
 			expr := stmt.Rhs[0].(*ast.UnaryExpr)
-			v := b.processExpr(expr.X, ctx)
+			rv := b.processExpr(expr.X, ctx)
 
-			if v == nil {
+			v, ok := rv.(*ir.Variable)
+			if !ok || v == nil {
 				p := b.fset.Position(expr.X.Pos())
 				b.addWarning(fmt.Errorf("%v: could not resolve channel expr: %v", p, expr.X))
 				continue
@@ -299,7 +331,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx context) {
 				}
 
 			} else {
-				b.processExpr(expr, ctx.subContextForBody(body))
+				b.processExpr(expr, ctx.subContextForBody(selectStmt, "", body))
 			}
 
 		default:
@@ -312,7 +344,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx context) {
 			body = selectStmt.DefaultBody()
 		}
 
-		subCtx := ctx.subContextForBody(body)
+		subCtx := ctx.subContextForBody(selectStmt, "", body)
 
 		for _, stmt := range commClause.Body {
 			b.processStmt(stmt, subCtx)
@@ -322,11 +354,12 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx context) {
 	ctx.body.AddStmt(selectStmt)
 }
 
-func (b *builder) processSendStmt(stmt *ast.SendStmt, ctx context) {
+func (b *builder) processSendStmt(stmt *ast.SendStmt, ctx *context) {
 	b.processExpr(stmt.Value, ctx)
 
-	v := b.processExpr(stmt.Chan, ctx)
-	if v == nil {
+	rv := b.processExpr(stmt.Chan, ctx)
+	v, ok := rv.(*ir.Variable)
+	if !ok || v == nil {
 		p := b.fset.Position(stmt.Chan.Pos())
 		b.addWarning(fmt.Errorf("%v: could not resolve channel expr: %v", p, stmt.Chan))
 		return

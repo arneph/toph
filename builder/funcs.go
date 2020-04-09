@@ -8,7 +8,7 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
-func (b *builder) processFuncType(funcType *ast.FuncType, ctx context) {
+func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 	f := ctx.currentFunc()
 
 	argIndex := 0
@@ -54,8 +54,8 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx context) {
 	}
 }
 
-func (b *builder) processFuncLit(funcLit *ast.FuncLit, ctx context) *ir.Func {
-	f := ir.NewFunc(ctx.currentFunc().Name()+"_func", ctx.body.Scope())
+func (b *builder) processFuncLit(funcLit *ast.FuncLit, ctx *context) *ir.Func {
+	f := ir.NewInnerFunc(ctx.currentFunc(), ctx.body.Scope())
 	b.program.AddFunc(f)
 	subCtx := ctx.subContextForFunc(f)
 	b.processFuncType(funcLit.Type, subCtx)
@@ -63,7 +63,7 @@ func (b *builder) processFuncLit(funcLit *ast.FuncLit, ctx context) *ir.Func {
 	return f
 }
 
-func (b *builder) findCallee(funcExpr ast.Expr, ctx context) *ir.Func {
+func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) *ir.Func {
 	switch funcExpr := funcExpr.(type) {
 	case *ast.Ident:
 		switch used := b.info.Uses[funcExpr].(type) {
@@ -92,7 +92,7 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx context) *ir.Func {
 		switch funcType := b.info.Uses[funcExpr.Sel].(type) {
 		case *types.Func:
 			switch funcType.Pkg().Name() {
-			case "fmt", "math", "rand":
+			case "flag", "fmt", "math", "rand", "sort", "strconv":
 				return nil
 			case "time":
 				if funcType.Name() == "Now" ||
@@ -101,6 +101,11 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx context) *ir.Func {
 					funcType.Name() == "Since" {
 					return nil
 				}
+			}
+
+			funcSub := b.getSubstitute(funcType)
+			if funcSub != nil {
+				return funcSub
 			}
 
 			b.processExpr(funcExpr.X, ctx)
@@ -136,74 +141,5 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx context) *ir.Func {
 		b.addWarning(fmt.Errorf("%v: could not resolve %T callee", p, funcExpr))
 
 		return nil
-	}
-}
-
-func (b *builder) processCallExpr(callExpr *ast.CallExpr, results map[int]*ir.Variable, ctx context) {
-	argVars := b.processExprs(callExpr.Args, ctx)
-
-	fIdent, ok := callExpr.Fun.(*ast.Ident)
-	if ok && fIdent.Name == "make" {
-		v, ok := results[0]
-		if !ok {
-			v = ir.NewVariable("", ir.ChanType, -1)
-			ctx.body.Scope().AddVariable(v)
-			results[0] = v
-		}
-
-		b.processMakeExpr(callExpr, v, ctx)
-		return
-
-	} else if ok && fIdent.Name == "close" {
-		b.processCloseExpr(callExpr, ctx)
-		return
-	} else if ok && (fIdent.Name == "append" ||
-		fIdent.Name == "cap" ||
-		fIdent.Name == "complex" ||
-		fIdent.Name == "copy" ||
-		fIdent.Name == "delete" ||
-		fIdent.Name == "imag" ||
-		fIdent.Name == "len" ||
-		fIdent.Name == "new" ||
-		fIdent.Name == "print" ||
-		fIdent.Name == "println" ||
-		fIdent.Name == "real") {
-		return
-	}
-
-	callee := b.findCallee(callExpr.Fun, ctx)
-	if callee == nil {
-		return
-	}
-
-	for i := range callee.Args() {
-		_, ok := argVars[i]
-		if !ok {
-			argExpr := callExpr.Args[i]
-			p := b.fset.Position(argExpr.Pos())
-			b.addWarning(fmt.Errorf("%v: could not resolve argument: %v", p, argExpr))
-			return
-		}
-	}
-
-	callStmt := ir.NewCallStmt(callee, ir.Call)
-	ctx.body.AddStmt(callStmt)
-
-	for i, v := range argVars {
-		callStmt.AddArg(i, v)
-	}
-	for capturing := range callee.Captures() {
-		captured, _ := ctx.body.Scope().GetVariable(capturing)
-		callStmt.AddCapture(capturing, captured)
-	}
-	for i, t := range callee.ResultTypes() {
-		v, ok := results[i]
-		if !ok {
-			v = ir.NewVariable("", t, -1)
-			ctx.body.Scope().AddVariable(v)
-			results[i] = v
-		}
-
-		callStmt.AddResult(i, v)
 	}
 }

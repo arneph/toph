@@ -8,14 +8,15 @@ import (
 )
 
 func (t *translator) translateMakeChanStmt(stmt *ir.MakeChanStmt, ctx *context) {
-	h := stmt.Channel().Handle()
+	handle := t.translateVariable(stmt.Channel(), ctx)
+	name := stmt.Channel().Name()
 	b := stmt.BufferSize()
 
-	made := ctx.proc.AddState("made_"+h+"_", uppaal.Renaming)
+	made := ctx.proc.AddState("made_"+name+"_", uppaal.Renaming)
 	made.SetLocationAndResetNameLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	make := ctx.proc.AddTrans(ctx.currentState, made)
-	make.AddUpdate(fmt.Sprintf("%s = make_chan(%d)", h, b))
+	make.AddUpdate(fmt.Sprintf("%s = make_chan(%d)", handle, b))
 	make.SetUpdateLocation(
 		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
 	ctx.currentState = made
@@ -34,9 +35,10 @@ func (t *translator) translateChanOpStmt(stmt *ir.ChanOpStmt, ctx *context) {
 }
 
 func (t *translator) translateCloseChanStmt(stmt *ir.ChanOpStmt, ctx *context) {
-	handle := stmt.Channel().Handle()
+	handle := t.translateVariable(stmt.Channel(), ctx)
+	name := stmt.Channel().Name()
 
-	closed := ctx.proc.AddState("closed_"+handle+"_", uppaal.Renaming)
+	closed := ctx.proc.AddState("closed_"+name+"_", uppaal.Renaming)
 	closed.SetLocationAndResetNameLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	close := ctx.proc.AddTrans(ctx.currentState, closed)
@@ -47,7 +49,8 @@ func (t *translator) translateCloseChanStmt(stmt *ir.ChanOpStmt, ctx *context) {
 }
 
 func (t *translator) translateChanCommStmt(stmt *ir.ChanOpStmt, ctx *context) {
-	handle := stmt.Channel().Handle()
+	handle := t.translateVariable(stmt.Channel(), ctx)
+	name := stmt.Channel().Name()
 	var pendingName, confirmedName, triggerChan, confirmChan, counterOp string
 
 	switch stmt.Op() {
@@ -67,7 +70,7 @@ func (t *translator) translateChanCommStmt(stmt *ir.ChanOpStmt, ctx *context) {
 		t.addWarning(fmt.Errorf("unsupported ChanOp: %v", stmt.Op()))
 	}
 
-	pending := ctx.proc.AddState(pendingName+"_"+handle+"_", uppaal.Renaming)
+	pending := ctx.proc.AddState(pendingName+"_"+name+"_", uppaal.Renaming)
 	pending.SetLocationAndResetNameLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
@@ -77,7 +80,7 @@ func (t *translator) translateChanCommStmt(stmt *ir.ChanOpStmt, ctx *context) {
 	trigger.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
 	trigger.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
 
-	confirmed := ctx.proc.AddState(confirmedName+"_"+handle+"_", uppaal.Renaming)
+	confirmed := ctx.proc.AddState(confirmedName+"_"+name+"_", uppaal.Renaming)
 	confirmed.SetLocationAndResetNameLocation(
 		pending.Location().Add(uppaal.Location{0, 136}))
 
@@ -101,7 +104,7 @@ type selectCaseInfo struct {
 
 func (t *translator) infoForSelectCase(selectCase *ir.SelectCase, ctx *context) selectCaseInfo {
 	var info selectCaseInfo
-	handle := selectCase.OpStmt().Channel().Handle()
+	handle := t.translateVariable(selectCase.OpStmt().Channel(), ctx)
 
 	var rangeGuard string
 	switch selectCase.OpStmt().Op() {
@@ -142,7 +145,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		defaultEnter.SetLocationAndResetNameLocation(
 			ctx.currentState.Location().Add(uppaal.Location{0, 408}))
 
-		bodySubCtx := ctx.subContextForBody(defaultEnter, exitSelect)
+		bodySubCtx := ctx.subContextForBody(stmt.DefaultBody(), defaultEnter, exitSelect)
 		t.translateBody(stmt.DefaultBody(), bodySubCtx)
 
 		if len(stmt.Cases()) > 0 {
@@ -189,7 +192,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 				"check unreachable: "+ctx.proc.Name()+"."+caseEnter.Name()))
 		}
 
-		bodySubCtx := ctx.subContextForBody(caseEnter, exitSelect)
+		bodySubCtx := ctx.subContextForBody(c.Body(), caseEnter, exitSelect)
 		t.translateBody(c.Body(), bodySubCtx)
 
 		if i < len(stmt.Cases())-1 {

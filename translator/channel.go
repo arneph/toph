@@ -2,6 +2,7 @@ package translator
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/arneph/toph/uppaal"
 )
@@ -14,7 +15,9 @@ func (t *translator) addChannels() {
 
 func (t *translator) channelCount() int {
 	channelCount := t.fcg.MakeChanCount()
-	if channelCount > maxChannelCount {
+	if channelCount < 1 {
+		channelCount = 1
+	} else if channelCount > maxChannelCount {
 		channelCount = maxChannelCount
 	}
 	return channelCount
@@ -41,17 +44,20 @@ func (t *translator) addChannelDeclarations() {
 }
 
 func (t *translator) addChannelProcessInstances() {
+	c := t.channelCount()
+	if c > 1 {
+		c--
+	}
+	d := fmt.Sprintf("%d", int(math.Log10(float64(c))+1))
 	for i := 0; i < t.channelCount(); i++ {
-		instName := fmt.Sprintf("%s%d", t.channelProcess.Name(), i)
-		inst := t.system.AddProcessInstance(
-			t.channelProcess.Name(),
-			instName, uppaal.NoRenaming)
+		instName := fmt.Sprintf("%s%0"+d+"d", t.channelProcess.Name(), i)
+		inst := t.system.AddProcessInstance(t.channelProcess.Name(), instName)
 		inst.AddParameter(fmt.Sprintf("%d", i))
 	}
 }
 
 func (t *translator) addChannelProcess() {
-	proc := t.system.AddProcess("Channel", uppaal.NoRenaming)
+	proc := t.system.AddProcess("Channel")
 	t.channelProcess = proc
 
 	// Parameters:
