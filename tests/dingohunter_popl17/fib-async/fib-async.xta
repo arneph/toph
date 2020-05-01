@@ -1,0 +1,221 @@
+// Place global declarations here.
+int fid_var539_main = 292;
+int fid_var540_fib = 293;
+int fib_count = 0;
+chan async_fib[20];
+chan sync_fib[20];
+int arg_cid_var541_ch[20];
+
+int chan_count = 0;
+int chan_counter[20];
+int chan_buffer[20];
+chan sender_trigger[20];
+chan sender_confirm[20];
+chan receiver_trigger[20];
+chan receiver_confirm[20];
+chan close[20];
+
+int make_fib() {
+	int pid = fib_count;
+	fib_count++;
+	return pid;
+}
+
+int make_chan(int buffer) {
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}
+
+
+
+process Channel(int[0, 19] i) {
+// Place local declarations here.
+
+
+state
+    new_sender,
+    confirming_a,
+    closed,
+    idle,
+    new_receiver,
+    confirming_b,
+    closing,
+    confirming_closed,
+    bad;
+commit
+    new_receiver,
+    confirming_b,
+    closing,
+    confirming_closed,
+    new_sender,
+    confirming_a;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_trigger[i]?; },
+    new_sender -> idle { guard chan_counter[i] > 
+chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_confirm[i]!; },
+    idle -> new_receiver { sync receiver_trigger[i]?; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_confirm[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < 
+chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
+    closing -> closed { guard chan_counter[i] >= 0; },
+    idle -> bad { guard chan_counter[i] > 
+chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_trigger[i]?; },
+    confirming_closed -> closed { sync receiver_confirm[i]!; },
+    closed -> bad { sync sender_trigger[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+process fib(int[0, 19] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var541_ch = -1;
+int cid_var543_ch1 = -1;
+
+void initialize() {
+    cid_var541_ch = arg_cid_var541_ch[pid];
+}
+
+
+
+state
+    started_fib_1,
+    receiving_ch1_0,
+    received_ch1_1,
+    ended,
+    exit_if_0,
+    started_fib_0,
+    receiving_ch1_1,
+    enter_if_0,
+    enter_else_0,
+    made_ch1_0,
+    created_fib_1,
+    received_ch1_0,
+    sent_ch_1,
+    sent_ch_0,
+    started,
+    ending,
+    sending_ch_0,
+    created_fib_0,
+    sending_ch_1,
+    starting;
+init
+    starting;
+trans
+    enter_if_0 -> sending_ch_0 { sync sender_trigger[cid_var541_ch]!; assign chan_counter[cid_var541_ch]++; },
+    sending_ch_0 -> sent_ch_0 { sync sender_confirm[cid_var541_ch]?; },
+    sent_ch_0 -> ending { },
+    enter_else_0 -> exit_if_0 { },
+    started -> enter_if_0 { },
+    started -> enter_else_0 { },
+    exit_if_0 -> made_ch1_0 { assign cid_var543_ch1 = make_chan(2); },
+    made_ch1_0 -> created_fib_0 { assign p = make_fib(), arg_cid_var541_ch[p] = cid_var543_ch1; },
+    created_fib_0 -> started_fib_0 { sync async_fib[p]!; },
+    started_fib_0 -> created_fib_1 { assign p = make_fib(), arg_cid_var541_ch[p] = cid_var543_ch1; },
+    created_fib_1 -> started_fib_1 { sync async_fib[p]!; },
+    started_fib_1 -> receiving_ch1_0 { sync receiver_trigger[cid_var543_ch1]!; assign chan_counter[cid_var543_ch1]--; },
+    receiving_ch1_0 -> received_ch1_0 { sync receiver_confirm[cid_var543_ch1]?; },
+    received_ch1_0 -> receiving_ch1_1 { sync receiver_trigger[cid_var543_ch1]!; assign chan_counter[cid_var543_ch1]--; },
+    receiving_ch1_1 -> received_ch1_1 { sync receiver_confirm[cid_var543_ch1]?; },
+    received_ch1_1 -> sending_ch_1 { sync sender_trigger[cid_var541_ch]!; assign chan_counter[cid_var541_ch]++; },
+    sending_ch_1 -> sent_ch_1 { sync sender_confirm[cid_var541_ch]?; },
+    sent_ch_1 -> ending { },
+    starting -> started { sync async_fib[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_fib[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_fib[pid]!; };
+}
+
+process main() {
+// Place local declarations here.
+int pid = 0;
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var542_ch = -1;
+
+
+
+state
+    starting,
+    started,
+    made_ch_0,
+    created_fib_0,
+    started_fib_0,
+    ending,
+    ended,
+    receiving_ch_0,
+    received_ch_0;
+init
+    starting;
+trans
+    started -> made_ch_0 { assign cid_var542_ch = make_chan(0); },
+    made_ch_0 -> created_fib_0 { assign p = make_fib(), arg_cid_var541_ch[p] = cid_var542_ch; },
+    created_fib_0 -> started_fib_0 { sync async_fib[p]!; },
+    started_fib_0 -> receiving_ch_0 { sync receiver_trigger[cid_var542_ch]!; assign chan_counter[cid_var542_ch]--; },
+    receiving_ch_0 -> received_ch_0 { sync receiver_confirm[cid_var542_ch]?; },
+    received_ch_0 -> ending { },
+    starting -> started { },
+    ending -> ended { };
+}
+
+Channel00 = Channel(0);
+Channel01 = Channel(1);
+Channel02 = Channel(2);
+Channel03 = Channel(3);
+Channel04 = Channel(4);
+Channel05 = Channel(5);
+Channel06 = Channel(6);
+Channel07 = Channel(7);
+Channel08 = Channel(8);
+Channel09 = Channel(9);
+Channel10 = Channel(10);
+Channel11 = Channel(11);
+Channel12 = Channel(12);
+Channel13 = Channel(13);
+Channel14 = Channel(14);
+Channel15 = Channel(15);
+Channel16 = Channel(16);
+Channel17 = Channel(17);
+Channel18 = Channel(18);
+Channel19 = Channel(19);
+fib_00 = fib(0);
+fib_01 = fib(1);
+fib_02 = fib(2);
+fib_03 = fib(3);
+fib_04 = fib(4);
+fib_05 = fib(5);
+fib_06 = fib(6);
+fib_07 = fib(7);
+fib_08 = fib(8);
+fib_09 = fib(9);
+fib_10 = fib(10);
+fib_11 = fib(11);
+fib_12 = fib(12);
+fib_13 = fib(13);
+fib_14 = fib(14);
+fib_15 = fib(15);
+fib_16 = fib(16);
+fib_17 = fib(17);
+fib_18 = fib(18);
+fib_19 = fib(19);
+system Channel00, Channel01, Channel02, Channel03, Channel04, Channel05, Channel06, Channel07, Channel08, Channel09, Channel10, Channel11, Channel12, Channel13, Channel14, Channel15, Channel16, Channel17, Channel18, Channel19, fib_00, fib_01, fib_02, fib_03, fib_04, fib_05, fib_06, fib_07, fib_08, fib_09, fib_10, fib_11, fib_12, fib_13, fib_14, fib_15, fib_16, fib_17, fib_18, fib_19, main;
+

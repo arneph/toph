@@ -1,0 +1,45 @@
+Options for the verification:
+  Generating no trace
+  Search order is depth first
+  Using conservative space optimisation
+  Seed is 1588268809
+  State space representation uses minimal constraint systems
+[2K
+Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:4
+[2K -- Formula is satisfied.
+[2K
+Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:8
+[2K -- Formula is satisfied.
+[2K
+Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:12
+ -- Throughput: 314 states/sec, Load: 11 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:16
+ -- Throughput: 204 states/sec, Load: 11 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 5 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:20
+ -- Throughput: 148 states/sec, Load: 11 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 6 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:24
+ -- Throughput: 115 states/sec, Load: 11 states[K[2K -- Formula is NOT satisfied.
+[2K
+Verifying formula 7 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:28
+ -- Throughput: 112 states/sec, Load: 11 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 8 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:32
+ -- Throughput: 83 states/sec, Load: 11 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 9 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:36
+ -- Throughput: 67 states/sec, Load: 11 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 10 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:40
+[2K -- Formula is NOT satisfied.
+[2K
+Verifying formula 11 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:44
+ -- Throughput: 55 states/sec, Load: 11 states[K[2K -- Formula is NOT satisfied.
+[2K
+Verifying formula 12 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:48
+[2K -- Formula is NOT satisfied.
+[2K
+Verifying formula 13 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-cancellation/squaring-cancellation.q:52
+ -- Throughput: 54 states/sec, Load: 11 states[K[2K -- Formula is NOT satisfied.

@@ -1,0 +1,111 @@
+prog{
+  scope{
+    var fid_var55_main Func = 30
+    var fid_var56_flip Func = 31
+    var fid_var57_tx Func = 32
+    var fid_var60_rx Func = 33
+  }
+  funcs{
+    func{
+      index: 34
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var65_trans Chan = -1
+        var cid_var66_ack Chan = -1
+      }
+      stmts{
+        cid_var65_trans <- make(chan, 1)
+        cid_var66_ack <- make(chan, 1)
+        go 36(0: var cid_var65_trans Chan = -1, 1: var cid_var66_ack Chan = -1)
+        inlined call rx {
+          scope{
+          }
+          stmts{
+            for{
+              cond{
+                scope{
+                }
+                stmts{
+                }
+              }
+              body{
+                scope{
+                }
+                stmts{
+                  send cid_var66_ack
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 35
+      args: 
+      captures: 
+      results: 
+      scope{
+      }
+      stmts{
+        return
+      }
+    }
+    func{
+      index: 36
+      args: cid_var68_ack, cid_var67_snd
+      captures: 
+      results: 
+      scope{
+        var cid_var67_snd Chan = -1
+        var cid_var68_ack Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var67_snd
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 37
+      args: cid_var69_reply, cid_var70_trans
+      captures: 
+      results: 
+      scope{
+        var cid_var69_reply Chan = -1
+        var cid_var70_trans Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var69_reply
+            }
+          }
+        }
+      }
+    }
+  }
+}

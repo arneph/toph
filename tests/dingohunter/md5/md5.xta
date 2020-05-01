@@ -1,0 +1,476 @@
+// Place global declarations here.
+int fid_var235_sumFiles = 103;
+int fid_var237_MD5All = 104;
+int fid_var238_main = 102;
+int sumFiles_count = 0;
+chan async_sumFiles[1];
+chan sync_sumFiles[1];
+int arg_cid_var236_done[1];
+int res_sumFiles_0_Chan[1];
+int res_sumFiles_1_Chan[1];
+
+int MD5All_count = 0;
+chan async_MD5All[1];
+chan sync_MD5All[1];
+
+int sumFiles_func105_count = 0;
+chan async_sumFiles_func105[1];
+chan sync_sumFiles_func105[1];
+int par_pid_sumFiles_func105[1];
+
+int sumFiles_func105_func106_count = 0;
+chan async_sumFiles_func105_func106[1];
+chan sync_sumFiles_func105_func106[1];
+int par_pid_sumFiles_func105_func106[1];
+
+int sumFiles_func105_func106_func107_count = 0;
+chan async_sumFiles_func105_func106_func107[1];
+chan sync_sumFiles_func105_func106_func107[1];
+int par_pid_sumFiles_func105_func106_func107[1];
+
+int sumFiles_func105_func108_count = 0;
+chan async_sumFiles_func105_func108[1];
+chan sync_sumFiles_func105_func108[1];
+int par_pid_sumFiles_func105_func108[1];
+
+int cid_var236_done[1];
+int cid_var239_c[1];
+int cid_var240_errc[1];
+
+int chan_count = 0;
+int chan_counter[3];
+int chan_buffer[3];
+chan sender_trigger[3];
+chan sender_confirm[3];
+chan receiver_trigger[3];
+chan receiver_confirm[3];
+chan close[3];
+
+int make_sumFiles() {
+	int pid = sumFiles_count;
+	sumFiles_count++;
+	return pid;
+}
+
+int make_MD5All() {
+	int pid = MD5All_count;
+	MD5All_count++;
+	return pid;
+}
+
+int make_sumFiles_func105(int par_pid) {
+	int pid = sumFiles_func105_count;
+	sumFiles_func105_count++;
+	par_pid_sumFiles_func105[pid] = par_pid;
+	return pid;
+}
+
+int make_sumFiles_func105_func106(int par_pid) {
+	int pid = sumFiles_func105_func106_count;
+	sumFiles_func105_func106_count++;
+	par_pid_sumFiles_func105_func106[pid] = par_pid;
+	return pid;
+}
+
+int make_sumFiles_func105_func106_func107(int par_pid) {
+	int pid = sumFiles_func105_func106_func107_count;
+	sumFiles_func105_func106_func107_count++;
+	par_pid_sumFiles_func105_func106_func107[pid] = par_pid;
+	return pid;
+}
+
+int make_sumFiles_func105_func108(int par_pid) {
+	int pid = sumFiles_func105_func108_count;
+	sumFiles_func105_func108_count++;
+	par_pid_sumFiles_func105_func108[pid] = par_pid;
+	return pid;
+}
+
+int make_chan(int buffer) {
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}
+
+
+
+process Channel(int[0, 2] i) {
+// Place local declarations here.
+
+
+state
+    closing,
+    closed,
+    confirming_closed,
+    bad,
+    idle,
+    new_sender,
+    confirming_a,
+    new_receiver,
+    confirming_b;
+commit
+    confirming_closed,
+    new_sender,
+    confirming_a,
+    new_receiver,
+    confirming_b,
+    closing;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_trigger[i]?; },
+    new_sender -> idle { guard chan_counter[i] > 
+chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_confirm[i]!; },
+    idle -> new_receiver { sync receiver_trigger[i]?; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_confirm[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < 
+chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
+    closing -> closed { guard chan_counter[i] >= 0; },
+    idle -> bad { guard chan_counter[i] > 
+chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_trigger[i]?; },
+    confirming_closed -> closed { sync receiver_confirm[i]!; },
+    closed -> bad { sync sender_trigger[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+process MD5All(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var242_done = -1;
+int cid_var243_c = -1;
+int cid_var244_errc = -1;
+int cid_var245 = -1;
+
+
+
+state
+    started_sumFiles_0,
+    awaited_sumFiles_0,
+    exit_loop_body_0,
+    exit_loop_0,
+    enter_else_0,
+    starting,
+    started,
+    ending,
+    range_enter_0,
+    enter_if_1,
+    enter_else_1,
+    ended,
+    made_done_0,
+    created_sumFiles_0,
+    range_receiving_cid_var243_c_0,
+    receiving_errc_0,
+    received_errc_0,
+    exit_if_1,
+    range_received_cid_var243_c_0,
+    enter_loop_body_0,
+    enter_if_0,
+    exit_if_0;
+commit
+    range_received_cid_var243_c_0;
+init
+    starting;
+trans
+    started -> made_done_0 { assign cid_var242_done = make_chan(0); },
+    made_done_0 -> created_sumFiles_0 { assign p = make_sumFiles(), arg_cid_var236_done[p] = cid_var242_done; },
+    created_sumFiles_0 -> started_sumFiles_0 { sync sync_sumFiles[p]!; },
+    started_sumFiles_0 -> awaited_sumFiles_0 { sync sync_sumFiles[p]?; assign cid_var243_c = res_sumFiles_0_Chan[p], cid_var244_errc = res_sumFiles_1_Chan[p]; },
+    range_enter_0 -> range_receiving_cid_var243_c_0 { sync receiver_trigger[cid_var243_c]!; assign chan_counter[cid_var243_c]--, ok = chan_counter[cid_var243_c] >= 0; },
+    range_receiving_cid_var243_c_0 -> range_received_cid_var243_c_0 { sync receiver_confirm[cid_var243_c]?; },
+    enter_if_0 -> ending { },
+    enter_else_0 -> exit_if_0 { },
+    enter_loop_body_0 -> enter_if_0 { },
+    enter_loop_body_0 -> enter_else_0 { },
+    exit_if_0 -> exit_loop_body_0 { },
+    awaited_sumFiles_0 -> range_enter_0 { },
+    range_received_cid_var243_c_0 -> enter_loop_body_0 { guard chan_buffer[cid_var243_c] >= 0 || ok; },
+    range_received_cid_var243_c_0 -> exit_loop_0 { guard chan_buffer[cid_var243_c] < 0 && !ok; },
+    exit_loop_body_0 -> range_enter_0 { },
+    exit_loop_0 -> receiving_errc_0 { sync receiver_trigger[cid_var244_errc]!; assign chan_counter[cid_var244_errc]--; },
+    receiving_errc_0 -> received_errc_0 { sync receiver_confirm[cid_var244_errc]?; },
+    enter_if_1 -> ending { },
+    enter_else_1 -> exit_if_1 { },
+    received_errc_0 -> enter_if_1 { },
+    received_errc_0 -> enter_else_1 { },
+    exit_if_1 -> ending { },
+    starting -> started { sync async_MD5All[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_MD5All[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_MD5All[pid]!; };
+}
+
+process main() {
+// Place local declarations here.
+int pid = 0;
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    ended,
+    started_MD5All_0,
+    exit_if_0,
+    enter_else_0,
+    enter_loop_cond_1,
+    starting,
+    ending,
+    awaited_MD5All_0,
+    enter_if_0,
+    exit_loop_0,
+    exit_loop_body_1,
+    created_MD5All_0,
+    enter_loop_cond_0,
+    exit_loop_cond_0,
+    enter_loop_body_0,
+    exit_loop_cond_1,
+    exit_loop_1,
+    started,
+    exit_loop_body_0,
+    enter_loop_body_1;
+init
+    starting;
+trans
+    started -> created_MD5All_0 { assign p = make_MD5All(); },
+    created_MD5All_0 -> started_MD5All_0 { sync sync_MD5All[p]!; },
+    started_MD5All_0 -> awaited_MD5All_0 { sync sync_MD5All[p]?; },
+    enter_if_0 -> ending { },
+    enter_else_0 -> exit_if_0 { },
+    awaited_MD5All_0 -> enter_if_0 { },
+    awaited_MD5All_0 -> enter_else_0 { },
+    enter_loop_cond_0 -> exit_loop_cond_0 { },
+    enter_loop_body_0 -> exit_loop_body_0 { },
+    exit_if_0 -> enter_loop_cond_0 { },
+    exit_loop_cond_0 -> enter_loop_body_0 { },
+    exit_loop_cond_0 -> exit_loop_0 { },
+    exit_loop_body_0 -> enter_loop_cond_0 { },
+    enter_loop_cond_1 -> exit_loop_cond_1 { },
+    enter_loop_body_1 -> exit_loop_body_1 { },
+    exit_loop_0 -> enter_loop_cond_1 { },
+    exit_loop_cond_1 -> enter_loop_body_1 { },
+    exit_loop_cond_1 -> exit_loop_1 { },
+    exit_loop_body_1 -> enter_loop_cond_1 { },
+    exit_loop_1 -> ending { },
+    starting -> started { },
+    ending -> ended { };
+}
+
+process sumFiles(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+void initialize() {
+    cid_var236_done[pid] = -1;
+    cid_var239_c[pid] = -1;
+    cid_var240_errc[pid] = -1;
+    cid_var236_done[pid] = arg_cid_var236_done[pid];
+}
+
+
+
+state
+    made_c_0,
+    made_errc_0,
+    created_sumFiles_func105_0,
+    started_sumFiles_func105_0,
+    starting,
+    started,
+    ending,
+    ended;
+init
+    starting;
+trans
+    started -> made_c_0 { assign cid_var239_c[pid] = make_chan(0); },
+    made_c_0 -> made_errc_0 { assign cid_var240_errc[pid] = make_chan(1); },
+    made_errc_0 -> created_sumFiles_func105_0 { assign p = make_sumFiles_func105(pid); },
+    created_sumFiles_func105_0 -> started_sumFiles_func105_0 { sync async_sumFiles_func105[p]!; },
+    started_sumFiles_func105_0 -> ending { assign res_sumFiles_0_Chan[pid] = cid_var239_c[pid], res_sumFiles_1_Chan[pid] = cid_var240_errc[pid]; },
+    starting -> started { sync async_sumFiles[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_sumFiles[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_sumFiles[pid]!; };
+}
+
+process sumFiles_func105(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int fid_var241 = 106;
+
+
+
+state
+    ended,
+    created_sumFiles_func105_func108_0,
+    started_sumFiles_func105_func108_0,
+    sending_errc_0,
+    sent_errc_0,
+    starting,
+    started,
+    ending;
+init
+    starting;
+trans
+    started -> created_sumFiles_func105_func108_0 { assign p = make_sumFiles_func105_func108(pid); },
+    created_sumFiles_func105_func108_0 -> started_sumFiles_func105_func108_0 { sync async_sumFiles_func105_func108[p]!; },
+    started_sumFiles_func105_func108_0 -> sending_errc_0 { sync sender_trigger[cid_var240_errc[par_pid_sumFiles_func105[pid]]]!; assign chan_counter[cid_var240_errc[par_pid_sumFiles_func105[pid]]]++; },
+    sending_errc_0 -> sent_errc_0 { sync sender_confirm[cid_var240_errc[par_pid_sumFiles_func105[pid]]]?; },
+    sent_errc_0 -> ending { },
+    starting -> started { sync async_sumFiles_func105[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_sumFiles_func105[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_sumFiles_func105[pid]!; };
+}
+
+process sumFiles_func105_func106(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    select_case_1_enter_0,
+    starting,
+    ended,
+    exit_if_0,
+    started_sumFiles_func105_func106_func107_0,
+    enter_if_0,
+    exit_if_1,
+    select_end_0,
+    select_case_1_trigger_0,
+    started,
+    enter_else_0,
+    enter_if_1,
+    select_pass_1_0,
+    ending,
+    enter_else_1,
+    created_sumFiles_func105_func106_func107_0,
+    select_default_enter_0;
+commit
+    select_pass_1_0;
+init
+    starting;
+trans
+    enter_if_0 -> ending { },
+    enter_else_0 -> exit_if_0 { },
+    started -> enter_if_0 { },
+    started -> enter_else_0 { },
+    enter_if_1 -> ending { },
+    enter_else_1 -> exit_if_1 { },
+    exit_if_0 -> enter_if_1 { },
+    exit_if_0 -> enter_else_1 { },
+    exit_if_1 -> created_sumFiles_func105_func106_func107_0 { assign p = make_sumFiles_func105_func106_func107(pid); },
+    created_sumFiles_func105_func106_func107_0 -> started_sumFiles_func105_func106_func107_0 { sync async_sumFiles_func105_func106_func107[p]!; },
+    select_default_enter_0 -> ending { },
+    select_case_1_enter_0 -> ending { },
+    started_sumFiles_func105_func106_func107_0 -> select_pass_1_0 { assign chan_counter[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[pid]]]]--; },
+    select_pass_1_0 -> select_case_1_trigger_0 { guard chan_buffer[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[pid]]]] < 0 || chan_counter[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[pid]]]] >= 0; sync receiver_trigger[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[pid]]]]!; },
+    select_case_1_trigger_0 -> select_case_1_enter_0 { sync receiver_confirm[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[pid]]]]?; },
+    select_pass_1_0 -> select_default_enter_0 { guard !(chan_buffer[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[pid]]]] < 0 || chan_counter[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[pid]]]] >= 0); assign chan_counter[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[pid]]]]++; },
+    select_end_0 -> ending { },
+    starting -> started { sync async_sumFiles_func105_func106[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_sumFiles_func105_func106[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_sumFiles_func105_func106[pid]!; };
+}
+
+process sumFiles_func105_func106_func107(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    started,
+    ending,
+    select_pass_2_0,
+    select_case_2_enter_0,
+    select_pass_1_0,
+    select_case_1_trigger_0,
+    starting,
+    select_end_0,
+    select_case_1_enter_0,
+    select_case_2_trigger_0,
+    ended;
+commit
+    select_pass_1_0;
+init
+    starting;
+trans
+    select_case_1_enter_0 -> select_end_0 { },
+    select_case_2_enter_0 -> select_end_0 { },
+    started -> select_pass_1_0 { assign chan_counter[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]++, chan_counter[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]--; },
+    select_pass_1_0 -> select_case_1_trigger_0 { guard chan_buffer[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]] < 0 || chan_counter[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]] <= chan_buffer[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]; sync sender_trigger[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]!; },
+    select_case_1_trigger_0 -> select_case_1_enter_0 { sync sender_confirm[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]?; assign chan_counter[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]++; },
+    select_pass_1_0 -> select_case_2_trigger_0 { guard chan_buffer[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]] < 0 || chan_counter[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]] >= 0; sync receiver_trigger[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]!; },
+    select_case_2_trigger_0 -> select_case_2_enter_0 { sync receiver_confirm[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]?; assign chan_counter[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]--; },
+    select_pass_1_0 -> select_pass_2_0 { guard !(chan_buffer[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]] < 0 || chan_counter[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]] <= chan_buffer[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]) && !(chan_buffer[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]] < 0 || chan_counter[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]] >= 0); },
+    select_pass_2_0 -> select_case_1_enter_0 { sync sender_confirm[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]?; assign chan_counter[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]++; },
+    select_pass_2_0 -> select_case_2_enter_0 { sync receiver_confirm[cid_var236_done[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]?; assign chan_counter[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func106[par_pid_sumFiles_func105_func106_func107[pid]]]]]--; },
+    select_end_0 -> ending { },
+    starting -> started { sync async_sumFiles_func105_func106_func107[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_sumFiles_func105_func106_func107[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_sumFiles_func105_func106_func107[pid]!; };
+}
+
+process sumFiles_func105_func108(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    starting,
+    started,
+    ending,
+    ended,
+    closed_c_0;
+init
+    starting;
+trans
+    started -> closed_c_0 { sync close[cid_var239_c[par_pid_sumFiles_func105[par_pid_sumFiles_func105_func108[pid]]]]!; },
+    closed_c_0 -> ending { },
+    starting -> started { sync async_sumFiles_func105_func108[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_sumFiles_func105_func108[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_sumFiles_func105_func108[pid]!; };
+}
+
+Channel0 = Channel(0);
+Channel1 = Channel(1);
+Channel2 = Channel(2);
+MD5All_0 = MD5All(0);
+sumFiles_0 = sumFiles(0);
+sumFiles_func105_0 = sumFiles_func105(0);
+sumFiles_func105_func106_0 = sumFiles_func105_func106(0);
+sumFiles_func105_func106_func107_0 = sumFiles_func105_func106_func107(0);
+sumFiles_func105_func108_0 = sumFiles_func105_func108(0);
+system Channel0, Channel1, Channel2, MD5All_0, main, sumFiles_0, sumFiles_func105_0, sumFiles_func105_func106_0, sumFiles_func105_func106_func107_0, sumFiles_func105_func108_0;
+

@@ -1,0 +1,6 @@
+main (3) -> work1, work2
+fanin (5) -> fanin_func285
+fanin_func285 (4) -> 
+work1 (1) -> 
+work2 (2) -> 
+

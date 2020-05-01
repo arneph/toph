@@ -1,36 +1,36 @@
 prog{
   scope{
-    var fid_var474_main Func = 258
+    var fid_var736_main Func = 413
   }
   funcs{
     func{
-      index: 258
+      index: 413
+      name: main
       args: 
-      captures: 
       results: 
       scope{
-        var cid_var475_chA Chan = -1
-        var cid_var476_chB Chan = -1
+        var cid_var737_chA Chan = -1
+        var cid_var738_chB Chan = -1
       }
       stmts{
-        cid_var475_chA <- make(chan, 0)
-        cid_var476_chB <- make(chan, 0)
-        close cid_var476_chB
-        go 259() ['chA' <- &(cid_var475_chA)]
-        go 260() ['chA' <- &(cid_var475_chA), 'chB' <- &(cid_var476_chB)]
+        cid_var737_chA <- make(chan, 0)
+        cid_var738_chB <- make(chan, 0)
+        close cid_var738_chB
+        go 414()
+        go 415()
       }
     }
     func{
-      index: 259
+      index: 414
+      name: main_func414
       args: 
-      captures: cid_var477_chA <- *'chA'
       results: 
+      enclosing func index: 413
       scope{
-        var cid_var477_chA Chan = -1
       }
       stmts{
         select{
-          case send cid_var477_chA {
+          case send cid_var737_chA {
             scope{
             }
             stmts{
@@ -40,13 +40,12 @@ prog{
       }
     }
     func{
-      index: 260
+      index: 415
+      name: main_func415
       args: 
-      captures: cid_var479_chB <- *'chB', cid_var478_chA <- *'chA'
       results: 
+      enclosing func index: 413
       scope{
-        var cid_var478_chA Chan = -1
-        var cid_var479_chB Chan = -1
       }
       stmts{
         for{
@@ -61,13 +60,13 @@ prog{
             }
             stmts{
               select{
-                case receive cid_var478_chA {
+                case receive cid_var737_chA {
                   scope{
                   }
                   stmts{
                   }
                 }
-                case receive cid_var479_chB {
+                case receive cid_var738_chB {
                   scope{
                   }
                   stmts{

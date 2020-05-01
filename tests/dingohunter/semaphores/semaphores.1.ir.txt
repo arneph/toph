@@ -1,0 +1,80 @@
+prog{
+  scope{
+    var fid_var360_NewSemaphore Func = 204
+    var fid_var361_P Func = 205
+    var fid_var362_V Func = 206
+    var fid_var363_main Func = 203
+  }
+  funcs{
+    func{
+      index: 204
+      name: NewSemaphore
+      args: 
+      results: 
+      scope{
+        var cid_var364 Chan = -1
+      }
+      stmts{
+        return 0: cid_var364
+      }
+    }
+    func{
+      index: 205
+      name: P
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 206
+      name: V
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 203
+      name: main
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+      }
+    }
+  }
+}

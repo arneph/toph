@@ -206,6 +206,10 @@ func (b *builder) processRangeStmt(stmt *ast.RangeStmt, label string, ctx *conte
 		forStmt := ir.NewForStmt(ctx.body.Scope())
 		ctx.body.AddStmt(forStmt)
 
+		min, max := b.findIterationBounds(stmt, ctx)
+		forStmt.SetMinIterations(min)
+		forStmt.SetMaxIterations(max)
+
 		b.processStmt(stmt.Body, ctx.subContextForBody(forStmt, label, forStmt.Body()))
 	}
 }

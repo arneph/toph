@@ -1,0 +1,127 @@
+prog{
+  scope{
+    var fid_var122_work Func = 60
+    var fid_var124_fanin Func = 61
+    var fid_var127_main Func = 59
+  }
+  funcs{
+    func{
+      index: 60
+      name: work
+      args: cid_var123_out
+      results: 
+      scope{
+        var cid_var123_out Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var123_out
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 61
+      name: fanin
+      args: cid_var125_ch1, cid_var126_ch2
+      results: Chan
+      scope{
+        var cid_var125_ch1 Chan = -1
+        var cid_var126_ch2 Chan = -1
+        var cid_var128_c Chan = -1
+      }
+      stmts{
+        cid_var128_c <- make(chan, 0)
+        go 62(1: var cid_var126_ch2 Chan = -1, 2: var cid_var128_c Chan = -1, 0: var cid_var125_ch1 Chan = -1)
+        return 0: cid_var128_c
+      }
+    }
+    func{
+      index: 59
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var132_input1 Chan = -1
+        var cid_var133_input2 Chan = -1
+        var cid_var134 Chan = -1
+      }
+      stmts{
+        cid_var132_input1 <- make(chan, 0)
+        cid_var133_input2 <- make(chan, 0)
+        go 60(0: var cid_var132_input1 Chan = -1)
+        go 60(0: var cid_var133_input2 Chan = -1)
+        , 0: var cid_var134 Chan = -1 <- call 61(0: var cid_var132_input1 Chan = -1, 1: var cid_var133_input2 Chan = -1)
+        range cid_var134 {
+          scope{
+          }
+          stmts{
+          }
+        }
+      }
+    }
+    func{
+      index: 62
+      name: fanin_func62
+      args: cid_var129_ch1, cid_var130_ch2, cid_var131_c
+      results: 
+      enclosing func index: 61
+      scope{
+        var cid_var129_ch1 Chan = -1
+        var cid_var130_ch2 Chan = -1
+        var cid_var131_c Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var129_ch1 {
+                  scope{
+                  }
+                  stmts{
+                    send cid_var131_c
+                  }
+                }
+                case receive cid_var130_ch2 {
+                  scope{
+                  }
+                  stmts{
+                    send cid_var131_c
+                  }
+                }
+              default {
+                scope{
+                }
+                stmts{
+                  close cid_var131_c
+                  return
+                }
+              }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

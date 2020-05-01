@@ -1,0 +1,116 @@
+prog{
+  scope{
+    var fid_var821_continuous_process Func = 484
+    var fid_var822_main Func = 483
+  }
+  funcs{
+    func{
+      index: 484
+      name: continuous_process
+      args: 
+      results: Chan
+      scope{
+        var cid_var823_c Chan = -1
+      }
+      stmts{
+        cid_var823_c <- make(chan, 0)
+        go 485()
+        return 0: cid_var823_c
+      }
+    }
+    func{
+      index: 483
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var824_c Chan = -1
+        var cid_var825_timeout Chan = -1
+      }
+      stmts{
+        , 0: var cid_var824_c Chan = -1 <- call 484()
+        , 0: var cid_var825_timeout Chan = -1 <- call 486()
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var824_c {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var825_timeout {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 485
+      name: continuous_process_func485
+      args: 
+      results: 
+      enclosing func index: 484
+      scope{
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var823_c
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 486
+      name: time_after
+      args: 
+      results: Chan
+      scope{
+        var cid_var826_ch Chan = -1
+      }
+      stmts{
+        cid_var826_ch <- make(chan, 1)
+        go 487()
+        return 0: cid_var826_ch
+      }
+    }
+    func{
+      index: 487
+      name: time_after_func487
+      args: 
+      results: 
+      enclosing func index: 486
+      scope{
+      }
+      stmts{
+        send cid_var826_ch
+      }
+    }
+  }
+}

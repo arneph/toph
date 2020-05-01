@@ -1,0 +1,51 @@
+prog{
+  scope{
+    var fid_var69_main Func = 32
+    var fid_var70_makenew Func = 33
+  }
+  funcs{
+    func{
+      index: 32
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var71_ch Chan = -1
+      }
+      stmts{
+        , 0: var cid_var71_ch Chan = -1 <- call 33()
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+              var cid_var72_ch2 Chan = -1
+            }
+            stmts{
+              , 0: var cid_var72_ch2 Chan = -1 <- call 33()
+              send cid_var72_ch2
+            }
+          }
+        }
+        send cid_var71_ch
+      }
+    }
+    func{
+      index: 33
+      name: makenew
+      args: 
+      results: Chan
+      scope{
+        var cid_var73 Chan = -1
+      }
+      stmts{
+        cid_var73 <- make(chan, 1)
+        return 0: cid_var73
+      }
+    }
+  }
+}

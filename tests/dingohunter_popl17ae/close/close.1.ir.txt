@@ -1,0 +1,20 @@
+prog{
+  scope{
+    var fid_var596_main Func = 312
+  }
+  funcs{
+    func{
+      index: 312
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var597_ch Chan = -1
+      }
+      stmts{
+        cid_var597_ch <- make(chan, 0)
+        close cid_var597_ch
+      }
+    }
+  }
+}

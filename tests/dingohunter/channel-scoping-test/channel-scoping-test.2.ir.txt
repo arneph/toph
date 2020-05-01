@@ -1,0 +1,69 @@
+prog{
+  scope{
+    var fid_var86_main Func = 44
+    var fid_var87_makenew Func = 45
+  }
+  funcs{
+    func{
+      index: 46
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var91_ch Chan = -1
+      }
+      stmts{
+        inlined call makenew {
+          scope{
+            var cid_var93 Chan = -1
+          }
+          stmts{
+            cid_var93 <- make(chan, 1)
+            cid_var91_ch <- cid_var93
+            return
+          }
+        }
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+              var cid_var92_ch2 Chan = -1
+            }
+            stmts{
+              inlined call makenew {
+                scope{
+                  var cid_var94 Chan = -1
+                }
+                stmts{
+                  cid_var94 <- make(chan, 1)
+                  cid_var92_ch2 <- cid_var94
+                  return
+                }
+              }
+              send cid_var92_ch2
+            }
+          }
+        }
+        send cid_var91_ch
+      }
+    }
+    func{
+      index: 47
+      args: 
+      captures: 
+      results: Chan
+      scope{
+        var cid_var95 Chan = -1
+      }
+      stmts{
+        cid_var95 <- make(chan, 1)
+        return 0: cid_var95
+      }
+    }
+  }
+}

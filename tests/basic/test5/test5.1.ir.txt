@@ -1,0 +1,151 @@
+prog{
+  scope{
+    var fid_var34_main Func = 16
+    var fid_var35_a Func = 17
+    var fid_var36_b Func = 18
+    var fid_var37_c Func = 19
+    var fid_var38_d Func = 20
+    var fid_var39_e Func = 21
+    var fid_var40_f Func = 22
+  }
+  funcs{
+    func{
+      index: 16
+      name: main
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        call 17()
+        call 19()
+        call 21()
+      }
+    }
+    func{
+      index: 17
+      name: a
+      args: 
+      results: 
+      scope{
+        var cid_var41_ch Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              call 18()
+            }
+          }
+        }
+        call 19()
+        call 19()
+        cid_var41_ch <- make(chan, 0)
+        close cid_var41_ch
+      }
+    }
+    func{
+      index: 18
+      name: b
+      args: 
+      results: 
+      scope{
+        var cid_var42_ch Chan = -1
+      }
+      stmts{
+        cid_var42_ch <- make(chan, 0)
+        close cid_var42_ch
+        call 20()
+      }
+    }
+    func{
+      index: 19
+      name: c
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        call 18()
+      }
+    }
+    func{
+      index: 20
+      name: d
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        if{
+          scope{
+            var cid_var43_ch Chan = -1
+          }
+          stmts{
+            cid_var43_ch <- make(chan, 0)
+            close cid_var43_ch
+          }
+        }else{
+          scope{
+            var cid_var44_ch Chan = -1
+          }
+          stmts{
+            cid_var44_ch <- make(chan, 0)
+            close cid_var44_ch
+          }
+        }
+      }
+    }
+    func{
+      index: 21
+      name: e
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+              var cid_var45_ch Chan = -1
+            }
+            stmts{
+              cid_var45_ch <- make(chan, 0)
+              close cid_var45_ch
+              call 22()
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 22
+      name: f
+      args: 
+      results: 
+      scope{
+        var cid_var46_ch Chan = -1
+      }
+      stmts{
+        cid_var46_ch <- make(chan, 0)
+        cid_var46_ch <- make(chan, 0)
+        cid_var46_ch <- make(chan, 0)
+        close cid_var46_ch
+      }
+    }
+  }
+}

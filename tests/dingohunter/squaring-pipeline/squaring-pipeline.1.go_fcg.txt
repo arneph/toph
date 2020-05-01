@@ -1,0 +1,6 @@
+main (1) -> 
+gen (3) -> gen_func243
+gen_func243 (2) -> 
+sq (5) -> sq_func244
+sq_func244 (4) -> 
+

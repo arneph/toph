@@ -1,0 +1,55 @@
+prog{
+  scope{
+    var fid_var263_main Func = 120
+    var fid_var264_fib Func = 121
+  }
+  funcs{
+    func{
+      index: 120
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var266_ch Chan = -1
+      }
+      stmts{
+        cid_var266_ch <- make(chan, 0)
+        go 121(1: var cid_var266_ch Chan = -1)
+        receive cid_var266_ch
+      }
+    }
+    func{
+      index: 121
+      name: fib
+      args: cid_var265_ch
+      results: 
+      scope{
+        var cid_var265_ch Chan = -1
+        var cid_var267_ch1 Chan = -1
+        var cid_var268_ch2 Chan = -1
+      }
+      stmts{
+        if{
+          scope{
+          }
+          stmts{
+            send cid_var265_ch
+            return
+          }
+        }else{
+          scope{
+          }
+          stmts{
+          }
+        }
+        cid_var267_ch1 <- make(chan, 0)
+        cid_var268_ch2 <- make(chan, 0)
+        go 121(1: var cid_var267_ch1 Chan = -1)
+        go 121(1: var cid_var268_ch2 Chan = -1)
+        receive cid_var267_ch1
+        receive cid_var268_ch2
+        send cid_var265_ch
+      }
+    }
+  }
+}

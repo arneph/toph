@@ -1,22 +1,88 @@
-process main_func278 graphinfo {
+process main graphinfo {
+location starting (0,0);
+locationName starting(4,16);
+location started (0,136);
+locationName started(4,16);
+location ending (0,1224);
+locationName ending(4,16);
+location ended (0,1360);
+locationName ended(4,16);
+location closed_chB_0 (0,544);
+locationName closed_chB_0(4,16);
+location made_chA_0 (0,272);
+locationName made_chA_0(4,16);
+location made_chB_0 (0,408);
+locationName made_chB_0(4,16);
+location created_main_func423_0 (0,680);
+locationName created_main_func423_0(4,16);
+location started_main_func423_0 (0,816);
+locationName started_main_func423_0(4,16);
+location created_main_func424_0 (0,952);
+locationName created_main_func424_0(4,16);
+location started_main_func424_0 (0,1088);
+locationName started_main_func424_0(4,16);
+assign started made_chA_0 1 (4,-8);
+assign made_chA_0 made_chB_0 1 (4,-8);
+sync made_chB_0 closed_chB_0 1 (4,-8);
+assign closed_chB_0 created_main_func423_0 1 (4,-8);
+sync created_main_func423_0 started_main_func423_0 1 (4,-8);
+assign started_main_func423_0 created_main_func424_0 1 (4,-8);
+sync created_main_func424_0 started_main_func424_0 1 (4,-8);
+assign starting started 1 (0,-8);
+}
+
+process main_func423 graphinfo {
+location starting (0,0);
+locationName starting(4,16);
+location started (0,136);
+locationName started(4,16);
+location ending (0,544);
+locationName ending(4,16);
+location ended (0,680);
+locationName ended(4,16);
+location sending_chA_0 (0,272);
+locationName sending_chA_0(4,16);
+location sent_chA_0 (0,408);
+locationName sent_chA_0(4,16);
+sync started sending_chA_0 1 (4,-20);
+assign started sending_chA_0 1 (4,-4);
+sync sending_chA_0 sent_chA_0 1 (4,-8);
+trans starting started 1 (-34,-34);
+trans starting started 1 (-34,34);
+sync starting started 1 (-160,-20);
+assign starting started 1 (-160,-4);
+trans starting started 2 (34,-34);
+trans starting started 2 (34,36);
+sync starting started 2 (38,-20);
+assign starting started 2 (38,-4);
+trans ending ended 1 (-34,-34);
+trans ending ended 1 (-34,34);
+guard ending ended 1 (-160,-20);
+trans ending ended 2 (34,-34);
+trans ending ended 2 (34,34);
+guard ending ended 2 (38,-20);
+sync ending ended 2 (38,-4);
+}
+
+process main_func424 graphinfo {
+location select_pass_2_0 (0,408);
+locationName select_pass_2_0(4,16);
+location select_case_1_trigger_0 (136,408);
+locationName select_case_1_trigger_0(4,16);
+location starting (0,0);
+locationName starting(4,16);
 location started (0,136);
 locationName started(4,16);
 location ending (0,816);
 locationName ending(4,16);
+location select_pass_1_0 (0,272);
+locationName select_pass_1_0(4,16);
 location ended (0,952);
 locationName ended(4,16);
 location select_end_0 (0,680);
 locationName select_end_0(4,16);
-location select_pass_2_0 (0,408);
-locationName select_pass_2_0(4,16);
-location starting (0,0);
-locationName starting(4,16);
 location select_case_1_enter_0 (136,544);
 locationName select_case_1_enter_0(4,16);
-location select_pass_1_0 (0,272);
-locationName select_pass_1_0(4,16);
-location select_case_1_trigger_0 (136,408);
-locationName select_case_1_trigger_0(4,16);
 assign started select_pass_1_0 1 (4,-8);
 guard select_pass_1_0 select_case_1_trigger_0 1 (36,36);
 sync select_pass_1_0 select_case_1_trigger_0 1 (36,52);
@@ -41,24 +107,24 @@ sync ending ended 2 (38,-4);
 }
 
 process Channel graphinfo {
-location new_receiver (442,306);
-locationName new_receiver(0,-32);
-location bad (102,-102);
-locationName bad(-48,-32);
+location idle (272,306);
+locationName idle(4,16);
+location confirming_a (102,442);
+locationName confirming_a(-94,16);
 location confirming_b (442,442);
 locationName confirming_b(0,16);
-location closing (272,85);
-locationName closing(-56,16);
 location closed (272,-34);
 locationName closed(4,16);
 location confirming_closed (442,-34);
 locationName confirming_closed(4,16);
-location idle (272,306);
-locationName idle(4,16);
 location new_sender (102,306);
 locationName new_sender(-94,-32);
-location confirming_a (102,442);
-locationName confirming_a(-94,16);
+location new_receiver (442,306);
+locationName new_receiver(0,-32);
+location closing (272,85);
+locationName closing(-56,16);
+location bad (102,-102);
+locationName bad(-48,-32);
 sync idle new_sender 1 (-58,0);
 trans new_sender idle 1 (-51,-68);
 trans new_sender idle 1 (51,-68);
@@ -88,7 +154,6 @@ guard closing closing 1 (72,-17);
 sync closing closing 1 (72,-1);
 assign closing closing 1 (72,15);
 guard closing closed 1 (4,-27);
-assign closing closed 1 (4,-11);
 trans idle bad 1 (85,68);
 trans idle bad 1 (-85,68);
 guard idle bad 1 (-81,-92);
@@ -102,71 +167,6 @@ trans closed bad 1 (-51,34);
 sync closed bad 1 (-58,34);
 trans closed bad 2 (51,-34);
 sync closed bad 2 (-58,-50);
-}
-
-process main graphinfo {
-location started (0,136);
-locationName started(4,16);
-location ended (0,1360);
-locationName ended(4,16);
-location made_cid_var508_chA_0 (0,272);
-locationName made_cid_var508_chA_0(4,16);
-location closed_cid_var509_chB_0 (0,544);
-locationName closed_cid_var509_chB_0(4,16);
-location created_main_func277_0 (0,680);
-locationName created_main_func277_0(4,16);
-location started_main_func278_0 (0,1088);
-locationName started_main_func278_0(4,16);
-location starting (0,0);
-locationName starting(4,16);
-location ending (0,1224);
-locationName ending(4,16);
-location made_cid_var509_chB_0 (0,408);
-locationName made_cid_var509_chB_0(4,16);
-location started_main_func277_0 (0,816);
-locationName started_main_func277_0(4,16);
-location created_main_func278_0 (0,952);
-locationName created_main_func278_0(4,16);
-assign started made_cid_var508_chA_0 1 (4,-8);
-assign made_cid_var508_chA_0 made_cid_var509_chB_0 1 (4,-8);
-sync made_cid_var509_chB_0 closed_cid_var509_chB_0 1 (4,-8);
-assign closed_cid_var509_chB_0 created_main_func277_0 1 (4,-8);
-sync created_main_func277_0 started_main_func277_0 1 (4,-8);
-assign started_main_func277_0 created_main_func278_0 1 (4,-8);
-sync created_main_func278_0 started_main_func278_0 1 (4,-8);
-}
-
-process main_func277 graphinfo {
-location sending_cid_var510_chA_0 (0,272);
-locationName sending_cid_var510_chA_0(4,16);
-location sent_cid_var510_chA_0 (0,408);
-locationName sent_cid_var510_chA_0(4,16);
-location starting (0,0);
-locationName starting(4,16);
-location started (0,136);
-locationName started(4,16);
-location ending (0,544);
-locationName ending(4,16);
-location ended (0,680);
-locationName ended(4,16);
-sync started sending_cid_var510_chA_0 1 (4,-20);
-assign started sending_cid_var510_chA_0 1 (4,-4);
-sync sending_cid_var510_chA_0 sent_cid_var510_chA_0 1 (4,-8);
-trans starting started 1 (-34,-34);
-trans starting started 1 (-34,34);
-sync starting started 1 (-160,-20);
-assign starting started 1 (-160,-4);
-trans starting started 2 (34,-34);
-trans starting started 2 (34,36);
-sync starting started 2 (38,-20);
-assign starting started 2 (38,-4);
-trans ending ended 1 (-34,-34);
-trans ending ended 1 (-34,34);
-guard ending ended 1 (-160,-20);
-trans ending ended 2 (34,-34);
-trans ending ended 2 (34,34);
-guard ending ended 2 (38,-20);
-sync ending ended 2 (38,-4);
 }
 
 

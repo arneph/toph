@@ -42,7 +42,9 @@ func newFuncCallGraph(entry *ir.Func) *FuncCallGraph {
 	fcg.makeChanCount = 0
 	fcg.sccsOk = false
 
-	fcg.addFunc(entry)
+	if entry != nil {
+		fcg.addFunc(entry)
+	}
 
 	return fcg
 }

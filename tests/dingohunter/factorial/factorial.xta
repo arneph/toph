@@ -1,0 +1,213 @@
+// Place global declarations here.
+int fid_var107_main = 53;
+int fid_var108_fact = 54;
+int fact_count = 0;
+chan async_fact[20];
+chan sync_fact[20];
+int arg_cid_var109_results[20];
+
+int chan_count = 0;
+int chan_counter[20];
+int chan_buffer[20];
+chan sender_trigger[20];
+chan sender_confirm[20];
+chan receiver_trigger[20];
+chan receiver_confirm[20];
+chan close[20];
+
+int make_fact() {
+	int pid = fact_count;
+	fact_count++;
+	return pid;
+}
+
+int make_chan(int buffer) {
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}
+
+
+
+process Channel(int[0, 19] i) {
+// Place local declarations here.
+
+
+state
+    confirming_b,
+    confirming_closed,
+    bad,
+    confirming_a,
+    new_sender,
+    new_receiver,
+    closing,
+    closed,
+    idle;
+commit
+    closing,
+    new_sender,
+    new_receiver,
+    confirming_a,
+    confirming_b,
+    confirming_closed;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_trigger[i]?; },
+    new_sender -> idle { guard chan_counter[i] > 
+chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_confirm[i]!; },
+    idle -> new_receiver { sync receiver_trigger[i]?; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_confirm[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < 
+chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
+    closing -> closed { guard chan_counter[i] >= 0; },
+    idle -> bad { guard chan_counter[i] > 
+chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_trigger[i]?; },
+    confirming_closed -> closed { sync receiver_confirm[i]!; },
+    closed -> bad { sync sender_trigger[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+process fact(int[0, 19] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var109_results = -1;
+int cid_var111_ch = -1;
+
+void initialize() {
+    cid_var109_results = arg_cid_var109_results[pid];
+}
+
+
+
+state
+    received_ch_0,
+    exit_if_0,
+    enter_else_0,
+    sending_results_0,
+    sending_results_1,
+    sent_results_0,
+    made_ch_0,
+    created_fact_0,
+    sent_results_1,
+    started,
+    enter_if_0,
+    ended,
+    started_fact_0,
+    receiving_ch_0,
+    starting,
+    ending;
+init
+    starting;
+trans
+    enter_if_0 -> sending_results_0 { sync sender_trigger[cid_var109_results]!; assign chan_counter[cid_var109_results]++; },
+    sending_results_0 -> sent_results_0 { sync sender_confirm[cid_var109_results]?; },
+    sent_results_0 -> ending { },
+    enter_else_0 -> exit_if_0 { },
+    started -> enter_if_0 { },
+    started -> enter_else_0 { },
+    exit_if_0 -> made_ch_0 { assign cid_var111_ch = make_chan(0); },
+    made_ch_0 -> created_fact_0 { assign p = make_fact(), arg_cid_var109_results[p] = cid_var111_ch; },
+    created_fact_0 -> started_fact_0 { sync async_fact[p]!; },
+    started_fact_0 -> receiving_ch_0 { sync receiver_trigger[cid_var111_ch]!; assign chan_counter[cid_var111_ch]--; },
+    receiving_ch_0 -> received_ch_0 { sync receiver_confirm[cid_var111_ch]?; },
+    received_ch_0 -> sending_results_1 { sync sender_trigger[cid_var109_results]!; assign chan_counter[cid_var109_results]++; },
+    sending_results_1 -> sent_results_1 { sync sender_confirm[cid_var109_results]?; },
+    sent_results_1 -> ending { },
+    starting -> started { sync async_fact[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_fact[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_fact[pid]!; };
+}
+
+process main() {
+// Place local declarations here.
+int pid = 0;
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var110_ch = -1;
+
+
+
+state
+    created_fact_0,
+    receiving_ch_0,
+    received_ch_0,
+    starting,
+    ending,
+    ended,
+    made_ch_0,
+    started_fact_0,
+    started;
+init
+    starting;
+trans
+    started -> made_ch_0 { assign cid_var110_ch = make_chan(0); },
+    made_ch_0 -> created_fact_0 { assign p = make_fact(), arg_cid_var109_results[p] = cid_var110_ch; },
+    created_fact_0 -> started_fact_0 { sync async_fact[p]!; },
+    started_fact_0 -> receiving_ch_0 { sync receiver_trigger[cid_var110_ch]!; assign chan_counter[cid_var110_ch]--; },
+    receiving_ch_0 -> received_ch_0 { sync receiver_confirm[cid_var110_ch]?; },
+    received_ch_0 -> ending { },
+    starting -> started { },
+    ending -> ended { };
+}
+
+Channel00 = Channel(0);
+Channel01 = Channel(1);
+Channel02 = Channel(2);
+Channel03 = Channel(3);
+Channel04 = Channel(4);
+Channel05 = Channel(5);
+Channel06 = Channel(6);
+Channel07 = Channel(7);
+Channel08 = Channel(8);
+Channel09 = Channel(9);
+Channel10 = Channel(10);
+Channel11 = Channel(11);
+Channel12 = Channel(12);
+Channel13 = Channel(13);
+Channel14 = Channel(14);
+Channel15 = Channel(15);
+Channel16 = Channel(16);
+Channel17 = Channel(17);
+Channel18 = Channel(18);
+Channel19 = Channel(19);
+fact_00 = fact(0);
+fact_01 = fact(1);
+fact_02 = fact(2);
+fact_03 = fact(3);
+fact_04 = fact(4);
+fact_05 = fact(5);
+fact_06 = fact(6);
+fact_07 = fact(7);
+fact_08 = fact(8);
+fact_09 = fact(9);
+fact_10 = fact(10);
+fact_11 = fact(11);
+fact_12 = fact(12);
+fact_13 = fact(13);
+fact_14 = fact(14);
+fact_15 = fact(15);
+fact_16 = fact(16);
+fact_17 = fact(17);
+fact_18 = fact(18);
+fact_19 = fact(19);
+system Channel00, Channel01, Channel02, Channel03, Channel04, Channel05, Channel06, Channel07, Channel08, Channel09, Channel10, Channel11, Channel12, Channel13, Channel14, Channel15, Channel16, Channel17, Channel18, Channel19, fact_00, fact_01, fact_02, fact_03, fact_04, fact_05, fact_06, fact_07, fact_08, fact_09, fact_10, fact_11, fact_12, fact_13, fact_14, fact_15, fact_16, fact_17, fact_18, fact_19, main;
+

@@ -1,0 +1,194 @@
+// Place global declarations here.
+int fid_var782_stage = 461;
+int fid_var785_main = 460;
+int stage_count = 0;
+chan async_stage[3];
+chan sync_stage[3];
+int arg_cid_var783_left[3];
+int arg_cid_var784_right[3];
+
+int chan_count = 0;
+int chan_counter[4];
+int chan_buffer[4];
+chan sender_trigger[4];
+chan sender_confirm[4];
+chan receiver_trigger[4];
+chan receiver_confirm[4];
+chan close[4];
+
+int make_stage() {
+	int pid = stage_count;
+	stage_count++;
+	return pid;
+}
+
+int make_chan(int buffer) {
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}
+
+
+
+process Channel(int[0, 3] i) {
+// Place local declarations here.
+
+
+state
+    new_sender,
+    new_receiver,
+    confirming_b,
+    closing,
+    closed,
+    confirming_closed,
+    bad,
+    idle,
+    confirming_a;
+commit
+    new_sender,
+    new_receiver,
+    confirming_b,
+    closing,
+    confirming_closed,
+    confirming_a;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_trigger[i]?; },
+    new_sender -> idle { guard chan_counter[i] > 
+chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_confirm[i]!; },
+    idle -> new_receiver { sync receiver_trigger[i]?; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_confirm[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < 
+chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
+    closing -> closed { guard chan_counter[i] >= 0; },
+    idle -> bad { guard chan_counter[i] > 
+chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_trigger[i]?; },
+    confirming_closed -> closed { sync receiver_confirm[i]!; },
+    closed -> bad { sync sender_trigger[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+process main() {
+// Place local declarations here.
+int pid = 0;
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var786_start = -1;
+int cid_var787_left = -1;
+int cid_var788_right = -1;
+int cid_var789_sink = -1;
+
+int i0 = 0;
+
+
+state
+    exit_loop_cond_0,
+    sending_start_0,
+    received_sink_0,
+    receiving_sink_0,
+    made_start_0,
+    assigned_cid_var787_left_0,
+    exit_loop_body_0,
+    exit_loop_0,
+    started_stage_0,
+    enter_loop_body_0,
+    assigned_cid_var787_left_1,
+    assigned_cid_var789_sink_0,
+    starting,
+    started,
+    ending,
+    ended,
+    assigned_cid_var788_right_0,
+    enter_loop_cond_0,
+    made_right_0,
+    created_stage_0,
+    sent_start_0;
+init
+    starting;
+trans
+    started -> made_start_0 { assign cid_var786_start = make_chan(0); },
+    made_start_0 -> assigned_cid_var787_left_0 { assign cid_var787_left = cid_var786_start; },
+    assigned_cid_var787_left_0 -> assigned_cid_var788_right_0 { assign cid_var788_right = cid_var787_left; },
+    enter_loop_cond_0 -> exit_loop_cond_0 { },
+    enter_loop_body_0 -> made_right_0 { assign cid_var788_right = make_chan(0); },
+    made_right_0 -> created_stage_0 { assign p = make_stage(), arg_cid_var783_left[p] = cid_var787_left, arg_cid_var784_right[p] = cid_var788_right; },
+    created_stage_0 -> started_stage_0 { sync async_stage[p]!; },
+    started_stage_0 -> assigned_cid_var787_left_1 { assign cid_var787_left = cid_var788_right; },
+    assigned_cid_var787_left_1 -> exit_loop_body_0 { },
+    assigned_cid_var788_right_0 -> enter_loop_cond_0 { assign i0 = 0; },
+    exit_loop_cond_0 -> enter_loop_body_0 { guard i0 < 3; },
+    exit_loop_cond_0 -> exit_loop_0 { guard i0 >= 3; },
+    exit_loop_body_0 -> enter_loop_cond_0 { assign i0++; },
+    exit_loop_0 -> assigned_cid_var789_sink_0 { assign cid_var789_sink = cid_var787_left; },
+    assigned_cid_var789_sink_0 -> sending_start_0 { sync sender_trigger[cid_var786_start]!; assign chan_counter[cid_var786_start]++; },
+    sending_start_0 -> sent_start_0 { sync sender_confirm[cid_var786_start]?; },
+    sent_start_0 -> receiving_sink_0 { sync receiver_trigger[cid_var789_sink]!; assign chan_counter[cid_var789_sink]--; },
+    receiving_sink_0 -> received_sink_0 { sync receiver_confirm[cid_var789_sink]?; },
+    received_sink_0 -> ending { },
+    starting -> started { },
+    ending -> ended { };
+}
+
+process stage(int[0, 2] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var783_left = -1;
+int cid_var784_right = -1;
+
+void initialize() {
+    cid_var783_left = arg_cid_var783_left[pid];
+    cid_var784_right = arg_cid_var784_right[pid];
+}
+
+
+
+state
+    ending,
+    ended,
+    receiving_left_0,
+    received_left_0,
+    sending_right_0,
+    sent_right_0,
+    starting,
+    started;
+init
+    starting;
+trans
+    started -> receiving_left_0 { sync receiver_trigger[cid_var783_left]!; assign chan_counter[cid_var783_left]--; },
+    receiving_left_0 -> received_left_0 { sync receiver_confirm[cid_var783_left]?; },
+    received_left_0 -> sending_right_0 { sync sender_trigger[cid_var784_right]!; assign chan_counter[cid_var784_right]++; },
+    sending_right_0 -> sent_right_0 { sync sender_confirm[cid_var784_right]?; },
+    sent_right_0 -> ending { },
+    starting -> started { sync async_stage[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_stage[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_stage[pid]!; };
+}
+
+Channel0 = Channel(0);
+Channel1 = Channel(1);
+Channel2 = Channel(2);
+Channel3 = Channel(3);
+stage_0 = stage(0);
+stage_1 = stage(1);
+stage_2 = stage(2);
+system Channel0, Channel1, Channel2, Channel3, main, stage_0, stage_1, stage_2;
+

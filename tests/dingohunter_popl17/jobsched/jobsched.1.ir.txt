@@ -1,0 +1,108 @@
+prog{
+  scope{
+    var fid_var567_worker Func = 302
+    var fid_var570_morejob Func = 303
+    var fid_var571_producer Func = 304
+    var fid_var574_main Func = 301
+  }
+  funcs{
+    func{
+      index: 302
+      name: worker
+      args: cid_var569_done, cid_var568_jobQueue
+      results: 
+      scope{
+        var cid_var568_jobQueue Chan = -1
+        var cid_var569_done Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var568_jobQueue {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var569_done {
+                  scope{
+                  }
+                  stmts{
+                    return
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 303
+      name: morejob
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        return
+      }
+    }
+    func{
+      index: 304
+      name: producer
+      args: cid_var572_q, cid_var573_done
+      results: 
+      scope{
+        var cid_var572_q Chan = -1
+        var cid_var573_done Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+              call 303()
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var572_q
+            }
+          }
+        }
+        close cid_var573_done
+      }
+    }
+    func{
+      index: 301
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var575_jobQueue Chan = -1
+        var cid_var576_done Chan = -1
+      }
+      stmts{
+        cid_var575_jobQueue <- make(chan, 0)
+        cid_var576_done <- make(chan, 0)
+        go 302(1: var cid_var575_jobQueue Chan = -1, 2: var cid_var576_done Chan = -1)
+        go 302(1: var cid_var575_jobQueue Chan = -1, 2: var cid_var576_done Chan = -1)
+        call 304(0: var cid_var575_jobQueue Chan = -1, 1: var cid_var576_done Chan = -1)
+      }
+    }
+  }
+}

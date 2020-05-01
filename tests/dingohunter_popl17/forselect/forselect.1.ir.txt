@@ -1,0 +1,115 @@
+prog{
+  scope{
+    var fid_var555_sel1 Func = 299
+    var fid_var559_sel2 Func = 300
+    var fid_var563_main Func = 298
+  }
+  funcs{
+    func{
+      index: 299
+      name: sel1
+      args: cid_var557_ch2, cid_var558_done, cid_var556_ch1
+      results: 
+      scope{
+        var cid_var556_ch1 Chan = -1
+        var cid_var557_ch2 Chan = -1
+        var cid_var558_done Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var556_ch1 {
+                  scope{
+                  }
+                  stmts{
+                    send cid_var558_done
+                    return
+                  }
+                }
+                case send cid_var557_ch2 {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 300
+      name: sel2
+      args: cid_var560_ch1, cid_var561_ch2, cid_var562_done
+      results: 
+      scope{
+        var cid_var560_ch1 Chan = -1
+        var cid_var561_ch2 Chan = -1
+        var cid_var562_done Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var561_ch2 {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case send cid_var560_ch1 {
+                  scope{
+                  }
+                  stmts{
+                    send cid_var562_done
+                    return
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 298
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var564_done Chan = -1
+        var cid_var565_a Chan = -1
+        var cid_var566_b Chan = -1
+      }
+      stmts{
+        cid_var564_done <- make(chan, 0)
+        cid_var565_a <- make(chan, 0)
+        cid_var566_b <- make(chan, 0)
+        go 299(2: var cid_var564_done Chan = -1, 0: var cid_var565_a Chan = -1, 1: var cid_var566_b Chan = -1)
+        go 300(1: var cid_var566_b Chan = -1, 2: var cid_var564_done Chan = -1, 0: var cid_var565_a Chan = -1)
+        receive cid_var564_done
+        receive cid_var564_done
+      }
+    }
+  }
+}

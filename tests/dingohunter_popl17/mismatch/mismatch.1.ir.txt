@@ -1,0 +1,84 @@
+prog{
+  scope{
+    var fid_var577_Work Func = 306
+    var fid_var578_Send Func = 307
+    var fid_var580_Recv Func = 308
+    var fid_var583_main Func = 305
+  }
+  funcs{
+    func{
+      index: 306
+      name: Work
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 307
+      name: Send
+      args: cid_var579_ch
+      results: 
+      scope{
+        var cid_var579_ch Chan = -1
+      }
+      stmts{
+        send cid_var579_ch
+      }
+    }
+    func{
+      index: 308
+      name: Recv
+      args: cid_var581_ch, cid_var582_done
+      results: 
+      scope{
+        var cid_var581_ch Chan = -1
+        var cid_var582_done Chan = -1
+      }
+      stmts{
+        receive cid_var581_ch
+        send cid_var582_done
+      }
+    }
+    func{
+      index: 305
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var586 Chan = -1
+        var cid_var587 Chan = -1
+        var cid_var584_ch Chan = -1
+        var cid_var585_done Chan = -1
+      }
+      stmts{
+        cid_var586 <- make(chan, 0)
+        cid_var584_ch <- cid_var586
+        cid_var587 <- make(chan, 0)
+        cid_var585_done <- cid_var587
+        go 307(0: var cid_var584_ch Chan = -1)
+        go 308(0: var cid_var584_ch Chan = -1, 1: var cid_var585_done Chan = -1)
+        go 308(1: var cid_var585_done Chan = -1, 0: var cid_var584_ch Chan = -1)
+        go 306()
+        receive cid_var585_done
+        receive cid_var585_done
+      }
+    }
+  }
+}

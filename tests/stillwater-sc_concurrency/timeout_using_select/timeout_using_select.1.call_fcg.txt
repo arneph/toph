@@ -1,0 +1,4 @@
+main (3) -> timed_process, time_after
+timed_process (1) -> 
+time_after (2) -> 
+

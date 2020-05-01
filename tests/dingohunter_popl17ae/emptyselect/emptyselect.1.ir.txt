@@ -1,0 +1,47 @@
+prog{
+  scope{
+    var fid_var598_s Func = 314
+    var fid_var600_main Func = 313
+  }
+  funcs{
+    func{
+      index: 314
+      name: s
+      args: cid_var599_ch
+      results: 
+      scope{
+        var cid_var599_ch Chan = -1
+      }
+      stmts{
+        send cid_var599_ch
+      }
+    }
+    func{
+      index: 313
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var601_ch Chan = -1
+      }
+      stmts{
+        cid_var601_ch <- make(chan, 2)
+        select{
+          case receive cid_var601_ch {
+            scope{
+            }
+            stmts{
+            }
+          }
+        default {
+          scope{
+          }
+          stmts{
+          }
+        }
+        }
+        call 314(0: var cid_var601_ch Chan = -1)
+      }
+    }
+  }
+}

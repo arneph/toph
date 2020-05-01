@@ -1,0 +1,7 @@
+main (5) -> fakeSearch, SequentialSearch, ReplicaSearch
+ConcurrentSearchWithCutOff (6) -> time_after
+time_after (2) -> 
+ReplicaSearch (3) -> time_after
+fakeSearch (4) -> 
+SequentialSearch (1) -> 
+

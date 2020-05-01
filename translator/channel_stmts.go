@@ -89,6 +89,10 @@ func (t *translator) translateChanCommStmt(stmt *ir.ChanOpStmt, ctx *context) {
 	confirm.SetSyncLocation(
 		pending.Location().Add(uppaal.Location{4, 60}))
 
+	ctx.proc.AddQuery(uppaal.MakeQuery(
+		"A[] not (deadlock and $."+pending.Name()+")",
+		"check deadlock with pending channel operation unreachable"))
+
 	ctx.currentState = confirmed
 	ctx.addLocation(pending.Location())
 	ctx.addLocation(confirmed.Location())
@@ -164,6 +168,10 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		pass2 := ctx.proc.AddState("select_pass_2_", uppaal.Renaming)
 		pass2.SetLocationAndResetNameLocation(
 			ctx.currentState.Location().Add(uppaal.Location{0, 272}))
+
+		ctx.proc.AddQuery(uppaal.MakeQuery(
+			"A[] not (deadlock and $."+pass2.Name()+")",
+			"check deadlock with blocked select statement unreachable"))
 
 		if len(stmt.Cases()) > 0 {
 			caseXs[0] = ctx.currentState.Location()[0] + 136

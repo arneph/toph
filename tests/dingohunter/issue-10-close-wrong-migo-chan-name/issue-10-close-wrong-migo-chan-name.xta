@@ -1,0 +1,101 @@
+// Place global declarations here.
+int fid_var194_main = 85;
+int chan_count = 0;
+int chan_counter[1];
+int chan_buffer[1];
+chan sender_trigger[1];
+chan sender_confirm[1];
+chan receiver_trigger[1];
+chan receiver_confirm[1];
+chan close[1];
+
+int make_chan(int buffer) {
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}
+
+
+
+process Channel(int[0, 0] i) {
+// Place local declarations here.
+
+
+state
+    new_sender,
+    new_receiver,
+    closed,
+    idle,
+    confirming_b,
+    closing,
+    confirming_closed,
+    bad,
+    confirming_a;
+commit
+    confirming_a,
+    confirming_b,
+    closing,
+    confirming_closed,
+    new_sender,
+    new_receiver;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_trigger[i]?; },
+    new_sender -> idle { guard chan_counter[i] > 
+chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_confirm[i]!; },
+    idle -> new_receiver { sync receiver_trigger[i]?; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_confirm[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < 
+chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
+    closing -> closed { guard chan_counter[i] >= 0; },
+    idle -> bad { guard chan_counter[i] > 
+chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_trigger[i]?; },
+    confirming_closed -> closed { sync receiver_confirm[i]!; },
+    closed -> bad { sync sender_trigger[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+process main() {
+// Place local declarations here.
+int pid = 0;
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var195_x = -1;
+
+
+
+state
+    ending,
+    ended,
+    made_x_0,
+    closed_x_0,
+    starting,
+    started;
+init
+    starting;
+trans
+    started -> made_x_0 { assign cid_var195_x = make_chan(0); },
+    made_x_0 -> closed_x_0 { sync close[cid_var195_x]!; },
+    closed_x_0 -> ending { },
+    starting -> started { },
+    ending -> ended { };
+}
+
+Channel0 = Channel(0);
+system Channel0, main;
+

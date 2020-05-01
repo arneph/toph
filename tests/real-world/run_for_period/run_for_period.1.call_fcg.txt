@@ -1,3 +1,0 @@
-main (2) -> continuous_process
-continuous_process (1) -> 
-

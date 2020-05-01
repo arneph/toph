@@ -1,0 +1,41 @@
+prog{
+  scope{
+    var fid_var621_f Func = 323
+    var fid_var622_g Func = 324
+    var fid_var623_main Func = 322
+  }
+  funcs{
+    func{
+      index: 323
+      name: f
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+      }
+    }
+    func{
+      index: 324
+      name: g
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+      }
+    }
+    func{
+      index: 322
+      name: main
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        go 323()
+        go 324()
+      }
+    }
+  }
+}

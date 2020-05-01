@@ -1,33 +1,32 @@
 prog{
   scope{
-    var fid_var399_main Func = 216
+    var fid_var715_main Func = 392
   }
   funcs{
     func{
-      index: 216
+      index: 392
+      name: main
       args: 
-      captures: 
       results: 
       scope{
-        var cid_var400_chA Chan = -1
-        var cid_var401_chB Chan = -1
+        var cid_var716_chA Chan = -1
+        var cid_var717_chB Chan = -1
       }
       stmts{
-        cid_var400_chA <- make(chan, 0)
-        cid_var401_chB <- make(chan, 0)
-        close cid_var401_chB
-        go 217() ['chA' <- &(cid_var400_chA), 'chB' <- &(cid_var401_chB)]
-        go 218() ['chA' <- &(cid_var400_chA), 'chB' <- &(cid_var401_chB)]
+        cid_var716_chA <- make(chan, 0)
+        cid_var717_chB <- make(chan, 0)
+        close cid_var717_chB
+        go 393()
+        go 394()
       }
     }
     func{
-      index: 217
+      index: 393
+      name: main_func393
       args: 
-      captures: cid_var402_chA <- *'chA', cid_var403_chB <- *'chB'
       results: 
+      enclosing func index: 392
       scope{
-        var cid_var402_chA Chan = -1
-        var cid_var403_chB Chan = -1
       }
       stmts{
         for{
@@ -42,13 +41,13 @@ prog{
             }
             stmts{
               select{
-                case send cid_var402_chA {
+                case send cid_var716_chA {
                   scope{
                   }
                   stmts{
                   }
                 }
-                case receive cid_var403_chB {
+                case receive cid_var717_chB {
                   scope{
                   }
                   stmts{
@@ -61,13 +60,12 @@ prog{
       }
     }
     func{
-      index: 218
+      index: 394
+      name: main_func394
       args: 
-      captures: cid_var404_chA <- *'chA', cid_var405_chB <- *'chB'
       results: 
+      enclosing func index: 392
       scope{
-        var cid_var404_chA Chan = -1
-        var cid_var405_chB Chan = -1
       }
       stmts{
         for{
@@ -82,13 +80,13 @@ prog{
             }
             stmts{
               select{
-                case receive cid_var404_chA {
+                case receive cid_var716_chA {
                   scope{
                   }
                   stmts{
                   }
                 }
-                case receive cid_var405_chB {
+                case receive cid_var717_chB {
                   scope{
                   }
                   stmts{

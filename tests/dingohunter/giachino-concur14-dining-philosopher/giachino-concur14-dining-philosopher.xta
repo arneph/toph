@@ -1,0 +1,317 @@
+// Place global declarations here.
+int fid_var154_Fork = 71;
+int fid_var156_phil = 72;
+int fid_var159_main = 70;
+int Fork_count = 0;
+chan async_Fork[3];
+chan sync_Fork[3];
+int arg_cid_var155_fork[3];
+
+int phil_count = 0;
+chan async_phil[3];
+chan sync_phil[3];
+int arg_cid_var157_fork1[3];
+int arg_cid_var158_fork2[3];
+
+int chan_count = 0;
+int chan_counter[3];
+int chan_buffer[3];
+chan sender_trigger[3];
+chan sender_confirm[3];
+chan receiver_trigger[3];
+chan receiver_confirm[3];
+chan close[3];
+
+int make_Fork() {
+	int pid = Fork_count;
+	Fork_count++;
+	return pid;
+}
+
+int make_phil() {
+	int pid = phil_count;
+	phil_count++;
+	return pid;
+}
+
+int make_chan(int buffer) {
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}
+
+
+
+process Channel(int[0, 2] i) {
+// Place local declarations here.
+
+
+state
+    new_receiver,
+    confirming_b,
+    closing,
+    confirming_closed,
+    bad,
+    idle,
+    new_sender,
+    confirming_a,
+    closed;
+commit
+    confirming_closed,
+    new_sender,
+    new_receiver,
+    confirming_b,
+    closing,
+    confirming_a;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_trigger[i]?; },
+    new_sender -> idle { guard chan_counter[i] > 
+chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_confirm[i]!; },
+    idle -> new_receiver { sync receiver_trigger[i]?; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_confirm[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < 
+chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
+    closing -> closed { guard chan_counter[i] >= 0; },
+    idle -> bad { guard chan_counter[i] > 
+chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_trigger[i]?; },
+    confirming_closed -> closed { sync receiver_confirm[i]!; },
+    closed -> bad { sync sender_trigger[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+process Fork(int[0, 2] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var155_fork = -1;
+
+void initialize() {
+    cid_var155_fork = arg_cid_var155_fork[pid];
+}
+
+
+
+state
+    received_fork_0,
+    started,
+    sending_fork_0,
+    sent_fork_0,
+    receiving_fork_0,
+    exit_loop_cond_0,
+    enter_loop_body_0,
+    exit_loop_body_0,
+    exit_loop_0,
+    starting,
+    ending,
+    ended,
+    enter_loop_cond_0;
+init
+    starting;
+trans
+    enter_loop_cond_0 -> exit_loop_cond_0 { },
+    enter_loop_body_0 -> sending_fork_0 { sync sender_trigger[cid_var155_fork]!; assign chan_counter[cid_var155_fork]++; },
+    sending_fork_0 -> sent_fork_0 { sync sender_confirm[cid_var155_fork]?; },
+    sent_fork_0 -> receiving_fork_0 { sync receiver_trigger[cid_var155_fork]!; assign chan_counter[cid_var155_fork]--; },
+    receiving_fork_0 -> received_fork_0 { sync receiver_confirm[cid_var155_fork]?; },
+    received_fork_0 -> exit_loop_body_0 { },
+    started -> enter_loop_cond_0 { },
+    exit_loop_cond_0 -> enter_loop_body_0 { },
+    exit_loop_body_0 -> enter_loop_cond_0 { },
+    exit_loop_0 -> ending { },
+    starting -> started { sync async_Fork[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_Fork[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_Fork[pid]!; };
+}
+
+process main() {
+// Place local declarations here.
+int pid = 0;
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var160_fork1 = -1;
+int cid_var161_fork2 = -1;
+int cid_var162_fork3 = -1;
+
+
+
+state
+    started_phil_1,
+    started,
+    created_Fork_2,
+    started_phil_0,
+    created_phil_1,
+    created_phil_0,
+    started_phil_2,
+    ending,
+    ended,
+    started_Fork_0,
+    started_Fork_1,
+    created_Fork_1,
+    started_Fork_2,
+    starting,
+    made_fork1_0,
+    made_fork2_0,
+    made_fork3_0,
+    created_Fork_0,
+    created_phil_2;
+init
+    starting;
+trans
+    started -> made_fork1_0 { assign cid_var160_fork1 = make_chan(0); },
+    made_fork1_0 -> made_fork2_0 { assign cid_var161_fork2 = make_chan(0); },
+    made_fork2_0 -> made_fork3_0 { assign cid_var162_fork3 = make_chan(0); },
+    made_fork3_0 -> created_Fork_0 { assign p = make_Fork(), arg_cid_var155_fork[p] = cid_var160_fork1; },
+    created_Fork_0 -> started_Fork_0 { sync async_Fork[p]!; },
+    started_Fork_0 -> created_Fork_1 { assign p = make_Fork(), arg_cid_var155_fork[p] = cid_var161_fork2; },
+    created_Fork_1 -> started_Fork_1 { sync async_Fork[p]!; },
+    started_Fork_1 -> created_Fork_2 { assign p = make_Fork(), arg_cid_var155_fork[p] = cid_var162_fork3; },
+    created_Fork_2 -> started_Fork_2 { sync async_Fork[p]!; },
+    started_Fork_2 -> created_phil_0 { assign p = make_phil(), arg_cid_var157_fork1[p] = cid_var160_fork1, arg_cid_var158_fork2[p] = cid_var161_fork2; },
+    created_phil_0 -> started_phil_0 { sync async_phil[p]!; },
+    started_phil_0 -> created_phil_1 { assign p = make_phil(), arg_cid_var157_fork1[p] = cid_var161_fork2, arg_cid_var158_fork2[p] = cid_var162_fork3; },
+    created_phil_1 -> started_phil_1 { sync async_phil[p]!; },
+    started_phil_1 -> created_phil_2 { assign p = make_phil(), arg_cid_var157_fork1[p] = cid_var162_fork3, arg_cid_var158_fork2[p] = cid_var160_fork1; },
+    created_phil_2 -> started_phil_2 { sync async_phil[p]!; },
+    started_phil_2 -> ending { },
+    starting -> started { },
+    ending -> ended { };
+}
+
+process phil(int[0, 2] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var157_fork1 = -1;
+int cid_var158_fork2 = -1;
+
+void initialize() {
+    cid_var157_fork1 = arg_cid_var157_fork1[pid];
+    cid_var158_fork2 = arg_cid_var158_fork2[pid];
+}
+
+
+
+state
+    sent_fork2_0,
+    ended,
+    enter_loop_cond_0,
+    select_pass_2_0,
+    sent_fork1_1,
+    sent_fork2_2,
+    sent_fork1_2,
+    select_default_enter_0,
+    sending_fork1_1,
+    sending_fork2_0,
+    sent_fork2_1,
+    exit_loop_0,
+    select_case_1_enter_0,
+    select_case_1_trigger_1,
+    sending_fork1_2,
+    select_pass_1_2,
+    starting,
+    select_end_2,
+    select_default_enter_1,
+    sending_fork2_2,
+    select_case_1_trigger_2,
+    select_case_2_trigger_0,
+    started,
+    select_end_1,
+    select_case_1_enter_2,
+    select_pass_1_1,
+    select_case_2_enter_0,
+    sending_fork2_1,
+    exit_loop_body_0,
+    sending_fork1_0,
+    sent_fork1_0,
+    select_pass_1_0,
+    exit_loop_cond_0,
+    select_case_1_enter_1,
+    ending,
+    enter_loop_body_0,
+    select_end_0,
+    select_case_1_trigger_0;
+commit
+    select_pass_1_2,
+    select_pass_1_1,
+    select_pass_1_0;
+init
+    starting;
+trans
+    enter_loop_cond_0 -> exit_loop_cond_0 { },
+    select_default_enter_0 -> sending_fork1_0 { sync sender_trigger[cid_var157_fork1]!; assign chan_counter[cid_var157_fork1]++; },
+    sending_fork1_0 -> sent_fork1_0 { sync sender_confirm[cid_var157_fork1]?; },
+    sent_fork1_0 -> select_end_1 { },
+    select_case_1_enter_1 -> sending_fork1_1 { sync sender_trigger[cid_var157_fork1]!; assign chan_counter[cid_var157_fork1]++; },
+    sending_fork1_1 -> sent_fork1_1 { sync sender_confirm[cid_var157_fork1]?; },
+    sent_fork1_1 -> sending_fork2_0 { sync sender_trigger[cid_var158_fork2]!; assign chan_counter[cid_var158_fork2]++; },
+    sending_fork2_0 -> sent_fork2_0 { sync sender_confirm[cid_var158_fork2]?; },
+    sent_fork2_0 -> select_end_1 { },
+    select_case_1_enter_0 -> select_pass_1_0 { assign chan_counter[cid_var158_fork2]--; },
+    select_pass_1_0 -> select_case_1_trigger_0 { guard chan_buffer[cid_var158_fork2] < 0 || chan_counter[cid_var158_fork2] >= 0; sync receiver_trigger[cid_var158_fork2]!; },
+    select_case_1_trigger_0 -> select_case_1_enter_1 { sync receiver_confirm[cid_var158_fork2]?; },
+    select_pass_1_0 -> select_default_enter_0 { guard !(chan_buffer[cid_var158_fork2] < 0 || chan_counter[cid_var158_fork2] >= 0); assign chan_counter[cid_var158_fork2]++; },
+    select_end_1 -> select_end_0 { },
+    select_default_enter_1 -> sending_fork2_1 { sync sender_trigger[cid_var158_fork2]!; assign chan_counter[cid_var158_fork2]++; },
+    sending_fork2_1 -> sent_fork2_1 { sync sender_confirm[cid_var158_fork2]?; },
+    sent_fork2_1 -> select_end_2 { },
+    select_case_1_enter_2 -> sending_fork2_2 { sync sender_trigger[cid_var158_fork2]!; assign chan_counter[cid_var158_fork2]++; },
+    sending_fork2_2 -> sent_fork2_2 { sync sender_confirm[cid_var158_fork2]?; },
+    sent_fork2_2 -> sending_fork1_2 { sync sender_trigger[cid_var157_fork1]!; assign chan_counter[cid_var157_fork1]++; },
+    sending_fork1_2 -> sent_fork1_2 { sync sender_confirm[cid_var157_fork1]?; },
+    sent_fork1_2 -> select_end_2 { },
+    select_case_2_enter_0 -> select_pass_1_1 { assign chan_counter[cid_var157_fork1]--; },
+    select_pass_1_1 -> select_case_1_trigger_1 { guard chan_buffer[cid_var157_fork1] < 0 || chan_counter[cid_var157_fork1] >= 0; sync receiver_trigger[cid_var157_fork1]!; },
+    select_case_1_trigger_1 -> select_case_1_enter_2 { sync receiver_confirm[cid_var157_fork1]?; },
+    select_pass_1_1 -> select_default_enter_1 { guard !(chan_buffer[cid_var157_fork1] < 0 || chan_counter[cid_var157_fork1] >= 0); assign chan_counter[cid_var157_fork1]++; },
+    select_end_2 -> select_end_0 { },
+    enter_loop_body_0 -> select_pass_1_2 { assign chan_counter[cid_var157_fork1]--, chan_counter[cid_var158_fork2]--; },
+    select_pass_1_2 -> select_case_1_trigger_2 { guard chan_buffer[cid_var157_fork1] < 0 || chan_counter[cid_var157_fork1] >= 0; sync receiver_trigger[cid_var157_fork1]!; },
+    select_case_1_trigger_2 -> select_case_1_enter_0 { sync receiver_confirm[cid_var157_fork1]?; assign chan_counter[cid_var158_fork2]++; },
+    select_pass_1_2 -> select_case_2_trigger_0 { guard chan_buffer[cid_var158_fork2] < 0 || chan_counter[cid_var158_fork2] >= 0; sync receiver_trigger[cid_var158_fork2]!; },
+    select_case_2_trigger_0 -> select_case_2_enter_0 { sync receiver_confirm[cid_var158_fork2]?; assign chan_counter[cid_var157_fork1]++; },
+    select_pass_1_2 -> select_pass_2_0 { guard !(chan_buffer[cid_var157_fork1] < 0 || chan_counter[cid_var157_fork1] >= 0) && !(chan_buffer[cid_var158_fork2] < 0 || chan_counter[cid_var158_fork2] >= 0); },
+    select_pass_2_0 -> select_case_1_enter_0 { sync receiver_confirm[cid_var157_fork1]?; assign chan_counter[cid_var158_fork2]++; },
+    select_pass_2_0 -> select_case_2_enter_0 { sync receiver_confirm[cid_var158_fork2]?; assign chan_counter[cid_var157_fork1]++; },
+    select_end_0 -> exit_loop_body_0 { },
+    started -> enter_loop_cond_0 { },
+    exit_loop_cond_0 -> enter_loop_body_0 { },
+    exit_loop_body_0 -> enter_loop_cond_0 { },
+    exit_loop_0 -> ending { },
+    starting -> started { sync async_phil[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_phil[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_phil[pid]!; };
+}
+
+Channel0 = Channel(0);
+Channel1 = Channel(1);
+Channel2 = Channel(2);
+Fork_0 = Fork(0);
+Fork_1 = Fork(1);
+Fork_2 = Fork(2);
+phil_0 = phil(0);
+phil_1 = phil(1);
+phil_2 = phil(2);
+system Channel0, Channel1, Channel2, Fork_0, Fork_1, Fork_2, main, phil_0, phil_1, phil_2;
+

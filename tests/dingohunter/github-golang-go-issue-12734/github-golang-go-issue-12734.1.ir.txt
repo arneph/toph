@@ -1,0 +1,87 @@
+prog{
+  scope{
+    var fid_var172_useless Func = 76
+    var fid_var173_test_a Func = 77
+    var fid_var175_test Func = 78
+    var fid_var176_main Func = 75
+  }
+  funcs{
+    func{
+      index: 76
+      name: useless
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        return
+      }
+    }
+    func{
+      index: 77
+      name: test_a
+      args: cid_var174_test_channel
+      results: 
+      scope{
+        var cid_var174_test_channel Chan = -1
+      }
+      stmts{
+        send cid_var174_test_channel
+        return
+      }
+    }
+    func{
+      index: 78
+      name: test
+      args: 
+      results: 
+      scope{
+        var cid_var177_test_channel Chan = -1
+      }
+      stmts{
+        cid_var177_test_channel <- make(chan, 0)
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              go 77(0: var cid_var177_test_channel Chan = -1)
+            }
+          }
+        }
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              receive cid_var177_test_channel
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 75
+      name: main
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        call 78()
+      }
+    }
+  }
+}

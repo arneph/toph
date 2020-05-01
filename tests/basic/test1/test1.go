@@ -35,6 +35,14 @@ func testC() {
 	close(ch)
 }
 
+func testD() {
+	ch := make(chan int, 5)
+	for i := 0; i < 5; i++ {
+		ch <- i
+	}
+	close(ch)
+}
+
 func main() {
 	var n, sum int
 	fmt.Scan(&n)

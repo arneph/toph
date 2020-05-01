@@ -1,0 +1,144 @@
+// Place global declarations here.
+int fid_var230_main = 100;
+int chan_count = 0;
+int chan_counter[20];
+int chan_buffer[20];
+chan sender_trigger[20];
+chan sender_confirm[20];
+chan receiver_trigger[20];
+chan receiver_confirm[20];
+chan close[20];
+
+int make_chan(int buffer) {
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}
+
+
+
+process Channel(int[0, 19] i) {
+// Place local declarations here.
+
+
+state
+    closing,
+    closed,
+    new_sender,
+    new_receiver,
+    confirming_b,
+    confirming_closed,
+    bad,
+    idle,
+    confirming_a;
+commit
+    confirming_a,
+    confirming_b,
+    confirming_closed,
+    new_sender,
+    new_receiver,
+    closing;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_trigger[i]?; },
+    new_sender -> idle { guard chan_counter[i] > 
+chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_confirm[i]!; },
+    idle -> new_receiver { sync receiver_trigger[i]?; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_confirm[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < 
+chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
+    closing -> closed { guard chan_counter[i] >= 0; },
+    idle -> bad { guard chan_counter[i] > 
+chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_trigger[i]?; },
+    confirming_closed -> closed { sync receiver_confirm[i]!; },
+    closed -> bad { sync sender_trigger[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+process main() {
+// Place local declarations here.
+int pid = 0;
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var231_x = -1;
+
+
+
+state
+    ended,
+    exit_loop_cond_0,
+    enter_loop_cond_1,
+    ending,
+    exit_loop_body_1,
+    enter_loop_body_1,
+    made_x_0,
+    receiving_x_0,
+    started,
+    enter_loop_cond_0,
+    exit_loop_body_0,
+    exit_loop_cond_1,
+    received_x_0,
+    starting,
+    enter_loop_body_0,
+    exit_loop_0,
+    exit_loop_1;
+init
+    starting;
+trans
+    enter_loop_cond_0 -> exit_loop_cond_0 { },
+    enter_loop_cond_1 -> exit_loop_cond_1 { },
+    enter_loop_body_1 -> made_x_0 { assign cid_var231_x = make_chan(0); },
+    made_x_0 -> receiving_x_0 { sync receiver_trigger[cid_var231_x]!; assign chan_counter[cid_var231_x]--; },
+    receiving_x_0 -> received_x_0 { sync receiver_confirm[cid_var231_x]?; },
+    received_x_0 -> exit_loop_body_1 { },
+    enter_loop_body_0 -> enter_loop_cond_1 { },
+    exit_loop_cond_1 -> enter_loop_body_1 { },
+    exit_loop_cond_1 -> exit_loop_1 { },
+    exit_loop_body_1 -> enter_loop_cond_1 { },
+    exit_loop_1 -> exit_loop_body_0 { },
+    started -> enter_loop_cond_0 { },
+    exit_loop_cond_0 -> enter_loop_body_0 { },
+    exit_loop_cond_0 -> exit_loop_0 { },
+    exit_loop_body_0 -> enter_loop_cond_0 { },
+    exit_loop_0 -> ending { },
+    starting -> started { },
+    ending -> ended { };
+}
+
+Channel00 = Channel(0);
+Channel01 = Channel(1);
+Channel02 = Channel(2);
+Channel03 = Channel(3);
+Channel04 = Channel(4);
+Channel05 = Channel(5);
+Channel06 = Channel(6);
+Channel07 = Channel(7);
+Channel08 = Channel(8);
+Channel09 = Channel(9);
+Channel10 = Channel(10);
+Channel11 = Channel(11);
+Channel12 = Channel(12);
+Channel13 = Channel(13);
+Channel14 = Channel(14);
+Channel15 = Channel(15);
+Channel16 = Channel(16);
+Channel17 = Channel(17);
+Channel18 = Channel(18);
+Channel19 = Channel(19);
+system Channel00, Channel01, Channel02, Channel03, Channel04, Channel05, Channel06, Channel07, Channel08, Channel09, Channel10, Channel11, Channel12, Channel13, Channel14, Channel15, Channel16, Channel17, Channel18, Channel19, main;
+

@@ -1,0 +1,29 @@
+prog{
+  scope{
+    var fid_var250_x Func = 112
+    var fid_var251_main Func = 113
+  }
+  funcs{
+    func{
+      index: 112
+      name: x
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+      }
+    }
+    func{
+      index: 113
+      name: main
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        call 112()
+      }
+    }
+  }
+}

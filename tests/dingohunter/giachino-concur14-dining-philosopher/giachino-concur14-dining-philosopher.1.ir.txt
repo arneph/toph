@@ -1,0 +1,132 @@
+prog{
+  scope{
+    var fid_var154_Fork Func = 71
+    var fid_var156_phil Func = 72
+    var fid_var159_main Func = 70
+  }
+  funcs{
+    func{
+      index: 71
+      name: Fork
+      args: cid_var155_fork
+      results: 
+      scope{
+        var cid_var155_fork Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var155_fork
+              receive cid_var155_fork
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 72
+      name: phil
+      args: cid_var157_fork1, cid_var158_fork2
+      results: 
+      scope{
+        var cid_var157_fork1 Chan = -1
+        var cid_var158_fork2 Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var157_fork1 {
+                  scope{
+                  }
+                  stmts{
+                    select{
+                      case receive cid_var158_fork2 {
+                        scope{
+                        }
+                        stmts{
+                          send cid_var157_fork1
+                          send cid_var158_fork2
+                        }
+                      }
+                    default {
+                      scope{
+                      }
+                      stmts{
+                        send cid_var157_fork1
+                      }
+                    }
+                    }
+                  }
+                }
+                case receive cid_var158_fork2 {
+                  scope{
+                  }
+                  stmts{
+                    select{
+                      case receive cid_var157_fork1 {
+                        scope{
+                        }
+                        stmts{
+                          send cid_var158_fork2
+                          send cid_var157_fork1
+                        }
+                      }
+                    default {
+                      scope{
+                      }
+                      stmts{
+                        send cid_var158_fork2
+                      }
+                    }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 70
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var160_fork1 Chan = -1
+        var cid_var161_fork2 Chan = -1
+        var cid_var162_fork3 Chan = -1
+      }
+      stmts{
+        cid_var160_fork1 <- make(chan, 0)
+        cid_var161_fork2 <- make(chan, 0)
+        cid_var162_fork3 <- make(chan, 0)
+        go 71(0: var cid_var160_fork1 Chan = -1)
+        go 71(0: var cid_var161_fork2 Chan = -1)
+        go 71(0: var cid_var162_fork3 Chan = -1)
+        go 72(0: var cid_var160_fork1 Chan = -1, 1: var cid_var161_fork2 Chan = -1)
+        go 72(1: var cid_var162_fork3 Chan = -1, 0: var cid_var161_fork2 Chan = -1)
+        go 72(0: var cid_var162_fork3 Chan = -1, 1: var cid_var160_fork1 Chan = -1)
+      }
+    }
+  }
+}

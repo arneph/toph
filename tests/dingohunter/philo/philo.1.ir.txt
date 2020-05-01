@@ -1,0 +1,91 @@
+prog{
+  scope{
+    var fid_var275_philo Func = 126
+    var fid_var277_main Func = 125
+  }
+  funcs{
+    func{
+      index: 126
+      name: philo
+      args: cid_var276_forks
+      results: 
+      scope{
+        var cid_var276_forks Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              receive cid_var276_forks
+              receive cid_var276_forks
+              send cid_var276_forks
+              send cid_var276_forks
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 125
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var278_forks Chan = -1
+      }
+      stmts{
+        cid_var278_forks <- make(chan, 0)
+        go 127()
+        go 128()
+        go 129()
+        go 126(1: var cid_var278_forks Chan = -1)
+        go 126(1: var cid_var278_forks Chan = -1)
+        call 126(1: var cid_var278_forks Chan = -1)
+      }
+    }
+    func{
+      index: 127
+      name: main_func127
+      args: 
+      results: 
+      enclosing func index: 125
+      scope{
+      }
+      stmts{
+        send cid_var278_forks
+      }
+    }
+    func{
+      index: 128
+      name: main_func128
+      args: 
+      results: 
+      enclosing func index: 125
+      scope{
+      }
+      stmts{
+        send cid_var278_forks
+      }
+    }
+    func{
+      index: 129
+      name: main_func129
+      args: 
+      results: 
+      enclosing func index: 125
+      scope{
+      }
+      stmts{
+        send cid_var278_forks
+      }
+    }
+  }
+}

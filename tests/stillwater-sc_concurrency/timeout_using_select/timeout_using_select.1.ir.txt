@@ -1,0 +1,117 @@
+prog{
+  scope{
+    var fid_var827_timed_process Func = 489
+    var fid_var828_main Func = 488
+  }
+  funcs{
+    func{
+      index: 489
+      name: timed_process
+      args: 
+      results: Chan
+      scope{
+        var cid_var829_c Chan = -1
+      }
+      stmts{
+        cid_var829_c <- make(chan, 0)
+        go 490()
+        return 0: cid_var829_c
+      }
+    }
+    func{
+      index: 488
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var830_c Chan = -1
+      }
+      stmts{
+        , 0: var cid_var830_c Chan = -1 <- call 489()
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+              var cid_var832 Chan = -1
+            }
+            stmts{
+              , 0: var cid_var832 Chan = -1 <- call 491()
+              select{
+                case receive cid_var830_c {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var832 {
+                  scope{
+                  }
+                  stmts{
+                    return
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 490
+      name: timed_process_func490
+      args: 
+      results: 
+      enclosing func index: 489
+      scope{
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var829_c
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 491
+      name: time_after
+      args: 
+      results: Chan
+      scope{
+        var cid_var831_ch Chan = -1
+      }
+      stmts{
+        cid_var831_ch <- make(chan, 1)
+        go 492()
+        return 0: cid_var831_ch
+      }
+    }
+    func{
+      index: 492
+      name: time_after_func492
+      args: 
+      results: 
+      enclosing func index: 491
+      scope{
+      }
+      stmts{
+        send cid_var831_ch
+      }
+    }
+  }
+}

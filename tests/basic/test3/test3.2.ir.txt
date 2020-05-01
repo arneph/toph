@@ -1,9 +1,9 @@
 prog{
   scope{
     var fid_var31_producer Func = 18
-    var fid_var32_processor Func = 19
-    var fid_var33_consumer Func = 20
-    var fid_var34_main Func = 21
+    var fid_var33_processor Func = 19
+    var fid_var36_consumer Func = 20
+    var fid_var38_main Func = 21
   }
   funcs{
     func{
@@ -35,7 +35,7 @@ prog{
     }
     func{
       index: 23
-      args: cid_var42_in, cid_var43_out
+      args: cid_var43_out, cid_var42_in
       captures: 
       results: 
       scope{

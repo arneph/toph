@@ -1,0 +1,84 @@
+prog{
+  scope{
+    var fid_var208_Work Func = 93
+    var fid_var209_Send Func = 94
+    var fid_var211_Recv Func = 95
+    var fid_var214_main Func = 92
+  }
+  funcs{
+    func{
+      index: 93
+      name: Work
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 94
+      name: Send
+      args: cid_var210_ch
+      results: 
+      scope{
+        var cid_var210_ch Chan = -1
+      }
+      stmts{
+        send cid_var210_ch
+      }
+    }
+    func{
+      index: 95
+      name: Recv
+      args: cid_var212_ch, cid_var213_done
+      results: 
+      scope{
+        var cid_var212_ch Chan = -1
+        var cid_var213_done Chan = -1
+      }
+      stmts{
+        receive cid_var212_ch
+        send cid_var213_done
+      }
+    }
+    func{
+      index: 92
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var217 Chan = -1
+        var cid_var218 Chan = -1
+        var cid_var215_ch Chan = -1
+        var cid_var216_done Chan = -1
+      }
+      stmts{
+        cid_var217 <- make(chan, 0)
+        cid_var215_ch <- cid_var217
+        cid_var218 <- make(chan, 0)
+        cid_var216_done <- cid_var218
+        go 94(0: var cid_var215_ch Chan = -1)
+        go 95(0: var cid_var215_ch Chan = -1, 1: var cid_var216_done Chan = -1)
+        go 95(0: var cid_var215_ch Chan = -1, 1: var cid_var216_done Chan = -1)
+        go 93()
+        receive cid_var216_done
+        receive cid_var216_done
+      }
+    }
+  }
+}

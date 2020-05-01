@@ -1,12 +1,12 @@
 prog{
   scope{
     var fid_var47_test Func = 26
-    var fid_var48_main Func = 27
+    var fid_var50_main Func = 27
   }
   funcs{
     func{
       index: 28
-      args: cid_var52_a, cid_var53_b
+      args: cid_var53_b, cid_var52_a
       captures: 
       results: 
       scope{

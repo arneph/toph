@@ -1,0 +1,42 @@
+Options for the verification:
+  Generating no trace
+  Search order is depth first
+  Using conservative space optimisation
+  Seed is 1588268802
+  State space representation uses minimal constraint systems
+[2K
+Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-fanin/squaring-fanin.q:4
+[2K -- Formula is satisfied.
+[2K
+Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-fanin/squaring-fanin.q:8
+ -- Throughput: 341 states/sec, Load: 17 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-fanin/squaring-fanin.q:12
+ -- Throughput: 173 states/sec, Load: 17 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-fanin/squaring-fanin.q:16
+ -- Throughput: 113 states/sec, Load: 17 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 5 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-fanin/squaring-fanin.q:20
+ -- Throughput: 84 states/sec, Load: 17 states[K[2K -- Formula is NOT satisfied.
+[2K
+Verifying formula 6 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-fanin/squaring-fanin.q:24
+ -- Throughput: 75 states/sec, Load: 17 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 7 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-fanin/squaring-fanin.q:28
+ -- Throughput: 51 states/sec, Load: 17 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 8 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-fanin/squaring-fanin.q:32
+ -- Throughput: 40 states/sec, Load: 17 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 9 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-fanin/squaring-fanin.q:36
+ -- Throughput: 33 states/sec, Load: 17 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 10 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-fanin/squaring-fanin.q:40
+ -- Throughput: 28 states/sec, Load: 17 states[K[2K -- Formula is NOT satisfied.
+[2K
+Verifying formula 11 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-fanin/squaring-fanin.q:44
+ -- Throughput: 27 states/sec, Load: 17 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 12 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-fanin/squaring-fanin.q:48
+ -- Throughput: 23 states/sec, Load: 17 states[K[2K -- Formula is NOT satisfied.

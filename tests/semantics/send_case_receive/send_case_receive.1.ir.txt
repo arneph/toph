@@ -1,36 +1,36 @@
 prog{
   scope{
-    var fid_var436_main Func = 234
+    var fid_var724_main Func = 401
   }
   funcs{
     func{
-      index: 234
+      index: 401
+      name: main
       args: 
-      captures: 
       results: 
       scope{
-        var cid_var437_chA Chan = -1
-        var cid_var438_chB Chan = -1
+        var cid_var725_chA Chan = -1
+        var cid_var726_chB Chan = -1
       }
       stmts{
-        cid_var437_chA <- make(chan, 0)
-        cid_var438_chB <- make(chan, 0)
-        close cid_var438_chB
-        go 235() ['chA' <- &(cid_var437_chA)]
-        go 236() ['chA' <- &(cid_var437_chA)]
+        cid_var725_chA <- make(chan, 0)
+        cid_var726_chB <- make(chan, 0)
+        close cid_var726_chB
+        go 402()
+        go 403()
       }
     }
     func{
-      index: 235
+      index: 402
+      name: main_func402
       args: 
-      captures: cid_var439_chA <- *'chA'
       results: 
+      enclosing func index: 401
       scope{
-        var cid_var439_chA Chan = -1
       }
       stmts{
         select{
-          case send cid_var439_chA {
+          case send cid_var725_chA {
             scope{
             }
             stmts{
@@ -40,15 +40,15 @@ prog{
       }
     }
     func{
-      index: 236
+      index: 403
+      name: main_func403
       args: 
-      captures: cid_var440_chA <- *'chA'
       results: 
+      enclosing func index: 401
       scope{
-        var cid_var440_chA Chan = -1
       }
       stmts{
-        receive cid_var440_chA
+        receive cid_var725_chA
       }
     }
   }

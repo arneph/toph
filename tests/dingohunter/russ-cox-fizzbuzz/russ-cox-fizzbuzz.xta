@@ -1,0 +1,364 @@
+// Place global declarations here.
+int fid_var346_main = 195;
+int fid_var347_generate = 196;
+int fid_var348_filter = 197;
+int generate_count = 0;
+chan async_generate[1];
+chan sync_generate[1];
+int res_generate_0_Chan[1];
+
+int filter_count = 0;
+chan async_filter[2];
+chan sync_filter[2];
+int arg_cid_var349_c[2];
+int res_filter_0_Chan[2];
+
+int generate_func198_count = 0;
+chan async_generate_func198[1];
+chan sync_generate_func198[1];
+int par_pid_generate_func198[1];
+
+int filter_func199_count = 0;
+chan async_filter_func199[2];
+chan sync_filter_func199[2];
+int par_pid_filter_func199[2];
+
+int cid_var351_c[1];
+
+int cid_var349_c[2];
+int cid_var352_out[2];
+
+int chan_count = 0;
+int chan_counter[3];
+int chan_buffer[3];
+chan sender_trigger[3];
+chan sender_confirm[3];
+chan receiver_trigger[3];
+chan receiver_confirm[3];
+chan close[3];
+
+int make_generate() {
+	int pid = generate_count;
+	generate_count++;
+	return pid;
+}
+
+int make_filter() {
+	int pid = filter_count;
+	filter_count++;
+	return pid;
+}
+
+int make_generate_func198(int par_pid) {
+	int pid = generate_func198_count;
+	generate_func198_count++;
+	par_pid_generate_func198[pid] = par_pid;
+	return pid;
+}
+
+int make_filter_func199(int par_pid) {
+	int pid = filter_func199_count;
+	filter_func199_count++;
+	par_pid_filter_func199[pid] = par_pid;
+	return pid;
+}
+
+int make_chan(int buffer) {
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}
+
+
+
+process Channel(int[0, 2] i) {
+// Place local declarations here.
+
+
+state
+    confirming_closed,
+    bad,
+    confirming_b,
+    new_sender,
+    confirming_a,
+    new_receiver,
+    closing,
+    closed,
+    idle;
+commit
+    confirming_a,
+    new_receiver,
+    closing,
+    new_sender,
+    confirming_b,
+    confirming_closed;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_trigger[i]?; },
+    new_sender -> idle { guard chan_counter[i] > 
+chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_confirm[i]!; },
+    idle -> new_receiver { sync receiver_trigger[i]?; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_confirm[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < 
+chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
+    closing -> closed { guard chan_counter[i] >= 0; },
+    idle -> bad { guard chan_counter[i] > 
+chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_trigger[i]?; },
+    confirming_closed -> closed { sync receiver_confirm[i]!; },
+    closed -> bad { sync sender_trigger[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+process filter(int[0, 1] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+void initialize() {
+    cid_var349_c[pid] = -1;
+    cid_var352_out[pid] = -1;
+    cid_var349_c[pid] = arg_cid_var349_c[pid];
+}
+
+
+
+state
+    made_out_0,
+    created_filter_func199_0,
+    started_filter_func199_0,
+    starting,
+    started,
+    ending,
+    ended;
+init
+    starting;
+trans
+    started -> made_out_0 { assign cid_var352_out[pid] = make_chan(0); },
+    made_out_0 -> created_filter_func199_0 { assign p = make_filter_func199(pid); },
+    created_filter_func199_0 -> started_filter_func199_0 { sync async_filter_func199[p]!; },
+    started_filter_func199_0 -> ending { assign res_filter_0_Chan[pid] = cid_var352_out[pid]; },
+    starting -> started { sync async_filter[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_filter[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_filter[pid]!; };
+}
+
+process filter_func199(int[0, 1] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    ended,
+    exit_loop_body_0,
+    enter_loop_cond_1,
+    sent_out_0,
+    receiving_c_1,
+    sending_out_0,
+    sending_out_1,
+    sent_out_1,
+    starting,
+    started,
+    enter_loop_body_0,
+    exit_loop_0,
+    exit_loop_body_1,
+    ending,
+    exit_loop_cond_0,
+    enter_loop_body_1,
+    received_c_1,
+    enter_loop_cond_0,
+    exit_loop_cond_1,
+    exit_loop_1,
+    receiving_c_0,
+    received_c_0;
+init
+    starting;
+trans
+    enter_loop_cond_0 -> exit_loop_cond_0 { },
+    enter_loop_cond_1 -> exit_loop_cond_1 { },
+    enter_loop_body_1 -> receiving_c_0 { sync receiver_trigger[cid_var349_c[par_pid_filter_func199[pid]]]!; assign chan_counter[cid_var349_c[par_pid_filter_func199[pid]]]--; },
+    receiving_c_0 -> received_c_0 { sync receiver_confirm[cid_var349_c[par_pid_filter_func199[pid]]]?; },
+    received_c_0 -> sending_out_0 { sync sender_trigger[cid_var352_out[par_pid_filter_func199[pid]]]!; assign chan_counter[cid_var352_out[par_pid_filter_func199[pid]]]++; },
+    sending_out_0 -> sent_out_0 { sync sender_confirm[cid_var352_out[par_pid_filter_func199[pid]]]?; },
+    sent_out_0 -> exit_loop_body_1 { },
+    enter_loop_body_0 -> enter_loop_cond_1 { },
+    exit_loop_cond_1 -> enter_loop_body_1 { },
+    exit_loop_cond_1 -> exit_loop_1 { },
+    exit_loop_body_1 -> enter_loop_cond_1 { },
+    exit_loop_1 -> receiving_c_1 { sync receiver_trigger[cid_var349_c[par_pid_filter_func199[pid]]]!; assign chan_counter[cid_var349_c[par_pid_filter_func199[pid]]]--; },
+    receiving_c_1 -> received_c_1 { sync receiver_confirm[cid_var349_c[par_pid_filter_func199[pid]]]?; },
+    received_c_1 -> sending_out_1 { sync sender_trigger[cid_var352_out[par_pid_filter_func199[pid]]]!; assign chan_counter[cid_var352_out[par_pid_filter_func199[pid]]]++; },
+    sending_out_1 -> sent_out_1 { sync sender_confirm[cid_var352_out[par_pid_filter_func199[pid]]]?; },
+    sent_out_1 -> exit_loop_body_0 { },
+    started -> enter_loop_cond_0 { },
+    exit_loop_cond_0 -> enter_loop_body_0 { },
+    exit_loop_body_0 -> enter_loop_cond_0 { },
+    exit_loop_0 -> ending { },
+    starting -> started { sync async_filter_func199[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_filter_func199[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_filter_func199[pid]!; };
+}
+
+process generate(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+void initialize() {
+    cid_var351_c[pid] = -1;
+}
+
+
+
+state
+    starting,
+    started,
+    ending,
+    ended,
+    made_c_0,
+    created_generate_func198_0,
+    started_generate_func198_0;
+init
+    starting;
+trans
+    started -> made_c_0 { assign cid_var351_c[pid] = make_chan(0); },
+    made_c_0 -> created_generate_func198_0 { assign p = make_generate_func198(pid); },
+    created_generate_func198_0 -> started_generate_func198_0 { sync async_generate_func198[p]!; },
+    started_generate_func198_0 -> ending { assign res_generate_0_Chan[pid] = cid_var351_c[pid]; },
+    starting -> started { sync async_generate[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_generate[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_generate[pid]!; };
+}
+
+process generate_func198(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    starting,
+    ending,
+    enter_loop_cond_0,
+    exit_loop_body_0,
+    exit_loop_0,
+    sending_c_0,
+    sent_c_0,
+    started,
+    ended,
+    exit_loop_cond_0,
+    enter_loop_body_0;
+init
+    starting;
+trans
+    enter_loop_cond_0 -> exit_loop_cond_0 { },
+    enter_loop_body_0 -> sending_c_0 { sync sender_trigger[cid_var351_c[par_pid_generate_func198[pid]]]!; assign chan_counter[cid_var351_c[par_pid_generate_func198[pid]]]++; },
+    sending_c_0 -> sent_c_0 { sync sender_confirm[cid_var351_c[par_pid_generate_func198[pid]]]?; },
+    sent_c_0 -> exit_loop_body_0 { },
+    started -> enter_loop_cond_0 { },
+    exit_loop_cond_0 -> enter_loop_body_0 { },
+    exit_loop_body_0 -> enter_loop_cond_0 { },
+    exit_loop_0 -> ending { },
+    starting -> started { sync async_generate_func198[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_generate_func198[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_generate_func198[pid]!; };
+}
+
+process main() {
+// Place local declarations here.
+int pid = 0;
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var350_c = -1;
+
+
+
+state
+    ending,
+    started_generate_0,
+    awaited_filter_0,
+    enter_if_0,
+    created_filter_1,
+    awaited_filter_1,
+    enter_loop_body_0,
+    receiving_c_0,
+    enter_else_0,
+    started,
+    ended,
+    created_filter_0,
+    enter_loop_cond_0,
+    exit_loop_body_0,
+    exit_loop_0,
+    received_c_0,
+    starting,
+    created_generate_0,
+    awaited_generate_0,
+    started_filter_0,
+    started_filter_1,
+    exit_loop_cond_0,
+    exit_if_0;
+init
+    starting;
+trans
+    started -> created_generate_0 { assign p = make_generate(); },
+    created_generate_0 -> started_generate_0 { sync sync_generate[p]!; },
+    started_generate_0 -> awaited_generate_0 { sync sync_generate[p]?; assign cid_var350_c = res_generate_0_Chan[p]; },
+    awaited_generate_0 -> created_filter_0 { assign p = make_filter(), arg_cid_var349_c[p] = cid_var350_c; },
+    created_filter_0 -> started_filter_0 { sync sync_filter[p]!; },
+    started_filter_0 -> awaited_filter_0 { sync sync_filter[p]?; assign cid_var350_c = res_filter_0_Chan[p]; },
+    awaited_filter_0 -> created_filter_1 { assign p = make_filter(), arg_cid_var349_c[p] = cid_var350_c; },
+    created_filter_1 -> started_filter_1 { sync sync_filter[p]!; },
+    started_filter_1 -> awaited_filter_1 { sync sync_filter[p]?; assign cid_var350_c = res_filter_0_Chan[p]; },
+    enter_loop_cond_0 -> exit_loop_cond_0 { },
+    enter_loop_body_0 -> receiving_c_0 { sync receiver_trigger[cid_var350_c]!; assign chan_counter[cid_var350_c]--; },
+    receiving_c_0 -> received_c_0 { sync receiver_confirm[cid_var350_c]?; },
+    enter_if_0 -> exit_if_0 { },
+    enter_else_0 -> exit_if_0 { },
+    received_c_0 -> enter_if_0 { },
+    received_c_0 -> enter_else_0 { },
+    exit_if_0 -> exit_loop_body_0 { },
+    awaited_filter_1 -> enter_loop_cond_0 { },
+    exit_loop_cond_0 -> enter_loop_body_0 { },
+    exit_loop_cond_0 -> exit_loop_0 { },
+    exit_loop_body_0 -> enter_loop_cond_0 { },
+    exit_loop_0 -> ending { },
+    starting -> started { },
+    ending -> ended { };
+}
+
+Channel0 = Channel(0);
+Channel1 = Channel(1);
+Channel2 = Channel(2);
+filter_0 = filter(0);
+filter_1 = filter(1);
+filter_func199_0 = filter_func199(0);
+filter_func199_1 = filter_func199(1);
+generate_0 = generate(0);
+generate_func198_0 = generate_func198(0);
+system Channel0, Channel1, Channel2, filter_0, filter_1, filter_func199_0, filter_func199_1, generate_0, generate_func198_0, main;
+

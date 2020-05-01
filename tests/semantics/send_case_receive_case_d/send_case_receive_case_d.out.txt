@@ -1,0 +1,15 @@
+Options for the verification:
+  Generating no trace
+  Search order is depth first
+  Using conservative space optimisation
+  Seed is 1588268903
+  State space representation uses minimal constraint systems
+[2K
+Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/semantics/send_case_receive_case_d/send_case_receive_case_d.q:4
+[2K -- Formula is satisfied.
+[2K
+Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/semantics/send_case_receive_case_d/send_case_receive_case_d.q:8
+[2K -- Formula is satisfied.
+[2K
+Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/semantics/send_case_receive_case_d/send_case_receive_case_d.q:12
+[2K -- Formula is satisfied.

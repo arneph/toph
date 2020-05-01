@@ -46,7 +46,10 @@ func main() {
 			}
 
 			testPath := dirPath + test.Name() + "/"
+			//t1 := time.Now()
 			perfect := runTest(testPath, test.Name())
+			//t2 := time.Now()
+			//fmt.Printf("translated % 12.7fs %s\n", t2.Sub(t1).Seconds(), testPath)
 			attemptedTests++
 			if perfect {
 				perfectTests++
@@ -70,6 +73,20 @@ func runTest(path, name string) (perfect bool) {
 	}
 	if program == nil {
 		return
+	}
+
+	fcg := analyzer.BuildFuncCallGraph(program, program.GetFunc("main"), ir.Call|ir.Go)
+	for _, f := range program.Funcs() {
+		for _, g := range fcg.Callers(f) {
+			if f == g {
+				fmt.Println("call cycle " + path)
+				return
+			}
+		}
+		if len(fcg.FuncsInSCC(fcg.SCCOfFunc(f))) > 1 {
+			fmt.Println("call cycle " + path)
+			return
+		}
 	}
 
 	outputProgram(program, path, name, 1)

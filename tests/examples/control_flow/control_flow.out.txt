@@ -1,0 +1,24 @@
+Options for the verification:
+  Generating no trace
+  Search order is depth first
+  Using conservative space optimisation
+  Seed is 1588268814
+  State space representation uses minimal constraint systems
+[2K
+Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/control_flow/control_flow.q:4
+[2K -- Formula is NOT satisfied.
+[2K
+Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/control_flow/control_flow.q:8
+[2K -- Formula is NOT satisfied.
+[2K
+Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/control_flow/control_flow.q:12
+[2K -- Formula is NOT satisfied.
+[2K
+Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/control_flow/control_flow.q:16
+[2K -- Formula is NOT satisfied.
+[2K
+Verifying formula 5 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/control_flow/control_flow.q:20
+[2K -- Formula is NOT satisfied.
+[2K
+Verifying formula 6 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/control_flow/control_flow.q:24
+[2K -- Formula is NOT satisfied.

@@ -1,0 +1,60 @@
+prog{
+  scope{
+    var fid_var163_fact Func = 74
+    var fid_var166_main Func = 73
+  }
+  funcs{
+    func{
+      index: 74
+      name: fact
+      args: cid_var164_r, cid_var165_s
+      results: 
+      scope{
+        var cid_var164_r Chan = -1
+        var cid_var165_s Chan = -1
+        var cid_var167_t Chan = -1
+      }
+      stmts{
+        if{
+          scope{
+          }
+          stmts{
+            receive cid_var164_r
+            send cid_var165_s
+            return
+          }
+        }else{
+          scope{
+          }
+          stmts{
+          }
+        }
+        cid_var167_t <- make(chan, 1)
+        call 74(1: var cid_var167_t Chan = -1, 2: var cid_var165_s Chan = -1)
+        receive cid_var164_r
+        send cid_var167_t
+      }
+    }
+    func{
+      index: 73
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var170 Chan = -1
+        var cid_var171 Chan = -1
+        var cid_var168_accumulated Chan = -1
+        var cid_var169_result Chan = -1
+      }
+      stmts{
+        cid_var170 <- make(chan, 1)
+        cid_var168_accumulated <- cid_var170
+        cid_var171 <- make(chan, 0)
+        cid_var169_result <- cid_var171
+        go 74(1: var cid_var168_accumulated Chan = -1, 2: var cid_var169_result Chan = -1)
+        send cid_var168_accumulated
+        receive cid_var169_result
+      }
+    }
+  }
+}

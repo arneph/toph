@@ -1,0 +1,4 @@
+main (1) -> 
+main_func342 (3) -> countWords
+countWords (2) -> 
+

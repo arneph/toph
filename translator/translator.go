@@ -9,8 +9,8 @@ import (
 	"github.com/arneph/toph/uppaal"
 )
 
-const maxProcessCount = 100
-const maxChannelCount = 100
+const maxProcessCount = 20
+const maxChannelCount = 20
 
 // TranslateProg translates an ir.Prog to a uppaal.System.
 func TranslateProg(program *ir.Program) (*uppaal.System, []error) {
@@ -272,7 +272,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 	// Internal helper variables:
 	proc.Declarations().AddVariable("is_sync", "bool", "false")
 	proc.Declarations().AddVariable("p", "int", "-1")
-	proc.Declarations().AddVariable("was_pending", "bool", "false")
+	proc.Declarations().AddVariable("ok", "bool", "false")
 	proc.Declarations().AddSpace()
 
 	starting := proc.AddState("starting", uppaal.NoRenaming)

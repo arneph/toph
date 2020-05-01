@@ -1,41 +1,13 @@
 /*
-check unreachable: Channel.bad
+check Channel.bad state unreachable
 */
 A[] not Channel0.bad
 /*
-check unreachable: Channel.bad
+check Channel.bad state unreachable
 */
 A[] not Channel1.bad
 /*
-check unreachable: Channel.bad
+check deadlock with pending channel operation unreachable
 */
-A[] not Channel2.bad
-/*
-check unreachable: Channel.bad
-*/
-A[] not Channel3.bad
-/*
-check unreachable: Channel.bad
-*/
-A[] not Channel4.bad
-/*
-check unreachable: Channel.bad
-*/
-A[] not Channel5.bad
-/*
-check unreachable: Channel.bad
-*/
-A[] not Channel6.bad
-/*
-check unreachable: Channel.bad
-*/
-A[] not Channel7.bad
-/*
-check unreachable: Channel.bad
-*/
-A[] not Channel8.bad
-/*
-check unreachable: Channel.bad
-*/
-A[] not Channel9.bad
+A[] not (deadlock and main_func349_0.receiving_chA_0)
 

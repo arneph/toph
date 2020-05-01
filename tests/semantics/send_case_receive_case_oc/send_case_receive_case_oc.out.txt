@@ -1,0 +1,18 @@
+Options for the verification:
+  Generating no trace
+  Search order is depth first
+  Using conservative space optimisation
+  Seed is 1588268848
+  State space representation uses minimal constraint systems
+[2K
+Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/semantics/send_case_receive_case_oc/send_case_receive_case_oc.q:4
+[2K -- Aborted.
+[2K
+Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/semantics/send_case_receive_case_oc/send_case_receive_case_oc.q:8
+ -- Throughput: 162 states/sec, Load: 167 states[K[2K -- Aborted.
+[2K
+Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/semantics/send_case_receive_case_oc/send_case_receive_case_oc.q:12
+ -- Throughput: 78 states/sec, Load: 167 states[K -- Throughput: 105619 states/sec, Load: 139885 states[K[2K -- Aborted.
+[2K
+Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/semantics/send_case_receive_case_oc/send_case_receive_case_oc.q:16
+ -- Throughput: 37 states/sec, Load: 167 states[K -- Throughput: 95387 states/sec, Load: 132754 states[K -- Throughput: 104916 states/sec, Load: 216218 states[K[2K -- Aborted.

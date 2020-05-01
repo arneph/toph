@@ -1,0 +1,78 @@
+Options for the verification:
+  Generating no trace
+  Search order is depth first
+  Using conservative space optimisation
+  Seed is 1588268809
+  State space representation uses minimal constraint systems
+[2K
+Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:4
+[2K -- Aborted.
+[2K
+Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:8
+[2K -- Aborted.
+[2K
+Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:12
+[2K -- Aborted.
+[2K
+Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:16
+[2K -- Aborted.
+[2K
+Verifying formula 5 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:20
+[2K -- Aborted.
+[2K
+Verifying formula 6 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:24
+[2K -- Aborted.
+[2K
+Verifying formula 7 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:28
+[2K -- Aborted.
+[2K
+Verifying formula 8 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:32
+[2K -- Aborted.
+[2K
+Verifying formula 9 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:36
+[2K -- Aborted.
+[2K
+Verifying formula 10 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:40
+[2K -- Aborted.
+[2K
+Verifying formula 11 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:44
+[2K -- Aborted.
+[2K
+Verifying formula 12 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:48
+[2K -- Aborted.
+[2K
+Verifying formula 13 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:52
+[2K -- Aborted.
+[2K
+Verifying formula 14 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:56
+[2K -- Aborted.
+[2K
+Verifying formula 15 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:60
+[2K -- Aborted.
+[2K
+Verifying formula 16 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:64
+[2K -- Aborted.
+[2K
+Verifying formula 17 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:68
+[2K -- Aborted.
+[2K
+Verifying formula 18 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:72
+[2K -- Aborted.
+[2K
+Verifying formula 19 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:76
+[2K -- Aborted.
+[2K
+Verifying formula 20 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:80
+[2K -- Aborted.
+[2K
+Verifying formula 21 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:84
+[2K -- Aborted.
+[2K
+Verifying formula 22 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:88
+[2K -- Aborted.
+[2K
+Verifying formula 23 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:92
+[2K -- Aborted.
+[2K
+Verifying formula 24 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/dining-philosophers/dining-philosophers.q:96
+[2K -- Formula is NOT satisfied.

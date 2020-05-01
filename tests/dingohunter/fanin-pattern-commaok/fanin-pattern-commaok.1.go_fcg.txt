@@ -1,0 +1,5 @@
+fanin (2) -> fanin_func62
+fanin_func62 (1) -> 
+work (3) -> 
+main (4) -> work
+

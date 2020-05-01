@@ -1,0 +1,80 @@
+prog{
+  scope{
+    var fid_var611_producerA Func = 319
+    var fid_var614_producerB Func = 320
+    var fid_var617_consumer Func = 321
+  }
+  funcs{
+    func{
+      index: 319
+      name: producerA
+      args: cid_var612_ch, cid_var613_done
+      results: 
+      scope{
+        var cid_var612_ch Chan = -1
+        var cid_var613_done Chan = -1
+      }
+      stmts{
+        send cid_var612_ch
+        send cid_var612_ch
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var612_ch
+            }
+          }
+        }
+        close cid_var612_ch
+      }
+    }
+    func{
+      index: 320
+      name: producerB
+      args: cid_var615_ch, cid_var616_done
+      results: 
+      scope{
+        var cid_var615_ch Chan = -1
+        var cid_var616_done Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var615_ch
+            }
+          }
+        }
+        close cid_var615_ch
+      }
+    }
+    func{
+      index: 321
+      name: consumer
+      args: cid_var619_chB, cid_var620_done, cid_var618_chA
+      results: 
+      scope{
+        var cid_var618_chA Chan = -1
+        var cid_var619_chB Chan = -1
+        var cid_var620_done Chan = -1
+      }
+      stmts{
+      }
+    }
+  }
+}

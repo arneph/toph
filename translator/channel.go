@@ -66,7 +66,7 @@ func (t *translator) addChannelProcess() {
 	// Queries:
 	proc.AddQuery(uppaal.MakeQuery(
 		"A[] not $.bad",
-		"check unreachable: Channel.bad"))
+		"check Channel.bad state unreachable"))
 
 	// States:
 	// Open

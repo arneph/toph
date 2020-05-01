@@ -1,0 +1,232 @@
+// Place global declarations here.
+int fid_var376_S = 214;
+int fid_var378_R = 215;
+int fid_var380_main = 213;
+int S_count = 0;
+chan async_S[1];
+chan sync_S[1];
+int arg_cid_var377_out[1];
+
+int R_count = 0;
+chan async_R[1];
+chan sync_R[1];
+int arg_cid_var379_in[1];
+
+int chan_count = 0;
+int chan_counter[2];
+int chan_buffer[2];
+chan sender_trigger[2];
+chan sender_confirm[2];
+chan receiver_trigger[2];
+chan receiver_confirm[2];
+chan close[2];
+
+int make_S() {
+	int pid = S_count;
+	S_count++;
+	return pid;
+}
+
+int make_R() {
+	int pid = R_count;
+	R_count++;
+	return pid;
+}
+
+int make_chan(int buffer) {
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}
+
+
+
+process Channel(int[0, 1] i) {
+// Place local declarations here.
+
+
+state
+    idle,
+    new_sender,
+    confirming_closed,
+    bad,
+    confirming_a,
+    new_receiver,
+    confirming_b,
+    closing,
+    closed;
+commit
+    closing,
+    confirming_a,
+    new_receiver,
+    confirming_b,
+    new_sender,
+    confirming_closed;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_trigger[i]?; },
+    new_sender -> idle { guard chan_counter[i] > 
+chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_confirm[i]!; },
+    idle -> new_receiver { sync receiver_trigger[i]?; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_confirm[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < 
+chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
+    closing -> closed { guard chan_counter[i] >= 0; },
+    idle -> bad { guard chan_counter[i] > 
+chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_trigger[i]?; },
+    confirming_closed -> closed { sync receiver_confirm[i]!; },
+    closed -> bad { sync sender_trigger[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+process R(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var379_in = -1;
+
+void initialize() {
+    cid_var379_in = arg_cid_var379_in[pid];
+}
+
+
+
+state
+    starting,
+    started,
+    ending,
+    ended,
+    receiving_in_0,
+    received_in_0;
+init
+    starting;
+trans
+    started -> receiving_in_0 { sync receiver_trigger[cid_var379_in]!; assign chan_counter[cid_var379_in]--; },
+    receiving_in_0 -> received_in_0 { sync receiver_confirm[cid_var379_in]?; },
+    received_in_0 -> ending { },
+    starting -> started { sync async_R[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_R[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_R[pid]!; };
+}
+
+process S(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var377_out = -1;
+
+void initialize() {
+    cid_var377_out = arg_cid_var377_out[pid];
+}
+
+
+
+state
+    starting,
+    started,
+    ending,
+    ended,
+    sending_out_0,
+    sent_out_0;
+init
+    starting;
+trans
+    started -> sending_out_0 { sync sender_trigger[cid_var377_out]!; assign chan_counter[cid_var377_out]++; },
+    sending_out_0 -> sent_out_0 { sync sender_confirm[cid_var377_out]?; },
+    sent_out_0 -> ending { },
+    starting -> started { sync async_S[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_S[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_S[pid]!; };
+}
+
+process main() {
+// Place local declarations here.
+int pid = 0;
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var381_ch1 = -1;
+int cid_var382_ch2 = -1;
+
+
+
+state
+    made_ch2_0,
+    enter_if_1,
+    exit_if_1,
+    enter_if_2,
+    exit_if_2,
+    started_R_0,
+    made_ch1_0,
+    exit_if_0,
+    enter_else_0,
+    created_S_0,
+    started_S_0,
+    created_R_1,
+    started_R_1,
+    enter_else_2,
+    starting,
+    started,
+    ending,
+    ended,
+    enter_if_0,
+    created_R_0,
+    enter_else_1,
+    created_S_1,
+    started_S_1;
+init
+    starting;
+trans
+    started -> made_ch1_0 { assign cid_var381_ch1 = make_chan(0); },
+    made_ch1_0 -> made_ch2_0 { assign cid_var382_ch2 = make_chan(0); },
+    enter_if_1 -> exit_if_1 { },
+    enter_else_0 -> exit_if_1 { },
+    enter_if_0 -> enter_if_1 { },
+    enter_if_0 -> enter_else_0 { },
+    enter_if_2 -> created_R_0 { assign p = make_R(), arg_cid_var379_in[p] = cid_var382_ch2; },
+    created_R_0 -> started_R_0 { sync async_R[p]!; },
+    started_R_0 -> created_S_0 { assign p = make_S(), arg_cid_var377_out[p] = cid_var382_ch2; },
+    created_S_0 -> started_S_0 { sync async_S[p]!; },
+    started_S_0 -> exit_if_2 { },
+    enter_else_1 -> created_R_1 { assign p = make_R(), arg_cid_var379_in[p] = cid_var381_ch1; },
+    created_R_1 -> started_R_1 { sync async_R[p]!; },
+    started_R_1 -> created_S_1 { assign p = make_S(), arg_cid_var377_out[p] = cid_var381_ch1; },
+    created_S_1 -> started_S_1 { sync async_S[p]!; },
+    started_S_1 -> exit_if_2 { },
+    exit_if_1 -> enter_if_2 { },
+    exit_if_1 -> enter_else_1 { },
+    exit_if_2 -> exit_if_0 { },
+    enter_else_2 -> exit_if_0 { },
+    made_ch2_0 -> enter_if_0 { },
+    made_ch2_0 -> enter_else_2 { },
+    exit_if_0 -> ending { },
+    starting -> started { },
+    ending -> ended { };
+}
+
+Channel0 = Channel(0);
+Channel1 = Channel(1);
+R_0 = R(0);
+S_0 = S(0);
+system Channel0, Channel1, R_0, S_0, main;
+

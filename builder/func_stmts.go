@@ -28,6 +28,8 @@ func (b *builder) processCallExpr(callExpr *ast.CallExpr, ctx *context) *ir.Vari
 }
 
 func (b *builder) processCallExprWithResultVars(callExpr *ast.CallExpr, callKind ir.CallKind, results map[int]*ir.Variable, ctx *context) {
+	argVars := b.processExprs(callExpr.Args, ctx)
+
 	if fIdent, ok := callExpr.Fun.(*ast.Ident); ok {
 		if fIdent.Name == "make" {
 			v, ok := results[0]
@@ -63,7 +65,6 @@ func (b *builder) processCallExprWithResultVars(callExpr *ast.CallExpr, callKind
 		return
 	}
 
-	argVars := b.processExprs(callExpr.Args, ctx)
 	for i := range callee.Args() {
 		_, ok := argVars[i]
 		if !ok {

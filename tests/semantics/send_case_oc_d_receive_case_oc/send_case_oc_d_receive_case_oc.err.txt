@@ -1,0 +1,3 @@
+/Users/arne/Documents/Go/src/github.com/arneph/toph/tests/semantics/send_case_oc_d_receive_case_oc/send_case_oc_d_receive_case_oc.xta::173: [error] Assignment of value '-32769' to variable 'chan_counter[1]' is out of range.
+/Users/arne/Documents/Go/src/github.com/arneph/toph/tests/semantics/send_case_oc_d_receive_case_oc/send_case_oc_d_receive_case_oc.xta::173: [error] Assignment of value '-32769' to variable 'chan_counter[1]' is out of range.
+/Users/arne/Documents/Go/src/github.com/arneph/toph/tests/semantics/send_case_oc_d_receive_case_oc/send_case_oc_d_receive_case_oc.xta::173: [error] Assignment of value '-32769' to variable 'chan_counter[1]' is out of range.

@@ -1,0 +1,167 @@
+prog{
+  scope{
+    var fid_var417_gen Func = 233
+    var fid_var418_sq Func = 234
+    var fid_var420_merge Func = 235
+    var fid_var421_main Func = 232
+  }
+  funcs{
+    func{
+      index: 233
+      name: gen
+      args: 
+      results: Chan
+      scope{
+        var cid_var422_out Chan = -1
+      }
+      stmts{
+        cid_var422_out <- make(chan, 0)
+        go 236()
+        return 0: cid_var422_out
+      }
+    }
+    func{
+      index: 234
+      name: sq
+      args: cid_var419_in
+      results: Chan
+      scope{
+        var cid_var419_in Chan = -1
+        var cid_var423_out Chan = -1
+      }
+      stmts{
+        cid_var423_out <- make(chan, 0)
+        go 237()
+        return 0: cid_var423_out
+      }
+    }
+    func{
+      index: 235
+      name: merge
+      args: 
+      results: Chan
+      scope{
+        var cid_var424_out Chan = -1
+        var fid_var427 Func = 238
+        var fid_var425_output Func = -1
+      }
+      stmts{
+        cid_var424_out <- make(chan, 0)
+        fid_var425_output <- fid_var427
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+            }
+          }
+        }
+        go 239()
+        return 0: cid_var424_out
+      }
+    }
+    func{
+      index: 232
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var428_in Chan = -1
+        var cid_var429_c1 Chan = -1
+        var cid_var430_c2 Chan = -1
+        var cid_var431_out Chan = -1
+      }
+      stmts{
+        , 0: var cid_var428_in Chan = -1 <- call 233()
+        , 0: var cid_var429_c1 Chan = -1 <- call 234(0: var cid_var428_in Chan = -1)
+        , 0: var cid_var430_c2 Chan = -1 <- call 234(0: var cid_var428_in Chan = -1)
+        , 0: var cid_var431_out Chan = -1 <- call 235(0: var cid_var429_c1 Chan = -1, 1: var cid_var430_c2 Chan = -1)
+        receive cid_var431_out
+        return
+      }
+    }
+    func{
+      index: 236
+      name: gen_func236
+      args: 
+      results: 
+      enclosing func index: 233
+      scope{
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var422_out
+            }
+          }
+        }
+        close cid_var422_out
+      }
+    }
+    func{
+      index: 237
+      name: sq_func237
+      args: 
+      results: 
+      enclosing func index: 234
+      scope{
+      }
+      stmts{
+        range cid_var419_in {
+          scope{
+          }
+          stmts{
+            send cid_var423_out
+          }
+        }
+        close cid_var423_out
+      }
+    }
+    func{
+      index: 238
+      name: merge_func238
+      args: cid_var426_c
+      results: 
+      enclosing func index: 235
+      scope{
+        var cid_var426_c Chan = -1
+      }
+      stmts{
+        range cid_var426_c {
+          scope{
+          }
+          stmts{
+            send cid_var424_out
+          }
+        }
+      }
+    }
+    func{
+      index: 239
+      name: merge_func239
+      args: 
+      results: 
+      enclosing func index: 235
+      scope{
+      }
+      stmts{
+        close cid_var424_out
+      }
+    }
+  }
+}

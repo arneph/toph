@@ -1,0 +1,63 @@
+prog{
+  scope{
+    var fid_var101_x Func = 50
+    var fid_var104_main Func = 51
+  }
+  funcs{
+    func{
+      index: 52
+      args: cid_var107_ch, cid_var108_done
+      captures: 
+      results: 
+      scope{
+        var cid_var107_ch Chan = -1
+        var cid_var108_done Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              if{
+                scope{
+                }
+                stmts{
+                  send cid_var107_ch
+                }
+              }else{
+                scope{
+                }
+                stmts{
+                  send cid_var108_done
+                  return
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 53
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var109_done Chan = -1
+        var cid_var110_ch Chan = -1
+      }
+      stmts{
+        cid_var109_done <- make(chan, 0)
+        cid_var110_ch <- make(chan, 0)
+        go 52(1: var cid_var109_done Chan = -1, 0: var cid_var110_ch Chan = -1)
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+split (13) -> dosplit
+Split (14) -> split
+repeat (15) -> 
+Subst_func187 (2) -> 
+MonSubst_func188 (16) -> 
+main (19) -> 
+Diff (18) -> Diff_func183
+Diff_func183 (17) -> 
+Binom_func185 (7) -> 
+Integ_func184 (24) -> 
+Recip_func186 (9) -> 
+Add (26) -> Add_func177
+Cmul_func178 (20) -> 
+Rep (21) -> repeat
+Mon (22) -> Mon_func180
+Shift (23) -> Shift_func181
+Add_func177 (25) -> 
+Cmul (27) -> Cmul_func178
+Integ (28) -> Integ_func184
+MonSubst (29) -> MonSubst_func188
+Monmul_func179 (11) -> 
+Mul (30) -> Mul_func182
+dosplit (4) -> dosplit
+Mul_func182 (1) -> 
+Subst (3) -> Subst_func187
+Monmul (12) -> Monmul_func179
+Mon_func180 (5) -> 
+Shift_func181 (6) -> 
+Binom (8) -> Binom_func185
+Recip (10) -> Recip_func186
+

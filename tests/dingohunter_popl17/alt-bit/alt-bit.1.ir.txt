@@ -1,0 +1,159 @@
+prog{
+  scope{
+    var fid_var452_main Func = 251
+    var fid_var453_tx Func = 252
+    var fid_var456_rx Func = 253
+  }
+  funcs{
+    func{
+      index: 251
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var459_trans Chan = -1
+        var cid_var460_ack Chan = -1
+      }
+      stmts{
+        cid_var459_trans <- make(chan, 1)
+        cid_var460_ack <- make(chan, 1)
+        go 252(1: var cid_var460_ack Chan = -1, 0: var cid_var459_trans Chan = -1)
+        call 253(0: var cid_var460_ack Chan = -1, 1: var cid_var459_trans Chan = -1)
+      }
+    }
+    func{
+      index: 252
+      name: tx
+      args: cid_var454_snd, cid_var455_ack
+      results: 
+      scope{
+        var cid_var454_snd Chan = -1
+        var cid_var455_ack Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var454_snd
+              for{
+                cond{
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                body{
+                  scope{
+                  }
+                  stmts{
+                    select{
+                      case receive cid_var455_ack {
+                        scope{
+                        }
+                        stmts{
+                          if{
+                            scope{
+                            }
+                            stmts{
+                              break
+                            }
+                          }else{
+                            scope{
+                            }
+                            stmts{
+                            }
+                          }
+                        }
+                      }
+                      case send cid_var454_snd {
+                        scope{
+                        }
+                        stmts{
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 253
+      name: rx
+      args: cid_var457_reply, cid_var458_trans
+      results: 
+      scope{
+        var cid_var457_reply Chan = -1
+        var cid_var458_trans Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var457_reply
+              for{
+                cond{
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                body{
+                  scope{
+                  }
+                  stmts{
+                    select{
+                      case receive cid_var458_trans {
+                        scope{
+                        }
+                        stmts{
+                          if{
+                            scope{
+                            }
+                            stmts{
+                              break
+                            }
+                          }else{
+                            scope{
+                            }
+                            stmts{
+                            }
+                          }
+                        }
+                      }
+                      case send cid_var457_reply {
+                        scope{
+                        }
+                        stmts{
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

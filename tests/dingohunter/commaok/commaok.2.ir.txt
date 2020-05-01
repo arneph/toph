@@ -1,0 +1,44 @@
+prog{
+  scope{
+    var fid_var96_main Func = 48
+  }
+  funcs{
+    func{
+      index: 49
+      args: 
+      captures: 
+      results: 
+      scope{
+        var cid_var99_ch Chan = -1
+        var cid_var100 Chan = -1
+      }
+      stmts{
+        cid_var99_ch <- make(chan, 1)
+        send cid_var99_ch
+        receive cid_var99_ch
+        if{
+          scope{
+          }
+          stmts{
+            if{
+              scope{
+              }
+              stmts{
+              }
+            }else{
+              scope{
+              }
+              stmts{
+              }
+            }
+          }
+        }else{
+          scope{
+          }
+          stmts{
+          }
+        }
+      }
+    }
+  }
+}

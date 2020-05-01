@@ -1,0 +1,7 @@
+time_after (6) -> time_after_func338
+time_after_func338 (5) -> 
+main (4) -> producerB, consumer, producerA
+producerB (3) -> 
+consumer (1) -> 
+producerA (2) -> 
+

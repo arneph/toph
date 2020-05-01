@@ -1,17 +1,17 @@
 prog{
   scope{
-    var fid_var47_test Func = 26
-    var fid_var48_main Func = 27
+    var fid_var29_test Func = 15
+    var fid_var32_main Func = 14
   }
   funcs{
     func{
-      index: 26
-      args: cid_var49_a, cid_var50_b
-      captures: 
+      index: 15
+      name: test
+      args: cid_var30_a, cid_var31_b
       results: 
       scope{
-        var cid_var49_a Chan = -1
-        var cid_var50_b Chan = -1
+        var cid_var30_a Chan = -1
+        var cid_var31_b Chan = -1
       }
       stmts{
         if{
@@ -40,19 +40,19 @@ prog{
                       scope{
                       }
                       stmts{
-                        receive cid_var49_a
+                        receive cid_var30_a
                         if{
                           scope{
                           }
                           stmts{
-                            send cid_var50_b
+                            send cid_var31_b
                           }
                         }else{
                           scope{
                           }
                           stmts{
                             select{
-                              case send cid_var50_b {
+                              case send cid_var31_b {
                                 scope{
                                 }
                                 stmts{
@@ -62,6 +62,7 @@ prog{
                               scope{
                               }
                               stmts{
+                                break
                               }
                             }
                             }
@@ -83,7 +84,7 @@ prog{
               }
               stmts{
                 select{
-                  case receive cid_var49_a {
+                  case receive cid_var30_a {
                     scope{
                     }
                     stmts{
@@ -91,7 +92,7 @@ prog{
                         scope{
                         }
                         stmts{
-                          send cid_var50_b
+                          send cid_var31_b
                         }
                       }else{
                         scope{
@@ -153,8 +154,8 @@ prog{
                           scope{
                           }
                           stmts{
-                            receive cid_var50_b
-                            send cid_var49_a
+                            receive cid_var31_b
+                            send cid_var30_a
                           }
                         }
                       }
@@ -168,20 +169,20 @@ prog{
       }
     }
     func{
-      index: 27
+      index: 14
+      name: main
       args: 
-      captures: 
       results: 
       scope{
-        var cid_var51_ch Chan = -1
+        var cid_var33_ch Chan = -1
       }
       stmts{
-        cid_var51_ch <- make(chan, 0)
+        cid_var33_ch <- make(chan, 0)
         if{
           scope{
           }
           stmts{
-            send cid_var51_ch
+            send cid_var33_ch
           }
         }else{
           scope{
@@ -191,7 +192,7 @@ prog{
               scope{
               }
               stmts{
-                send cid_var51_ch
+                send cid_var33_ch
               }
             }else{
               scope{
@@ -206,7 +207,7 @@ prog{
                   scope{
                   }
                   stmts{
-                    send cid_var51_ch
+                    send cid_var33_ch
                   }
                 }
               }

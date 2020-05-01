@@ -92,7 +92,7 @@ prog{
       index: 9
       args: 
       captures: 
-      results: 
+      results: Chan
       scope{
         var cid_var18 Chan = -1
       }

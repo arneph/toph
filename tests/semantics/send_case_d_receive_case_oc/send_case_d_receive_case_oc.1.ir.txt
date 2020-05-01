@@ -1,32 +1,32 @@
 prog{
   scope{
-    var fid_var265_main Func = 144
+    var fid_var679_main Func = 356
   }
   funcs{
     func{
-      index: 144
+      index: 356
+      name: main
       args: 
-      captures: 
       results: 
       scope{
-        var cid_var266_chA Chan = -1
-        var cid_var267_chB Chan = -1
+        var cid_var680_chA Chan = -1
+        var cid_var681_chB Chan = -1
       }
       stmts{
-        cid_var266_chA <- make(chan, 0)
-        cid_var267_chB <- make(chan, 0)
-        close cid_var267_chB
-        go 145() ['chA' <- &(cid_var266_chA)]
-        go 146() ['chA' <- &(cid_var266_chA), 'chB' <- &(cid_var267_chB)]
+        cid_var680_chA <- make(chan, 0)
+        cid_var681_chB <- make(chan, 0)
+        close cid_var681_chB
+        go 357()
+        go 358()
       }
     }
     func{
-      index: 145
+      index: 357
+      name: main_func357
       args: 
-      captures: cid_var268_chA <- *'chA'
       results: 
+      enclosing func index: 356
       scope{
-        var cid_var268_chA Chan = -1
       }
       stmts{
         for{
@@ -41,7 +41,7 @@ prog{
             }
             stmts{
               select{
-                case send cid_var268_chA {
+                case send cid_var680_chA {
                   scope{
                   }
                   stmts{
@@ -60,13 +60,12 @@ prog{
       }
     }
     func{
-      index: 146
+      index: 358
+      name: main_func358
       args: 
-      captures: cid_var269_chA <- *'chA', cid_var270_chB <- *'chB'
       results: 
+      enclosing func index: 356
       scope{
-        var cid_var269_chA Chan = -1
-        var cid_var270_chB Chan = -1
       }
       stmts{
         for{
@@ -81,13 +80,13 @@ prog{
             }
             stmts{
               select{
-                case receive cid_var269_chA {
+                case receive cid_var680_chA {
                   scope{
                   }
                   stmts{
                   }
                 }
-                case receive cid_var270_chB {
+                case receive cid_var681_chB {
                   scope{
                   }
                   stmts{

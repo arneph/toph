@@ -1,0 +1,158 @@
+prog{
+  scope{
+    var fid_var95_makePhilosopher Func = 46
+    var fid_var96_think Func = 47
+    var fid_var97_eat Func = 48
+    var fid_var98_getChopsticks Func = 49
+    var fid_var99_returnChopsticks Func = 50
+    var fid_var100_dine Func = 51
+    var fid_var102_main Func = 45
+  }
+  funcs{
+    func{
+      index: 46
+      name: makePhilosopher
+      args: 
+      results: 
+      scope{
+        var cid_var103 Chan = -1
+      }
+      stmts{
+        cid_var103 <- make(chan, 1)
+        return
+      }
+    }
+    func{
+      index: 47
+      name: think
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+      }
+    }
+    func{
+      index: 48
+      name: eat
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+      }
+    }
+    func{
+      index: 49
+      name: getChopsticks
+      args: 
+      results: 
+      scope{
+        var cid_var104_timeout Chan = -1
+      }
+      stmts{
+        cid_var104_timeout <- make(chan, 1)
+        go 52()
+        select{
+          case receive cid_var104_timeout {
+            scope{
+            }
+            stmts{
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 50
+      name: returnChopsticks
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+      }
+    }
+    func{
+      index: 51
+      name: dine
+      args: cid_var101_announce
+      results: 
+      scope{
+        var cid_var101_announce Chan = -1
+      }
+      stmts{
+        send cid_var101_announce
+      }
+    }
+    func{
+      index: 45
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var105 Chan = -1
+        var cid_var106_announce Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              call 46()
+            }
+          }
+        }
+        cid_var106_announce <- make(chan, 0)
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+            }
+          }
+        }
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              receive cid_var106_announce
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 52
+      name: getChopsticks_func52
+      args: 
+      results: 
+      enclosing func index: 49
+      scope{
+      }
+      stmts{
+        send cid_var104_timeout
+      }
+    }
+  }
+}

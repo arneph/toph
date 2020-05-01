@@ -1,0 +1,45 @@
+prog{
+  scope{
+    var fid_var365_Send Func = 208
+    var fid_var367_Recv Func = 209
+    var fid_var369_main Func = 207
+  }
+  funcs{
+    func{
+      index: 208
+      name: Send
+      args: cid_var366_ch
+      results: 
+      scope{
+        var cid_var366_ch Chan = -1
+      }
+      stmts{
+        send cid_var366_ch
+      }
+    }
+    func{
+      index: 209
+      name: Recv
+      args: cid_var368_ch
+      results: 
+      scope{
+        var cid_var368_ch Chan = -1
+      }
+      stmts{
+        receive cid_var368_ch
+      }
+    }
+    func{
+      index: 207
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var370_c Chan = -1
+      }
+      stmts{
+        cid_var370_c <- make(chan, 0)
+      }
+    }
+  }
+}

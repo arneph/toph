@@ -11,6 +11,9 @@ import (
 // are contained in the graph.
 func BuildFuncCallGraph(prog *ir.Program, entry *ir.Func, callKinds ir.CallKind) *FuncCallGraph {
 	fcg := newFuncCallGraph(entry)
+	if entry == nil {
+		return fcg
+	}
 
 	// Find calleeInfos for each function independently.
 	callerToCalleesInfos := make(map[*ir.Func]calleesInfo, len(prog.Funcs()))

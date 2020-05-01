@@ -294,7 +294,7 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	trigger := ctx.proc.AddTrans(rangeEnter, receiving)
 	trigger.SetSync("receiver_trigger[" + handle + "]!")
 	trigger.AddUpdate("chan_counter[" + handle + "]--")
-	trigger.AddUpdate("was_pending = chan_counter[" + handle + "] < 0")
+	trigger.AddUpdate("ok = chan_counter[" + handle + "] >= 0")
 	trigger.SetSyncLocation(rangeEnter.Location().Add(uppaal.Location{4, 48}))
 	trigger.SetUpdateLocation(rangeEnter.Location().Add(uppaal.Location{4, 64}))
 	received := ctx.proc.AddState("range_received_"+name+"_", uppaal.Renaming)
@@ -305,6 +305,10 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	confirm.SetSync("receiver_confirm[" + handle + "]?")
 	confirm.SetSyncLocation(
 		receiving.Location().Add(uppaal.Location{4, 60}))
+
+	ctx.proc.AddQuery(uppaal.MakeQuery(
+		"A[] not (deadlock and $."+receiving.Name()+")",
+		"check deadlock with pending channel operation unreachable"))
 
 	bodyEnter := ctx.proc.AddState("enter_loop_body_", uppaal.Renaming)
 	bodyEnter.SetLocationAndResetNameLocation(
@@ -324,11 +328,11 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	trans1 := ctx.proc.AddTrans(ctx.currentState, rangeEnter)
 	trans1.AddNail(ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	trans2 := ctx.proc.AddTrans(received, bodyEnter)
-	trans2.SetGuard("chan_buffer[" + handle + "] >= 0 || !was_pending")
+	trans2.SetGuard("chan_buffer[" + handle + "] >= 0 || ok")
 	trans2.SetGuardLocation(
 		received.Location().Add(uppaal.Location{4, 48}))
 	trans3 := ctx.proc.AddTrans(received, loopExit)
-	trans3.SetGuard("chan_buffer[" + handle + "] < 0 && was_pending")
+	trans3.SetGuard("chan_buffer[" + handle + "] < 0 && !ok")
 	trans3.AddNail(received.Location().Add(uppaal.Location{-136, 0}))
 	trans3.SetGuardLocation(
 		received.Location().Add(uppaal.Location{-132, 64}))

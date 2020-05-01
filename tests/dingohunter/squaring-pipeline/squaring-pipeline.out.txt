@@ -1,0 +1,33 @@
+Options for the verification:
+  Generating no trace
+  Search order is depth first
+  Using conservative space optimisation
+  Seed is 1588268807
+  State space representation uses minimal constraint systems
+[2K
+Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-pipeline/squaring-pipeline.q:4
+[2K -- Formula is satisfied.
+[2K
+Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-pipeline/squaring-pipeline.q:8
+[2K -- Formula is satisfied.
+[2K
+Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-pipeline/squaring-pipeline.q:12
+[2K -- Formula is satisfied.
+[2K
+Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-pipeline/squaring-pipeline.q:16
+[2K -- Formula is satisfied.
+[2K
+Verifying formula 5 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-pipeline/squaring-pipeline.q:20
+ -- Throughput: 265 states/sec, Load: 15 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 6 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-pipeline/squaring-pipeline.q:24
+ -- Throughput: 190 states/sec, Load: 15 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 7 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-pipeline/squaring-pipeline.q:28
+ -- Throughput: 152 states/sec, Load: 15 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 8 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-pipeline/squaring-pipeline.q:32
+ -- Throughput: 122 states/sec, Load: 15 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 9 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/squaring-pipeline/squaring-pipeline.q:36
+ -- Throughput: 104 states/sec, Load: 15 states[K[2K -- Formula is satisfied.

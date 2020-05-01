@@ -11,12 +11,9 @@ func main() {
 	close(chB)
 
 	go func() {
-		// toph: max_iter=100
 		for {
 			select {
-			// toph: check=unreachable
 			case chA <- 42:
-			// toph: check=reachable
 			case <-chB:
 				time.Sleep(50 * time.Millisecond)
 				fmt.Println("send failed")
@@ -24,13 +21,10 @@ func main() {
 		}
 	}()
 	go func() {
-		// toph: max_iter=100
 		for {
 			select {
-			// toph: check=unreachable
 			case i := <-chA:
 				fmt.Println(i)
-			// toph: check=reachable
 			case <-chB:
 				time.Sleep(50 * time.Millisecond)
 				fmt.Println("receive failed A")

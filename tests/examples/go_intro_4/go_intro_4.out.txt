@@ -1,0 +1,21 @@
+Options for the verification:
+  Generating no trace
+  Search order is depth first
+  Using conservative space optimisation
+  Seed is 1588268817
+  State space representation uses minimal constraint systems
+[2K
+Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_4/go_intro_4.q:4
+ -- Throughput: 261422 states/sec, Load: 140 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_4/go_intro_4.q:8
+ -- Throughput: 93 states/sec, Load: 274 states[K -- Throughput: 140387 states/sec, Load: 78 states[K -- Throughput: 153290 states/sec, Load: 65 states[K -- Throughput: 151632 states/sec, Load: 46 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_4/go_intro_4.q:12
+ -- Throughput: 34 states/sec, Load: 274 states[K -- Throughput: 148834 states/sec, Load: 254 states[K -- Throughput: 135262 states/sec, Load: 225 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_4/go_intro_4.q:16
+ -- Throughput: 20 states/sec, Load: 274 states[K -- Throughput: 162741 states/sec, Load: 171 states[K -- Throughput: 152226 states/sec, Load: 80 states[K -- Throughput: 147238 states/sec, Load: 131 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 5 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_4/go_intro_4.q:20
+ -- Throughput: 14 states/sec, Load: 274 states[K -- Throughput: 153172 states/sec, Load: 191 states[K -- Throughput: 156484 states/sec, Load: 140 states[K -- Throughput: 135145 states/sec, Load: 29 states[K[2K -- Formula is satisfied.

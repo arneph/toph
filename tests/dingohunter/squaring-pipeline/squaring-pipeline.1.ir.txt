@@ -1,0 +1,106 @@
+prog{
+  scope{
+    var fid_var432_gen Func = 241
+    var fid_var433_sq Func = 242
+    var fid_var435_main Func = 240
+  }
+  funcs{
+    func{
+      index: 241
+      name: gen
+      args: 
+      results: Chan
+      scope{
+        var cid_var436_out Chan = -1
+      }
+      stmts{
+        cid_var436_out <- make(chan, 0)
+        go 243()
+        return 0: cid_var436_out
+      }
+    }
+    func{
+      index: 242
+      name: sq
+      args: cid_var434_in
+      results: Chan
+      scope{
+        var cid_var434_in Chan = -1
+        var cid_var437_out Chan = -1
+      }
+      stmts{
+        cid_var437_out <- make(chan, 0)
+        go 244()
+        return 0: cid_var437_out
+      }
+    }
+    func{
+      index: 240
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var438 Chan = -1
+        var cid_var439 Chan = -1
+        var cid_var440 Chan = -1
+      }
+      stmts{
+        , 0: var cid_var438 Chan = -1 <- call 241()
+        , 0: var cid_var439 Chan = -1 <- call 242(0: var cid_var438 Chan = -1)
+        , 0: var cid_var440 Chan = -1 <- call 242(0: var cid_var439 Chan = -1)
+        range cid_var440 {
+          scope{
+          }
+          stmts{
+          }
+        }
+      }
+    }
+    func{
+      index: 243
+      name: gen_func243
+      args: 
+      results: 
+      enclosing func index: 241
+      scope{
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var436_out
+            }
+          }
+        }
+        close cid_var436_out
+      }
+    }
+    func{
+      index: 244
+      name: sq_func244
+      args: 
+      results: 
+      enclosing func index: 242
+      scope{
+      }
+      stmts{
+        range cid_var434_in {
+          scope{
+          }
+          stmts{
+            send cid_var437_out
+          }
+        }
+        close cid_var437_out
+      }
+    }
+  }
+}

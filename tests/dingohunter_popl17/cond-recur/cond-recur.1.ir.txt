@@ -1,0 +1,92 @@
+prog{
+  scope{
+    var fid_var485_x Func = 275
+    var fid_var488_main Func = 274
+  }
+  funcs{
+    func{
+      index: 275
+      name: x
+      args: cid_var486_ch, cid_var487_done
+      results: 
+      scope{
+        var cid_var486_ch Chan = -1
+        var cid_var487_done Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              if{
+                scope{
+                }
+                stmts{
+                  send cid_var486_ch
+                }
+              }else{
+                scope{
+                }
+                stmts{
+                  send cid_var487_done
+                  return
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 274
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var489_done Chan = -1
+        var cid_var490_ch Chan = -1
+      }
+      stmts{
+        cid_var489_done <- make(chan, 0)
+        cid_var490_ch <- make(chan, 0)
+        go 275(0: var cid_var490_ch Chan = -1, 1: var cid_var489_done Chan = -1)
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var490_ch {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var489_done {
+                  scope{
+                  }
+                  stmts{
+                    break
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

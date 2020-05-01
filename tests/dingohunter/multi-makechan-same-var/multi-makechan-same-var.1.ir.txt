@@ -1,0 +1,36 @@
+prog{
+  scope{
+    var fid_var246_createChan Func = 110
+    var fid_var247_main Func = 109
+  }
+  funcs{
+    func{
+      index: 110
+      name: createChan
+      args: 
+      results: Chan
+      scope{
+        var cid_var248 Chan = -1
+      }
+      stmts{
+        cid_var248 <- make(chan, 1)
+        return 0: cid_var248
+      }
+    }
+    func{
+      index: 109
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var249_ch Chan = -1
+      }
+      stmts{
+        , 0: var cid_var249_ch Chan = -1 <- call 110()
+        send cid_var249_ch
+        , 0: var cid_var249_ch Chan = -1 <- call 110()
+        send cid_var249_ch
+      }
+    }
+  }
+}

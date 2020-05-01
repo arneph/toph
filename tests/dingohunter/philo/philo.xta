@@ -1,0 +1,319 @@
+// Place global declarations here.
+int fid_var275_philo = 126;
+int fid_var277_main = 125;
+int philo_count = 0;
+chan async_philo[3];
+chan sync_philo[3];
+int arg_cid_var276_forks[3];
+
+int main_func127_count = 0;
+chan async_main_func127[1];
+chan sync_main_func127[1];
+int par_pid_main_func127[1];
+
+int main_func128_count = 0;
+chan async_main_func128[1];
+chan sync_main_func128[1];
+int par_pid_main_func128[1];
+
+int main_func129_count = 0;
+chan async_main_func129[1];
+chan sync_main_func129[1];
+int par_pid_main_func129[1];
+
+int cid_var278_forks[1];
+
+int chan_count = 0;
+int chan_counter[1];
+int chan_buffer[1];
+chan sender_trigger[1];
+chan sender_confirm[1];
+chan receiver_trigger[1];
+chan receiver_confirm[1];
+chan close[1];
+
+int make_philo() {
+	int pid = philo_count;
+	philo_count++;
+	return pid;
+}
+
+int make_main_func127(int par_pid) {
+	int pid = main_func127_count;
+	main_func127_count++;
+	par_pid_main_func127[pid] = par_pid;
+	return pid;
+}
+
+int make_main_func128(int par_pid) {
+	int pid = main_func128_count;
+	main_func128_count++;
+	par_pid_main_func128[pid] = par_pid;
+	return pid;
+}
+
+int make_main_func129(int par_pid) {
+	int pid = main_func129_count;
+	main_func129_count++;
+	par_pid_main_func129[pid] = par_pid;
+	return pid;
+}
+
+int make_chan(int buffer) {
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}
+
+
+
+process Channel(int[0, 0] i) {
+// Place local declarations here.
+
+
+state
+    new_sender,
+    confirming_a,
+    new_receiver,
+    closing,
+    confirming_closed,
+    idle,
+    closed,
+    bad,
+    confirming_b;
+commit
+    confirming_b,
+    closing,
+    confirming_closed,
+    new_sender,
+    confirming_a,
+    new_receiver;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_trigger[i]?; },
+    new_sender -> idle { guard chan_counter[i] > 
+chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_confirm[i]!; },
+    idle -> new_receiver { sync receiver_trigger[i]?; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_confirm[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < 
+chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
+    closing -> closed { guard chan_counter[i] >= 0; },
+    idle -> bad { guard chan_counter[i] > 
+chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_trigger[i]?; },
+    confirming_closed -> closed { sync receiver_confirm[i]!; },
+    closed -> bad { sync sender_trigger[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+process main() {
+// Place local declarations here.
+int pid = 0;
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+void initialize() {
+    cid_var278_forks[pid] = -1;
+}
+
+
+
+state
+    starting,
+    created_main_func127_0,
+    started_main_func127_0,
+    created_philo_2,
+    awaited_philo_0,
+    started,
+    ended,
+    started_philo_1,
+    started_philo_2,
+    created_main_func128_0,
+    started_main_func128_0,
+    created_main_func129_0,
+    started_main_func129_0,
+    created_philo_0,
+    ending,
+    made_forks_0,
+    started_philo_0,
+    created_philo_1;
+init
+    starting;
+trans
+    started -> made_forks_0 { assign cid_var278_forks[pid] = make_chan(0); },
+    made_forks_0 -> created_main_func127_0 { assign p = make_main_func127(pid); },
+    created_main_func127_0 -> started_main_func127_0 { sync async_main_func127[p]!; },
+    started_main_func127_0 -> created_main_func128_0 { assign p = make_main_func128(pid); },
+    created_main_func128_0 -> started_main_func128_0 { sync async_main_func128[p]!; },
+    started_main_func128_0 -> created_main_func129_0 { assign p = make_main_func129(pid); },
+    created_main_func129_0 -> started_main_func129_0 { sync async_main_func129[p]!; },
+    started_main_func129_0 -> created_philo_0 { assign p = make_philo(), arg_cid_var276_forks[p] = cid_var278_forks[pid]; },
+    created_philo_0 -> started_philo_0 { sync async_philo[p]!; },
+    started_philo_0 -> created_philo_1 { assign p = make_philo(), arg_cid_var276_forks[p] = cid_var278_forks[pid]; },
+    created_philo_1 -> started_philo_1 { sync async_philo[p]!; },
+    started_philo_1 -> created_philo_2 { assign p = make_philo(), arg_cid_var276_forks[p] = cid_var278_forks[pid]; },
+    created_philo_2 -> started_philo_2 { sync sync_philo[p]!; },
+    started_philo_2 -> awaited_philo_0 { sync sync_philo[p]?; },
+    awaited_philo_0 -> ending { },
+    starting -> started { assign initialize(); },
+    ending -> ended { };
+}
+
+process main_func127(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    sending_forks_0,
+    sent_forks_0,
+    starting,
+    started,
+    ending,
+    ended;
+init
+    starting;
+trans
+    started -> sending_forks_0 { sync sender_trigger[cid_var278_forks[par_pid_main_func127[pid]]]!; assign chan_counter[cid_var278_forks[par_pid_main_func127[pid]]]++; },
+    sending_forks_0 -> sent_forks_0 { sync sender_confirm[cid_var278_forks[par_pid_main_func127[pid]]]?; },
+    sent_forks_0 -> ending { },
+    starting -> started { sync async_main_func127[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_main_func127[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_main_func127[pid]!; };
+}
+
+process main_func128(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    starting,
+    started,
+    ending,
+    ended,
+    sending_forks_0,
+    sent_forks_0;
+init
+    starting;
+trans
+    started -> sending_forks_0 { sync sender_trigger[cid_var278_forks[par_pid_main_func128[pid]]]!; assign chan_counter[cid_var278_forks[par_pid_main_func128[pid]]]++; },
+    sending_forks_0 -> sent_forks_0 { sync sender_confirm[cid_var278_forks[par_pid_main_func128[pid]]]?; },
+    sent_forks_0 -> ending { },
+    starting -> started { sync async_main_func128[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_main_func128[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_main_func128[pid]!; };
+}
+
+process main_func129(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    starting,
+    started,
+    ending,
+    ended,
+    sending_forks_0,
+    sent_forks_0;
+init
+    starting;
+trans
+    started -> sending_forks_0 { sync sender_trigger[cid_var278_forks[par_pid_main_func129[pid]]]!; assign chan_counter[cid_var278_forks[par_pid_main_func129[pid]]]++; },
+    sending_forks_0 -> sent_forks_0 { sync sender_confirm[cid_var278_forks[par_pid_main_func129[pid]]]?; },
+    sent_forks_0 -> ending { },
+    starting -> started { sync async_main_func129[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_main_func129[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_main_func129[pid]!; };
+}
+
+process philo(int[0, 2] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var276_forks = -1;
+
+void initialize() {
+    cid_var276_forks = arg_cid_var276_forks[pid];
+}
+
+
+
+state
+    started,
+    ended,
+    exit_loop_cond_0,
+    receiving_forks_0,
+    ending,
+    enter_loop_cond_0,
+    exit_loop_body_0,
+    exit_loop_0,
+    received_forks_0,
+    starting,
+    sending_forks_0,
+    sent_forks_0,
+    sent_forks_1,
+    enter_loop_body_0,
+    receiving_forks_1,
+    received_forks_1,
+    sending_forks_1;
+init
+    starting;
+trans
+    enter_loop_cond_0 -> exit_loop_cond_0 { },
+    enter_loop_body_0 -> receiving_forks_0 { sync receiver_trigger[cid_var276_forks]!; assign chan_counter[cid_var276_forks]--; },
+    receiving_forks_0 -> received_forks_0 { sync receiver_confirm[cid_var276_forks]?; },
+    received_forks_0 -> receiving_forks_1 { sync receiver_trigger[cid_var276_forks]!; assign chan_counter[cid_var276_forks]--; },
+    receiving_forks_1 -> received_forks_1 { sync receiver_confirm[cid_var276_forks]?; },
+    received_forks_1 -> sending_forks_0 { sync sender_trigger[cid_var276_forks]!; assign chan_counter[cid_var276_forks]++; },
+    sending_forks_0 -> sent_forks_0 { sync sender_confirm[cid_var276_forks]?; },
+    sent_forks_0 -> sending_forks_1 { sync sender_trigger[cid_var276_forks]!; assign chan_counter[cid_var276_forks]++; },
+    sending_forks_1 -> sent_forks_1 { sync sender_confirm[cid_var276_forks]?; },
+    sent_forks_1 -> exit_loop_body_0 { },
+    started -> enter_loop_cond_0 { },
+    exit_loop_cond_0 -> enter_loop_body_0 { },
+    exit_loop_body_0 -> enter_loop_cond_0 { },
+    exit_loop_0 -> ending { },
+    starting -> started { sync async_philo[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_philo[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_philo[pid]!; };
+}
+
+Channel0 = Channel(0);
+main_func127_0 = main_func127(0);
+main_func128_0 = main_func128(0);
+main_func129_0 = main_func129(0);
+philo_0 = philo(0);
+philo_1 = philo(1);
+philo_2 = philo(2);
+system Channel0, main, main_func127_0, main_func128_0, main_func129_0, philo_0, philo_1, philo_2;
+

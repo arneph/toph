@@ -1,41 +1,45 @@
 /*
-check unreachable: Channel.bad
+check Channel.bad state unreachable
 */
 A[] not Channel0.bad
 /*
-check unreachable: Channel.bad
+check deadlock with pending channel operation unreachable
 */
-A[] not Channel1.bad
+A[] not (deadlock and main.sending_ch_0)
 /*
-check unreachable: Channel.bad
+check deadlock with pending channel operation unreachable
 */
-A[] not Channel2.bad
+A[] not (deadlock and main.sending_ch_1)
 /*
-check unreachable: Channel.bad
+check deadlock with pending channel operation unreachable
 */
-A[] not Channel3.bad
+A[] not (deadlock and main.sending_ch_2)
 /*
-check unreachable: Channel.bad
+check deadlock with pending channel operation unreachable
 */
-A[] not Channel4.bad
+A[] not (deadlock and test_0.receiving_a_0)
 /*
-check unreachable: Channel.bad
+check deadlock with pending channel operation unreachable
 */
-A[] not Channel5.bad
+A[] not (deadlock and test_0.sending_b_0)
 /*
-check unreachable: Channel.bad
+check deadlock with blocked select statement unreachable
 */
-A[] not Channel6.bad
+A[] not (deadlock and test_0.select_pass_2_0)
 /*
-check unreachable: Channel.bad
+check deadlock with pending channel operation unreachable
 */
-A[] not Channel7.bad
+A[] not (deadlock and test_0.sending_b_1)
 /*
-check unreachable: Channel.bad
+check deadlock with blocked select statement unreachable
 */
-A[] not Channel8.bad
+A[] not (deadlock and test_0.select_pass_2_1)
 /*
-check unreachable: Channel.bad
+check deadlock with pending channel operation unreachable
 */
-A[] not Channel9.bad
+A[] not (deadlock and test_0.receiving_b_0)
+/*
+check deadlock with pending channel operation unreachable
+*/
+A[] not (deadlock and test_0.sending_a_0)
 

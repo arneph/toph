@@ -1,0 +1,104 @@
+prog{
+  scope{
+    var fid_var602_ifExample Func = 316
+    var fid_var605_forExample Func = 317
+    var fid_var608_main Func = 315
+  }
+  funcs{
+    func{
+      index: 316
+      name: ifExample
+      args: cid_var604_chB, cid_var603_chA
+      results: 
+      scope{
+        var cid_var603_chA Chan = -1
+        var cid_var604_chB Chan = -1
+      }
+      stmts{
+        if{
+          scope{
+          }
+          stmts{
+            send cid_var603_chA
+          }
+        }else{
+          scope{
+          }
+          stmts{
+            close cid_var604_chB
+          }
+        }
+      }
+    }
+    func{
+      index: 317
+      name: forExample
+      args: cid_var606_chA, cid_var607_chB
+      results: 
+      scope{
+        var cid_var606_chA Chan = -1
+        var cid_var607_chB Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              if{
+                scope{
+                }
+                stmts{
+                  receive cid_var606_chA
+                }
+              }else{
+                scope{
+                }
+                stmts{
+                  close cid_var606_chA
+                  continue
+                }
+              }
+              if{
+                scope{
+                }
+                stmts{
+                  send cid_var606_chA
+                  break
+                }
+              }else{
+                scope{
+                }
+                stmts{
+                }
+              }
+              send cid_var607_chB
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 315
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var609_chA Chan = -1
+        var cid_var610_chB Chan = -1
+      }
+      stmts{
+        cid_var609_chA <- make(chan, 0)
+        cid_var610_chB <- make(chan, 0)
+        call 316(0: var cid_var609_chA Chan = -1, 1: var cid_var610_chB Chan = -1)
+        go 317(0: var cid_var609_chA Chan = -1, 1: var cid_var610_chB Chan = -1)
+      }
+    }
+  }
+}

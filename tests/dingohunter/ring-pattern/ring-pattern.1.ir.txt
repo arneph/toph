@@ -1,0 +1,84 @@
+prog{
+  scope{
+    var fid_var338_numprocs Func = 193
+    var fid_var339_adder Func = 194
+    var fid_var342_main Func = 192
+  }
+  funcs{
+    func{
+      index: 193
+      name: numprocs
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        return
+      }
+    }
+    func{
+      index: 194
+      name: adder
+      args: cid_var340_in, cid_var341_out
+      results: 
+      scope{
+        var cid_var340_in Chan = -1
+        var cid_var341_out Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              receive cid_var340_in
+              send cid_var341_out
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 192
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var343_chOne Chan = -1
+        var cid_var344_chOut Chan = -1
+        var cid_var345_chIn Chan = -1
+      }
+      stmts{
+        cid_var343_chOne <- make(chan, 0)
+        cid_var344_chOut <- cid_var343_chOne
+        cid_var345_chIn <- cid_var343_chOne
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+              call 193()
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              cid_var344_chOut <- make(chan, 0)
+              go 194(0: var cid_var345_chIn Chan = -1, 1: var cid_var344_chOut Chan = -1)
+              cid_var345_chIn <- cid_var344_chOut
+            }
+          }
+        }
+        send cid_var343_chOne
+        receive cid_var344_chOut
+      }
+    }
+  }
+}

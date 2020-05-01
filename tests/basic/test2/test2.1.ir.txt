@@ -1,59 +1,59 @@
 prog{
   scope{
-    var fid_var19_test Func = 10
-    var fid_var20_main Func = 11
+    var fid_var16_test Func = 7
+    var fid_var17_main Func = 6
   }
   funcs{
     func{
-      index: 10
+      index: 7
+      name: test
       args: 
-      captures: 
       results: 
       scope{
-        var cid_var21_ch Chan = -1
+        var cid_var18_ch Chan = -1
       }
       stmts{
-        cid_var21_ch <- make(chan, 0)
-        go 12() ['ch' <- &(cid_var21_ch)]
-        go 13() ['ch' <- &(cid_var21_ch)]
+        cid_var18_ch <- make(chan, 0)
+        go 8()
+        go 9()
       }
     }
     func{
-      index: 11
+      index: 6
+      name: main
       args: 
-      captures: 
       results: 
       scope{
       }
       stmts{
-        call 10()
-        call 10()
-        call 10()
-        call 10()
+        call 7()
+        call 7()
+        call 7()
+        call 7()
       }
     }
     func{
-      index: 12
+      index: 8
+      name: test_func8
       args: 
-      captures: cid_var22_ch <- *'ch'
       results: 
+      enclosing func index: 7
       scope{
-        var cid_var22_ch Chan = -1
       }
       stmts{
-        send cid_var22_ch
+        send cid_var18_ch
       }
     }
     func{
-      index: 13
+      index: 9
+      name: test_func9
       args: 
-      captures: cid_var23_ch <- *'ch'
       results: 
+      enclosing func index: 7
       scope{
-        var cid_var23_ch Chan = -1
       }
       stmts{
-        receive cid_var23_ch
+        receive cid_var18_ch
       }
     }
   }

@@ -1,0 +1,64 @@
+prog{
+  scope{
+    var cid_var135_ch Chan = -1
+    var fid_var136_f Func = 64
+    var fid_var137_g Func = 65
+    var fid_var138_main Func = 63
+  }
+  funcs{
+    func{
+      index: 64
+      name: f
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        call 65()
+      }
+    }
+    func{
+      index: 65
+      name: g
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        receive cid_var135_ch
+      }
+    }
+    func{
+      index: 63
+      name: main
+      args: 
+      results: 
+      scope{
+        var fid_var141 Func = 66
+        var fid_var139_x Func = -1
+      }
+      stmts{
+        cid_var135_ch <- make(chan, 0)
+        call 64()
+        call 65()
+        fid_var139_x <- fid_var141
+        select{
+        }
+      }
+    }
+    func{
+      index: 66
+      name: main_func66
+      args: 
+      results: Chan
+      enclosing func index: 63
+      scope{
+        var cid_var140 Chan = -1
+      }
+      stmts{
+        cid_var140 <- make(chan, 0)
+        return 0: cid_var140
+      }
+    }
+  }
+}

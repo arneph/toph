@@ -1,0 +1,9 @@
+Options for the verification:
+  Generating no trace
+  Search order is depth first
+  Using conservative space optimisation
+  Seed is 1588268805
+  State space representation uses minimal constraint systems
+[2K
+Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/issue-10-close-wrong-migo-chan-name/issue-10-close-wrong-migo-chan-name.q:4
+[2K -- Formula is satisfied.

@@ -1,0 +1,471 @@
+// Place global declarations here.
+int fid_var95_makePhilosopher = 46;
+int fid_var96_think = 47;
+int fid_var97_eat = 48;
+int fid_var98_getChopsticks = 49;
+int fid_var99_returnChopsticks = 50;
+int fid_var100_dine = 51;
+int fid_var102_main = 45;
+int makePhilosopher_count = 0;
+chan async_makePhilosopher[20];
+chan sync_makePhilosopher[20];
+
+int think_count = 0;
+chan async_think[1];
+chan sync_think[1];
+
+int eat_count = 0;
+chan async_eat[1];
+chan sync_eat[1];
+
+int getChopsticks_count = 0;
+chan async_getChopsticks[1];
+chan sync_getChopsticks[1];
+
+int returnChopsticks_count = 0;
+chan async_returnChopsticks[1];
+chan sync_returnChopsticks[1];
+
+int dine_count = 0;
+chan async_dine[1];
+chan sync_dine[1];
+int arg_cid_var101_announce[1];
+
+int getChopsticks_func52_count = 0;
+chan async_getChopsticks_func52[1];
+chan sync_getChopsticks_func52[1];
+int par_pid_getChopsticks_func52[1];
+
+int cid_var104_timeout[1];
+
+int chan_count = 0;
+int chan_counter[20];
+int chan_buffer[20];
+chan sender_trigger[20];
+chan sender_confirm[20];
+chan receiver_trigger[20];
+chan receiver_confirm[20];
+chan close[20];
+
+int make_makePhilosopher() {
+	int pid = makePhilosopher_count;
+	makePhilosopher_count++;
+	return pid;
+}
+
+int make_think() {
+	int pid = think_count;
+	think_count++;
+	return pid;
+}
+
+int make_eat() {
+	int pid = eat_count;
+	eat_count++;
+	return pid;
+}
+
+int make_getChopsticks() {
+	int pid = getChopsticks_count;
+	getChopsticks_count++;
+	return pid;
+}
+
+int make_returnChopsticks() {
+	int pid = returnChopsticks_count;
+	returnChopsticks_count++;
+	return pid;
+}
+
+int make_dine() {
+	int pid = dine_count;
+	dine_count++;
+	return pid;
+}
+
+int make_getChopsticks_func52(int par_pid) {
+	int pid = getChopsticks_func52_count;
+	getChopsticks_func52_count++;
+	par_pid_getChopsticks_func52[pid] = par_pid;
+	return pid;
+}
+
+int make_chan(int buffer) {
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}
+
+
+
+process Channel(int[0, 19] i) {
+// Place local declarations here.
+
+
+state
+    idle,
+    confirming_a,
+    new_receiver,
+    confirming_closed,
+    bad,
+    new_sender,
+    confirming_b,
+    closing,
+    closed;
+commit
+    confirming_closed,
+    confirming_a,
+    new_receiver,
+    new_sender,
+    confirming_b,
+    closing;
+init
+    idle;
+trans
+    idle -> new_sender { sync sender_trigger[i]?; },
+    new_sender -> idle { guard chan_counter[i] > 
+chan_buffer[i]; },
+    new_sender -> confirming_a { guard chan_counter[i] <= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    confirming_a -> idle { guard chan_counter[i] > 0; },
+    confirming_a -> idle { guard chan_counter[i] <= 0; sync receiver_confirm[i]!; },
+    idle -> new_receiver { sync receiver_trigger[i]?; },
+    new_receiver -> idle { guard chan_counter[i] < 0; },
+    new_receiver -> confirming_b { guard chan_counter[i] >= 0; sync receiver_confirm[i]!; },
+    confirming_b -> idle { guard chan_counter[i] < 
+chan_buffer[i]; },
+    confirming_b -> idle { guard chan_counter[i] >= 
+chan_buffer[i]; sync sender_confirm[i]!; },
+    idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
+    closing -> closed { guard chan_counter[i] >= 0; },
+    idle -> bad { guard chan_counter[i] > 
+chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
+    closed -> confirming_closed { sync receiver_trigger[i]?; },
+    confirming_closed -> closed { sync receiver_confirm[i]!; },
+    closed -> bad { sync sender_trigger[i]?; },
+    closed -> bad { sync close[i]?; };
+}
+
+process dine(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var101_announce = -1;
+
+void initialize() {
+    cid_var101_announce = arg_cid_var101_announce[pid];
+}
+
+
+
+state
+    started,
+    ending,
+    ended,
+    sending_announce_0,
+    sent_announce_0,
+    starting;
+init
+    starting;
+trans
+    started -> sending_announce_0 { sync sender_trigger[cid_var101_announce]!; assign chan_counter[cid_var101_announce]++; },
+    sending_announce_0 -> sent_announce_0 { sync sender_confirm[cid_var101_announce]?; },
+    sent_announce_0 -> ending { },
+    starting -> started { sync async_dine[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_dine[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_dine[pid]!; };
+}
+
+process eat(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    starting,
+    started,
+    ending,
+    ended;
+init
+    starting;
+trans
+    started -> ending { },
+    starting -> started { sync async_eat[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_eat[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_eat[pid]!; };
+}
+
+process getChopsticks(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+void initialize() {
+    cid_var104_timeout[pid] = -1;
+}
+
+
+
+state
+    ended,
+    made_timeout_0,
+    select_pass_2_0,
+    select_pass_1_0,
+    select_case_1_trigger_0,
+    starting,
+    started,
+    ending,
+    select_case_1_enter_0,
+    created_getChopsticks_func52_0,
+    started_getChopsticks_func52_0,
+    select_end_0;
+commit
+    select_pass_1_0;
+init
+    starting;
+trans
+    started -> made_timeout_0 { assign cid_var104_timeout[pid] = make_chan(1); },
+    made_timeout_0 -> created_getChopsticks_func52_0 { assign p = make_getChopsticks_func52(pid); },
+    created_getChopsticks_func52_0 -> started_getChopsticks_func52_0 { sync async_getChopsticks_func52[p]!; },
+    select_case_1_enter_0 -> select_end_0 { },
+    started_getChopsticks_func52_0 -> select_pass_1_0 { assign chan_counter[cid_var104_timeout[pid]]--; },
+    select_pass_1_0 -> select_case_1_trigger_0 { guard chan_buffer[cid_var104_timeout[pid]] < 0 || chan_counter[cid_var104_timeout[pid]] >= 0; sync receiver_trigger[cid_var104_timeout[pid]]!; },
+    select_case_1_trigger_0 -> select_case_1_enter_0 { sync receiver_confirm[cid_var104_timeout[pid]]?; },
+    select_pass_1_0 -> select_pass_2_0 { guard !(chan_buffer[cid_var104_timeout[pid]] < 0 || chan_counter[cid_var104_timeout[pid]] >= 0); },
+    select_pass_2_0 -> select_case_1_enter_0 { sync receiver_confirm[cid_var104_timeout[pid]]?; },
+    select_end_0 -> ending { },
+    starting -> started { sync async_getChopsticks[pid]?; assign is_sync = false, initialize(); },
+    starting -> started { sync sync_getChopsticks[pid]?; assign is_sync = true, initialize(); },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_getChopsticks[pid]!; };
+}
+
+process getChopsticks_func52(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    ended,
+    sending_timeout_0,
+    sent_timeout_0,
+    starting,
+    started,
+    ending;
+init
+    starting;
+trans
+    started -> sending_timeout_0 { sync sender_trigger[cid_var104_timeout[par_pid_getChopsticks_func52[pid]]]!; assign chan_counter[cid_var104_timeout[par_pid_getChopsticks_func52[pid]]]++; },
+    sending_timeout_0 -> sent_timeout_0 { sync sender_confirm[cid_var104_timeout[par_pid_getChopsticks_func52[pid]]]?; },
+    sent_timeout_0 -> ending { },
+    starting -> started { sync async_getChopsticks_func52[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_getChopsticks_func52[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_getChopsticks_func52[pid]!; };
+}
+
+process main() {
+// Place local declarations here.
+int pid = 0;
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var105 = -1;
+int cid_var106_announce = -1;
+
+
+
+state
+    exit_loop_body_1,
+    exit_loop_cond_2,
+    received_announce_0,
+    ending,
+    exit_loop_cond_0,
+    awaited_makePhilosopher_0,
+    enter_loop_cond_1,
+    made_announce_0,
+    enter_loop_cond_2,
+    enter_loop_body_2,
+    exit_loop_body_2,
+    starting,
+    ended,
+    enter_loop_cond_0,
+    exit_loop_0,
+    exit_loop_2,
+    enter_loop_body_0,
+    created_makePhilosopher_0,
+    enter_loop_body_1,
+    exit_loop_1,
+    receiving_announce_0,
+    started,
+    exit_loop_body_0,
+    started_makePhilosopher_0,
+    exit_loop_cond_1;
+init
+    starting;
+trans
+    enter_loop_cond_0 -> exit_loop_cond_0 { },
+    enter_loop_body_0 -> created_makePhilosopher_0 { assign p = make_makePhilosopher(); },
+    created_makePhilosopher_0 -> started_makePhilosopher_0 { sync sync_makePhilosopher[p]!; },
+    started_makePhilosopher_0 -> awaited_makePhilosopher_0 { sync sync_makePhilosopher[p]?; },
+    awaited_makePhilosopher_0 -> exit_loop_body_0 { },
+    started -> enter_loop_cond_0 { },
+    exit_loop_cond_0 -> enter_loop_body_0 { },
+    exit_loop_cond_0 -> exit_loop_0 { },
+    exit_loop_body_0 -> enter_loop_cond_0 { },
+    exit_loop_0 -> made_announce_0 { assign cid_var106_announce = make_chan(0); },
+    enter_loop_cond_1 -> exit_loop_cond_1 { },
+    enter_loop_body_1 -> exit_loop_body_1 { },
+    made_announce_0 -> enter_loop_cond_1 { },
+    exit_loop_cond_1 -> enter_loop_body_1 { },
+    exit_loop_cond_1 -> exit_loop_1 { },
+    exit_loop_body_1 -> enter_loop_cond_1 { },
+    enter_loop_cond_2 -> exit_loop_cond_2 { },
+    enter_loop_body_2 -> receiving_announce_0 { sync receiver_trigger[cid_var106_announce]!; assign chan_counter[cid_var106_announce]--; },
+    receiving_announce_0 -> received_announce_0 { sync receiver_confirm[cid_var106_announce]?; },
+    received_announce_0 -> exit_loop_body_2 { },
+    exit_loop_1 -> enter_loop_cond_2 { },
+    exit_loop_cond_2 -> enter_loop_body_2 { },
+    exit_loop_cond_2 -> exit_loop_2 { },
+    exit_loop_body_2 -> enter_loop_cond_2 { },
+    exit_loop_2 -> ending { },
+    starting -> started { },
+    ending -> ended { };
+}
+
+process makePhilosopher(int[0, 19] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+int cid_var103 = -1;
+
+
+
+state
+    ended,
+    made__0,
+    starting,
+    started,
+    ending;
+init
+    starting;
+trans
+    started -> made__0 { assign cid_var103 = make_chan(1); },
+    made__0 -> ending { },
+    starting -> started { sync async_makePhilosopher[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_makePhilosopher[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_makePhilosopher[pid]!; };
+}
+
+process returnChopsticks(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    starting,
+    started,
+    ending,
+    ended;
+init
+    starting;
+trans
+    started -> ending { },
+    starting -> started { sync async_returnChopsticks[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_returnChopsticks[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_returnChopsticks[pid]!; };
+}
+
+process think(int[0, 0] pid) {
+// Place local declarations here.
+bool is_sync = false;
+int p = -1;
+bool ok = false;
+
+
+
+state
+    starting,
+    started,
+    ending,
+    ended;
+init
+    starting;
+trans
+    started -> ending { },
+    starting -> started { sync async_think[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_think[pid]?; assign is_sync = true; },
+    ending -> ended { guard is_sync == false; },
+    ending -> ended { guard is_sync == true; sync sync_think[pid]!; };
+}
+
+Channel00 = Channel(0);
+Channel01 = Channel(1);
+Channel02 = Channel(2);
+Channel03 = Channel(3);
+Channel04 = Channel(4);
+Channel05 = Channel(5);
+Channel06 = Channel(6);
+Channel07 = Channel(7);
+Channel08 = Channel(8);
+Channel09 = Channel(9);
+Channel10 = Channel(10);
+Channel11 = Channel(11);
+Channel12 = Channel(12);
+Channel13 = Channel(13);
+Channel14 = Channel(14);
+Channel15 = Channel(15);
+Channel16 = Channel(16);
+Channel17 = Channel(17);
+Channel18 = Channel(18);
+Channel19 = Channel(19);
+dine_0 = dine(0);
+eat_0 = eat(0);
+getChopsticks_0 = getChopsticks(0);
+getChopsticks_func52_0 = getChopsticks_func52(0);
+makePhilosopher_00 = makePhilosopher(0);
+makePhilosopher_01 = makePhilosopher(1);
+makePhilosopher_02 = makePhilosopher(2);
+makePhilosopher_03 = makePhilosopher(3);
+makePhilosopher_04 = makePhilosopher(4);
+makePhilosopher_05 = makePhilosopher(5);
+makePhilosopher_06 = makePhilosopher(6);
+makePhilosopher_07 = makePhilosopher(7);
+makePhilosopher_08 = makePhilosopher(8);
+makePhilosopher_09 = makePhilosopher(9);
+makePhilosopher_10 = makePhilosopher(10);
+makePhilosopher_11 = makePhilosopher(11);
+makePhilosopher_12 = makePhilosopher(12);
+makePhilosopher_13 = makePhilosopher(13);
+makePhilosopher_14 = makePhilosopher(14);
+makePhilosopher_15 = makePhilosopher(15);
+makePhilosopher_16 = makePhilosopher(16);
+makePhilosopher_17 = makePhilosopher(17);
+makePhilosopher_18 = makePhilosopher(18);
+makePhilosopher_19 = makePhilosopher(19);
+returnChopsticks_0 = returnChopsticks(0);
+think_0 = think(0);
+system Channel00, Channel01, Channel02, Channel03, Channel04, Channel05, Channel06, Channel07, Channel08, Channel09, Channel10, Channel11, Channel12, Channel13, Channel14, Channel15, Channel16, Channel17, Channel18, Channel19, dine_0, eat_0, getChopsticks_0, getChopsticks_func52_0, main, makePhilosopher_00, makePhilosopher_01, makePhilosopher_02, makePhilosopher_03, makePhilosopher_04, makePhilosopher_05, makePhilosopher_06, makePhilosopher_07, makePhilosopher_08, makePhilosopher_09, makePhilosopher_10, makePhilosopher_11, makePhilosopher_12, makePhilosopher_13, makePhilosopher_14, makePhilosopher_15, makePhilosopher_16, makePhilosopher_17, makePhilosopher_18, makePhilosopher_19, returnChopsticks_0, think_0;
+

@@ -1,0 +1,18 @@
+Options for the verification:
+  Generating no trace
+  Search order is depth first
+  Using conservative space optimisation
+  Seed is 1588268802
+  State space representation uses minimal constraint systems
+[2K
+Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/select-with-weak-mismatch/select-with-weak-mismatch.q:4
+[2K -- Formula is satisfied.
+[2K
+Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/select-with-weak-mismatch/select-with-weak-mismatch.q:8
+[2K -- Formula is satisfied.
+[2K
+Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/select-with-weak-mismatch/select-with-weak-mismatch.q:12
+[2K -- Formula is satisfied.
+[2K
+Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/select-with-weak-mismatch/select-with-weak-mismatch.q:16
+[2K -- Formula is satisfied.

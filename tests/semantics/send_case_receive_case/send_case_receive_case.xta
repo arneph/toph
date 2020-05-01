@@ -1,64 +1,71 @@
 // Place global declarations here.
-int fid_var445_main = 240;
+int fid_var727_main = 404;
+int main_func405_count = 0;
+chan async_main_func405[1];
+chan sync_main_func405[1];
+int par_pid_main_func405[1];
 
-int main_func241_count = 0;
-int cap_cid_var452_chA[1];
-chan async_main_func241[1];
-chan sync_main_func241[1];
-int make_main_func241() {
-    int pid = main_func241_count;
-    main_func241_count++;
-    return pid;
-}
+int main_func406_count = 0;
+chan async_main_func406[1];
+chan sync_main_func406[1];
+int par_pid_main_func406[1];
 
-int main_func242_count = 0;
-int cap_cid_var453_chA[1];
-chan async_main_func242[1];
-chan sync_main_func242[1];
-int make_main_func242() {
-    int pid = main_func242_count;
-    main_func242_count++;
-    return pid;
-}
+int cid_var728_chA[1];
 
 int chan_count = 0;
-int chan_counter[10];
-int chan_buffer[10];
-chan sender_trigger[10];
-chan sender_confirm[10];
-chan receiver_trigger[10];
-chan receiver_confirm[10];
-chan close[10];
+int chan_counter[2];
+int chan_buffer[2];
+chan sender_trigger[2];
+chan sender_confirm[2];
+chan receiver_trigger[2];
+chan receiver_confirm[2];
+chan close[2];
+
+int make_main_func405(int par_pid) {
+	int pid = main_func405_count;
+	main_func405_count++;
+	par_pid_main_func405[pid] = par_pid;
+	return pid;
+}
+
+int make_main_func406(int par_pid) {
+	int pid = main_func406_count;
+	main_func406_count++;
+	par_pid_main_func406[pid] = par_pid;
+	return pid;
+}
 
 int make_chan(int buffer) {
-    int cid = chan_count;
-    chan_count++;
-    chan_counter[cid] = 0;
-    chan_buffer[cid] = buffer;
-    return cid;
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
 }
 
 
-process Channel(int[0, 9] i) {
+
+process Channel(int[0, 1] i) {
 // Place local declarations here.
 
+
 state
-    new_sender,
-    confirming_a,
     new_receiver,
-    bad,
-    idle,
-    confirming_b,
     closing,
+    confirming_closed,
+    bad,
+    confirming_a,
+    new_sender,
+    confirming_b,
     closed,
-    confirming_closed;
+    idle;
 commit
     new_sender,
+    confirming_b,
     confirming_a,
     new_receiver,
-    confirming_closed,
-    confirming_b,
-    closing;
+    closing,
+    confirming_closed;
 init
     idle;
 trans
@@ -78,7 +85,7 @@ chan_buffer[i]; },
 chan_buffer[i]; sync sender_confirm[i]!; },
     idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
     closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
-    closing -> closed { guard chan_counter[i] >= 0; assign chan_counter[i] = 1; },
+    closing -> closed { guard chan_counter[i] >= 0; },
     idle -> bad { guard chan_counter[i] > 
 chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
     closed -> confirming_closed { sync receiver_trigger[i]?; },
@@ -89,123 +96,121 @@ chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
 
 process main() {
 // Place local declarations here.
-bool is_sync;
+int pid = 0;
+bool is_sync = false;
 int p = -1;
-int cid_var450_chA = -1;
-int cid_var451_chB = -1;
+bool ok = false;
+
+int cid_var729_chB = -1;
+
+void initialize() {
+    cid_var728_chA[pid] = -1;
+}
+
+
 
 state
-    created_main_func241_0,
-    started_main_func241_0,
-    starting,
-    ending,
     ended,
-    made_cid_var450_chA_0,
-    made_cid_var451_chB_0,
-    closed_cid_var451_chB_0,
+    made_chB_0,
+    closed_chB_0,
+    created_main_func405_0,
+    started_main_func405_0,
+    starting,
     started,
-    created_main_func242_0,
-    started_main_func242_0;
+    ending,
+    made_chA_0,
+    created_main_func406_0,
+    started_main_func406_0;
 init
     starting;
 trans
-    started -> made_cid_var450_chA_0 { assign cid_var450_chA = make_chan(0); },
-    made_cid_var450_chA_0 -> made_cid_var451_chB_0 { assign cid_var451_chB = make_chan(0); },
-    made_cid_var451_chB_0 -> closed_cid_var451_chB_0 { sync close[cid_var451_chB]!; },
-    closed_cid_var451_chB_0 -> created_main_func241_0 { assign p = make_main_func241(), cap_cid_var452_chA[p] = cid_var450_chA; },
-    created_main_func241_0 -> started_main_func241_0 { sync async_main_func241[p]!; },
-    started_main_func241_0 -> created_main_func242_0 { assign p = make_main_func242(), cap_cid_var453_chA[p] = cid_var450_chA; },
-    created_main_func242_0 -> started_main_func242_0 { sync async_main_func242[p]!; },
-    started_main_func242_0 -> ending { },
-    starting -> started { },
+    started -> made_chA_0 { assign cid_var728_chA[pid] = make_chan(0); },
+    made_chA_0 -> made_chB_0 { assign cid_var729_chB = make_chan(0); },
+    made_chB_0 -> closed_chB_0 { sync close[cid_var729_chB]!; },
+    closed_chB_0 -> created_main_func405_0 { assign p = make_main_func405(pid); },
+    created_main_func405_0 -> started_main_func405_0 { sync async_main_func405[p]!; },
+    started_main_func405_0 -> created_main_func406_0 { assign p = make_main_func406(pid); },
+    created_main_func406_0 -> started_main_func406_0 { sync async_main_func406[p]!; },
+    started_main_func406_0 -> ending { },
+    starting -> started { assign initialize(); },
     ending -> ended { };
 }
 
-process main_func241(int[0, 0] pid) {
+process main_func405(int[0, 0] pid) {
 // Place local declarations here.
-bool is_sync;
+bool is_sync = false;
 int p = -1;
-int cid_var452_chA = -1;
-void initialize() {
-    cid_var452_chA = cap_cid_var452_chA[pid];
-}
+bool ok = false;
+
+
 
 state
+    started,
     select_pass_1_0,
-    started,
+    starting,
+    ending,
+    ended,
     select_end_0,
     select_pass_2_0,
     select_case_1_enter_0,
-    select_case_1_trigger_0,
-    starting,
-    ending,
-    ended;
+    select_case_1_trigger_0;
 commit
     select_pass_1_0;
 init
     starting;
 trans
     select_case_1_enter_0 -> select_end_0 { },
-    started -> select_pass_1_0 { assign chan_counter[cid_var452_chA]++; },
-    select_pass_1_0 -> select_case_1_trigger_0 { guard chan_buffer[cid_var452_chA] < 0 || chan_counter[cid_var452_chA] <= chan_buffer[cid_var452_chA]; sync sender_trigger[cid_var452_chA]!; },
-    select_case_1_trigger_0 -> select_case_1_enter_0 { sync sender_confirm[cid_var452_chA]?; },
-    select_pass_1_0 -> select_pass_2_0 { guard !(chan_buffer[cid_var452_chA] < 0 || chan_counter[cid_var452_chA] <= chan_buffer[cid_var452_chA]); },
-    select_pass_2_0 -> select_case_1_enter_0 { sync sender_confirm[cid_var452_chA]?; },
+    started -> select_pass_1_0 { assign chan_counter[cid_var728_chA[par_pid_main_func405[pid]]]++; },
+    select_pass_1_0 -> select_case_1_trigger_0 { guard chan_buffer[cid_var728_chA[par_pid_main_func405[pid]]] < 0 || chan_counter[cid_var728_chA[par_pid_main_func405[pid]]] <= chan_buffer[cid_var728_chA[par_pid_main_func405[pid]]]; sync sender_trigger[cid_var728_chA[par_pid_main_func405[pid]]]!; },
+    select_case_1_trigger_0 -> select_case_1_enter_0 { sync sender_confirm[cid_var728_chA[par_pid_main_func405[pid]]]?; },
+    select_pass_1_0 -> select_pass_2_0 { guard !(chan_buffer[cid_var728_chA[par_pid_main_func405[pid]]] < 0 || chan_counter[cid_var728_chA[par_pid_main_func405[pid]]] <= chan_buffer[cid_var728_chA[par_pid_main_func405[pid]]]); },
+    select_pass_2_0 -> select_case_1_enter_0 { sync sender_confirm[cid_var728_chA[par_pid_main_func405[pid]]]?; },
     select_end_0 -> ending { },
-    starting -> started { sync async_main_func241[pid]?; assign is_sync = false, initialize(); },
-    starting -> started { sync sync_main_func241[pid]?; assign is_sync = true, initialize(); },
+    starting -> started { sync async_main_func405[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_main_func405[pid]?; assign is_sync = true; },
     ending -> ended { guard is_sync == false; },
-    ending -> ended { guard is_sync == true; sync sync_main_func241[pid]!; };
+    ending -> ended { guard is_sync == true; sync sync_main_func405[pid]!; };
 }
 
-process main_func242(int[0, 0] pid) {
+process main_func406(int[0, 0] pid) {
 // Place local declarations here.
-bool is_sync;
+bool is_sync = false;
 int p = -1;
-int cid_var453_chA = -1;
-void initialize() {
-    cid_var453_chA = cap_cid_var453_chA[pid];
-}
+bool ok = false;
+
+
 
 state
     ending,
-    select_end_0,
+    ended,
+    select_pass_1_0,
+    select_pass_2_0,
     select_case_1_enter_0,
     select_case_1_trigger_0,
     starting,
     started,
-    ended,
-    select_pass_2_0,
-    select_pass_1_0;
+    select_end_0;
 commit
     select_pass_1_0;
 init
     starting;
 trans
     select_case_1_enter_0 -> select_end_0 { },
-    started -> select_pass_1_0 { assign chan_counter[cid_var453_chA]--; },
-    select_pass_1_0 -> select_case_1_trigger_0 { guard chan_buffer[cid_var453_chA] < 0 || chan_counter[cid_var453_chA] >= 0; sync receiver_trigger[cid_var453_chA]!; },
-    select_case_1_trigger_0 -> select_case_1_enter_0 { sync receiver_confirm[cid_var453_chA]?; },
-    select_pass_1_0 -> select_pass_2_0 { guard !(chan_buffer[cid_var453_chA] < 0 || chan_counter[cid_var453_chA] >= 0); },
-    select_pass_2_0 -> select_case_1_enter_0 { sync receiver_confirm[cid_var453_chA]?; },
+    started -> select_pass_1_0 { assign chan_counter[cid_var728_chA[par_pid_main_func406[pid]]]--; },
+    select_pass_1_0 -> select_case_1_trigger_0 { guard chan_buffer[cid_var728_chA[par_pid_main_func406[pid]]] < 0 || chan_counter[cid_var728_chA[par_pid_main_func406[pid]]] >= 0; sync receiver_trigger[cid_var728_chA[par_pid_main_func406[pid]]]!; },
+    select_case_1_trigger_0 -> select_case_1_enter_0 { sync receiver_confirm[cid_var728_chA[par_pid_main_func406[pid]]]?; },
+    select_pass_1_0 -> select_pass_2_0 { guard !(chan_buffer[cid_var728_chA[par_pid_main_func406[pid]]] < 0 || chan_counter[cid_var728_chA[par_pid_main_func406[pid]]] >= 0); },
+    select_pass_2_0 -> select_case_1_enter_0 { sync receiver_confirm[cid_var728_chA[par_pid_main_func406[pid]]]?; },
     select_end_0 -> ending { },
-    starting -> started { sync async_main_func242[pid]?; assign is_sync = false, initialize(); },
-    starting -> started { sync sync_main_func242[pid]?; assign is_sync = true, initialize(); },
+    starting -> started { sync async_main_func406[pid]?; assign is_sync = false; },
+    starting -> started { sync sync_main_func406[pid]?; assign is_sync = true; },
     ending -> ended { guard is_sync == false; },
-    ending -> ended { guard is_sync == true; sync sync_main_func242[pid]!; };
+    ending -> ended { guard is_sync == true; sync sync_main_func406[pid]!; };
 }
 
 Channel0 = Channel(0);
 Channel1 = Channel(1);
-Channel2 = Channel(2);
-Channel3 = Channel(3);
-Channel4 = Channel(4);
-Channel5 = Channel(5);
-Channel6 = Channel(6);
-Channel7 = Channel(7);
-Channel8 = Channel(8);
-Channel9 = Channel(9);
-main_func2410 = main_func241(0);
-main_func2420 = main_func242(0);
-system Channel0, Channel1, Channel2, Channel3, Channel4, Channel5, Channel6, Channel7, Channel8, Channel9, main, main_func2410, main_func2420;
+main_func405_0 = main_func405(0);
+main_func406_0 = main_func406(0);
+system Channel0, Channel1, main, main_func405_0, main_func406_0;
 

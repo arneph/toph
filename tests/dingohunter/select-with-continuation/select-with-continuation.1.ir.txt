@@ -1,0 +1,50 @@
+prog{
+  scope{
+    var fid_var353_main Func = 200
+  }
+  funcs{
+    func{
+      index: 200
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var354_ch1 Chan = -1
+        var cid_var355_ch2 Chan = -1
+        var cid_var356_ch3 Chan = -1
+      }
+      stmts{
+        cid_var354_ch1 <- make(chan, 0)
+        cid_var355_ch2 <- make(chan, 0)
+        cid_var356_ch3 <- make(chan, 0)
+        select{
+          case receive cid_var354_ch1 {
+            scope{
+            }
+            stmts{
+            }
+          }
+          case send cid_var355_ch2 {
+            scope{
+            }
+            stmts{
+            }
+          }
+          case receive cid_var356_ch3 {
+            scope{
+            }
+            stmts{
+            }
+          }
+        default {
+          scope{
+          }
+          stmts{
+          }
+        }
+        }
+        send cid_var354_ch1
+      }
+    }
+  }
+}

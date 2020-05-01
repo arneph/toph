@@ -1,0 +1,126 @@
+prog{
+  scope{
+    var fid_var520_work Func = 287
+    var fid_var522_fanin Func = 288
+    var fid_var526_main Func = 286
+  }
+  funcs{
+    func{
+      index: 287
+      name: work
+      args: cid_var521_out
+      results: 
+      scope{
+        var cid_var521_out Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              send cid_var521_out
+            }
+          }
+        }
+      }
+    }
+    func{
+      index: 288
+      name: fanin
+      args: cid_var523_ch1, cid_var524_ch2, cid_var525_c
+      results: 
+      scope{
+        var cid_var523_ch1 Chan = -1
+        var cid_var524_ch2 Chan = -1
+        var cid_var525_c Chan = -1
+      }
+      stmts{
+        go 289(2: var cid_var525_c Chan = -1, 0: var cid_var523_ch1 Chan = -1, 1: var cid_var524_ch2 Chan = -1)
+        range cid_var525_c {
+          scope{
+          }
+          stmts{
+          }
+        }
+      }
+    }
+    func{
+      index: 286
+      name: main
+      args: 
+      results: 
+      scope{
+        var cid_var530_input1 Chan = -1
+        var cid_var531_input2 Chan = -1
+        var cid_var532_c Chan = -1
+      }
+      stmts{
+        cid_var530_input1 <- make(chan, 0)
+        cid_var531_input2 <- make(chan, 0)
+        go 287(0: var cid_var530_input1 Chan = -1)
+        go 287(0: var cid_var531_input2 Chan = -1)
+        cid_var532_c <- make(chan, 0)
+        call 288(2: var cid_var532_c Chan = -1, 0: var cid_var530_input1 Chan = -1, 1: var cid_var531_input2 Chan = -1)
+      }
+    }
+    func{
+      index: 289
+      name: fanin_func289
+      args: cid_var527_ch1, cid_var528_ch2, cid_var529_c
+      results: 
+      enclosing func index: 288
+      scope{
+        var cid_var527_ch1 Chan = -1
+        var cid_var528_ch2 Chan = -1
+        var cid_var529_c Chan = -1
+      }
+      stmts{
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var527_ch1 {
+                  scope{
+                  }
+                  stmts{
+                    send cid_var529_c
+                  }
+                }
+                case receive cid_var528_ch2 {
+                  scope{
+                  }
+                  stmts{
+                    send cid_var529_c
+                  }
+                }
+              default {
+                scope{
+                }
+                stmts{
+                  close cid_var529_c
+                  return
+                }
+              }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

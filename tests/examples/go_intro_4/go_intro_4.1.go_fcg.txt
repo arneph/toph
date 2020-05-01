@@ -1,0 +1,4 @@
+main (3) -> producer, consumer
+producer (1) -> 
+consumer (2) -> 
+

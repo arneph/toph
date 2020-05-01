@@ -1,18 +1,18 @@
 prog{
   scope{
-    var fid_var31_producer Func = 18
-    var fid_var32_processor Func = 19
-    var fid_var33_consumer Func = 20
-    var fid_var34_main Func = 21
+    var fid_var19_producer Func = 11
+    var fid_var21_processor Func = 12
+    var fid_var24_consumer Func = 13
+    var fid_var26_main Func = 10
   }
   funcs{
     func{
-      index: 18
-      args: cid_var35_out
-      captures: 
+      index: 11
+      name: producer
+      args: cid_var20_out
       results: 
       scope{
-        var cid_var35_out Chan = -1
+        var cid_var20_out Chan = -1
       }
       stmts{
         for{
@@ -26,43 +26,43 @@ prog{
             scope{
             }
             stmts{
-              send cid_var35_out
+              send cid_var20_out
             }
           }
         }
-        close cid_var35_out
+        close cid_var20_out
       }
     }
     func{
-      index: 19
-      args: cid_var36_in, cid_var37_out
-      captures: 
+      index: 12
+      name: processor
+      args: cid_var22_in, cid_var23_out
       results: 
       scope{
-        var cid_var36_in Chan = -1
-        var cid_var37_out Chan = -1
+        var cid_var22_in Chan = -1
+        var cid_var23_out Chan = -1
       }
       stmts{
-        range cid_var36_in {
+        range cid_var22_in {
           scope{
           }
           stmts{
-            send cid_var37_out
+            send cid_var23_out
           }
         }
-        close cid_var37_out
+        close cid_var23_out
       }
     }
     func{
-      index: 20
-      args: cid_var38_in
-      captures: 
+      index: 13
+      name: consumer
+      args: cid_var25_in
       results: 
       scope{
-        var cid_var38_in Chan = -1
+        var cid_var25_in Chan = -1
       }
       stmts{
-        range cid_var38_in {
+        range cid_var25_in {
           scope{
           }
           stmts{
@@ -71,20 +71,20 @@ prog{
       }
     }
     func{
-      index: 21
+      index: 10
+      name: main
       args: 
-      captures: 
       results: 
       scope{
-        var cid_var39_ch1 Chan = -1
-        var cid_var40_ch2 Chan = -1
+        var cid_var27_ch1 Chan = -1
+        var cid_var28_ch2 Chan = -1
       }
       stmts{
-        cid_var39_ch1 <- make(chan, 0)
-        cid_var40_ch2 <- make(chan, 0)
-        go 18(0: var cid_var39_ch1 Chan = -1)
-        go 19(1: var cid_var40_ch2 Chan = -1, 0: var cid_var39_ch1 Chan = -1)
-        call 20(0: var cid_var40_ch2 Chan = -1)
+        cid_var27_ch1 <- make(chan, 0)
+        cid_var28_ch2 <- make(chan, 0)
+        go 11(0: var cid_var27_ch1 Chan = -1)
+        go 12(1: var cid_var28_ch2 Chan = -1, 0: var cid_var27_ch1 Chan = -1)
+        call 13(0: var cid_var28_ch2 Chan = -1)
       }
     }
   }

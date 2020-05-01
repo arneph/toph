@@ -1,56 +1,58 @@
 // Place global declarations here.
-int fid_var47_test = 26;
-int fid_var48_main = 27;
-
+int fid_var29_test = 15;
+int fid_var32_main = 14;
 int test_count = 0;
-int arg_cid_var52_a[1];
-int arg_cid_var53_b[1];
 chan async_test[1];
 chan sync_test[1];
-int make_test() {
-    int pid = test_count;
-    test_count++;
-    return pid;
-}
+int arg_cid_var31_b[1];
+int arg_cid_var30_a[1];
 
 int chan_count = 0;
-int chan_counter[10];
-int chan_buffer[10];
-chan sender_trigger[10];
-chan sender_confirm[10];
-chan receiver_trigger[10];
-chan receiver_confirm[10];
-chan close[10];
+int chan_counter[1];
+int chan_buffer[1];
+chan sender_trigger[1];
+chan sender_confirm[1];
+chan receiver_trigger[1];
+chan receiver_confirm[1];
+chan close[1];
+
+int make_test() {
+	int pid = test_count;
+	test_count++;
+	return pid;
+}
 
 int make_chan(int buffer) {
-    int cid = chan_count;
-    chan_count++;
-    chan_counter[cid] = 0;
-    chan_buffer[cid] = buffer;
-    return cid;
+	int cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
 }
 
 
-process Channel(int[0, 9] i) {
+
+process Channel(int[0, 0] i) {
 // Place local declarations here.
 
+
 state
-    idle,
-    closed,
-    bad,
-    new_sender,
-    confirming_a,
     new_receiver,
     confirming_b,
     closing,
-    confirming_closed;
+    confirming_closed,
+    idle,
+    new_sender,
+    confirming_a,
+    closed,
+    bad;
 commit
+    new_receiver,
     confirming_b,
     closing,
     confirming_closed,
     new_sender,
-    confirming_a,
-    new_receiver;
+    confirming_a;
 init
     idle;
 trans
@@ -70,7 +72,7 @@ chan_buffer[i]; },
 chan_buffer[i]; sync sender_confirm[i]!; },
     idle -> closing { guard chan_counter[i] <= chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
     closing -> closing { guard chan_counter[i] < 0; sync receiver_confirm[i]!; assign chan_counter[i]++; },
-    closing -> closed { guard chan_counter[i] >= 0; assign chan_counter[i] = 1; },
+    closing -> closed { guard chan_counter[i] >= 0; },
     idle -> bad { guard chan_counter[i] > 
 chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
     closed -> confirming_closed { sync receiver_trigger[i]?; },
@@ -81,53 +83,58 @@ chan_buffer[i]; sync close[i]?; assign chan_buffer[i] = -1; },
 
 process main() {
 // Place local declarations here.
-bool is_sync;
+int pid = 0;
+bool is_sync = false;
 int p = -1;
-int cid_var54_ch = -1;
+bool ok = false;
+
+int cid_var33_ch = -1;
+
+
 
 state
-    started,
-    ending,
-    enter_if_2,
-    enter_else_2,
-    sent_cid_var54_ch_2,
-    sending_cid_var54_ch_1,
-    starting,
-    ended,
-    enter_if_0,
     exit_if_0,
-    sending_cid_var54_ch_0,
-    enter_else_0,
     enter_if_1,
-    sent_cid_var54_ch_1,
-    sending_cid_var54_ch_2,
+    sending_ch_1,
+    sent_ch_1,
+    enter_else_2,
+    started,
+    sending_ch_2,
+    enter_else_1,
+    sent_ch_0,
     exit_if_1,
     exit_if_2,
-    made_cid_var54_ch_0,
-    sent_cid_var54_ch_0,
-    enter_else_1;
+    starting,
+    ended,
+    made_ch_0,
+    enter_if_0,
+    sending_ch_0,
+    enter_else_0,
+    enter_if_2,
+    sent_ch_2,
+    ending;
 init
     starting;
 trans
-    started -> made_cid_var54_ch_0 { assign cid_var54_ch = make_chan(0); },
-    enter_if_0 -> sending_cid_var54_ch_0 { sync sender_trigger[cid_var54_ch]!; assign chan_counter[cid_var54_ch]++; },
-    sending_cid_var54_ch_0 -> sent_cid_var54_ch_0 { sync sender_confirm[cid_var54_ch]?; },
-    sent_cid_var54_ch_0 -> exit_if_0 { },
-    enter_if_1 -> sending_cid_var54_ch_1 { sync sender_trigger[cid_var54_ch]!; assign chan_counter[cid_var54_ch]++; },
-    sending_cid_var54_ch_1 -> sent_cid_var54_ch_1 { sync sender_confirm[cid_var54_ch]?; },
-    sent_cid_var54_ch_1 -> exit_if_1 { },
+    started -> made_ch_0 { assign cid_var33_ch = make_chan(0); },
+    enter_if_0 -> sending_ch_0 { sync sender_trigger[cid_var33_ch]!; assign chan_counter[cid_var33_ch]++; },
+    sending_ch_0 -> sent_ch_0 { sync sender_confirm[cid_var33_ch]?; },
+    sent_ch_0 -> exit_if_0 { },
+    enter_if_1 -> sending_ch_1 { sync sender_trigger[cid_var33_ch]!; assign chan_counter[cid_var33_ch]++; },
+    sending_ch_1 -> sent_ch_1 { sync sender_confirm[cid_var33_ch]?; },
+    sent_ch_1 -> exit_if_1 { },
     enter_if_2 -> exit_if_2 { },
-    enter_else_2 -> sending_cid_var54_ch_2 { sync sender_trigger[cid_var54_ch]!; assign chan_counter[cid_var54_ch]++; },
-    sending_cid_var54_ch_2 -> sent_cid_var54_ch_2 { sync sender_confirm[cid_var54_ch]?; },
-    sent_cid_var54_ch_2 -> exit_if_2 { },
+    enter_else_2 -> sending_ch_2 { sync sender_trigger[cid_var33_ch]!; assign chan_counter[cid_var33_ch]++; },
+    sending_ch_2 -> sent_ch_2 { sync sender_confirm[cid_var33_ch]?; },
+    sent_ch_2 -> exit_if_2 { },
     enter_else_1 -> enter_if_2 { },
     enter_else_1 -> enter_else_2 { },
     exit_if_2 -> exit_if_1 { },
     enter_else_0 -> enter_if_1 { },
     enter_else_0 -> enter_else_1 { },
     exit_if_1 -> exit_if_0 { },
-    made_cid_var54_ch_0 -> enter_if_0 { },
-    made_cid_var54_ch_0 -> enter_else_0 { },
+    made_ch_0 -> enter_if_0 { },
+    made_ch_0 -> enter_else_0 { },
     exit_if_0 -> ending { },
     starting -> started { },
     ending -> ended { };
@@ -135,86 +142,90 @@ trans
 
 process test(int[0, 0] pid) {
 // Place local declarations here.
-bool is_sync;
+bool is_sync = false;
 int p = -1;
-int cid_var52_a = -1;
-int cid_var53_b = -1;
+bool ok = false;
+
+int cid_var30_a = -1;
+int cid_var31_b = -1;
+
 int i1 = 0;
 int i0 = 0;
-int i1 = 0;
 void initialize() {
-    cid_var52_a = arg_cid_var52_a[pid];
-    cid_var53_b = arg_cid_var53_b[pid];
+    cid_var30_a = arg_cid_var30_a[pid];
+    cid_var31_b = arg_cid_var31_b[pid];
 }
 
+
+
 state
-    enter_if_0,
-    enter_loop_cond_0,
-    enter_loop_cond_1,
-    exit_if_3,
-    enter_loop_cond_4,
-    exit_if_0,
-    exit_loop_cond_1,
-    select_case_1_trigger_1,
     starting,
-    exit_loop_0,
-    select_pass_1_0,
-    enter_loop_cond_2,
-    enter_loop_body_2,
-    select_pass_1_1,
-    select_end_3,
-    exit_loop_cond_3,
-    exit_loop_cond_2,
-    receiving_cid_var53_b_0,
-    enter_loop_body_1,
-    receiving_cid_var52_a_0,
-    sent_cid_var52_a_0,
-    select_case_1_enter_0,
-    enter_if_2,
-    exit_loop_2,
-    select_pass_1_2,
-    ending,
-    enter_if_1,
-    enter_else_1,
-    select_pass_2_0,
-    select_default_enter_1,
-    ended,
-    received_cid_var52_a_0,
-    enter_else_0,
-    exit_if_2,
-    exit_loop_cond_0,
-    sending_cid_var53_b_1,
-    enter_loop_body_3,
-    exit_loop_body_3,
-    exit_loop_body_4,
+    receiving_a_0,
     exit_if_1,
-    sent_cid_var53_b_0,
-    select_pass_2_1,
-    exit_loop_cond_4,
-    enter_loop_body_4,
-    enter_loop_body_0,
-    exit_loop_body_1,
-    select_end_0,
-    select_default_enter_0,
-    select_end_2,
-    sent_cid_var53_b_1,
-    exit_loop_1,
-    select_case_1_trigger_0,
-    enter_else_2,
-    enter_else_3,
-    exit_loop_4,
-    received_cid_var53_b_0,
-    exit_loop_body_0,
-    select_end_1,
-    enter_if_3,
-    select_pass_1_3,
-    sending_cid_var52_a_0,
-    started,
-    sending_cid_var53_b_0,
-    exit_loop_body_2,
-    select_case_1_enter_1,
+    select_pass_1_0,
+    enter_loop_body_1,
+    sending_b_0,
     enter_loop_cond_3,
-    exit_loop_3;
+    sent_a_0,
+    ending,
+    select_case_1_enter_1,
+    exit_loop_2,
+    select_pass_1_1,
+    sending_b_1,
+    sent_b_1,
+    exit_loop_4,
+    sending_a_0,
+    select_pass_1_2,
+    exit_loop_body_4,
+    enter_loop_body_0,
+    enter_if_1,
+    select_case_1_enter_0,
+    select_default_enter_1,
+    enter_loop_cond_2,
+    enter_else_2,
+    received_a_0,
+    select_case_1_trigger_0,
+    select_end_2,
+    exit_loop_body_3,
+    exit_loop_3,
+    select_pass_2_0,
+    started,
+    exit_loop_cond_0,
+    enter_loop_cond_1,
+    enter_else_0,
+    enter_else_1,
+    enter_loop_body_2,
+    exit_loop_cond_1,
+    select_default_enter_0,
+    enter_if_2,
+    exit_if_2,
+    enter_if_3,
+    select_pass_2_1,
+    exit_if_0,
+    exit_loop_0,
+    exit_loop_1,
+    exit_if_3,
+    exit_loop_cond_3,
+    receiving_b_0,
+    sent_b_0,
+    select_end_0,
+    select_case_1_trigger_1,
+    enter_if_0,
+    select_end_1,
+    exit_loop_body_2,
+    exit_loop_cond_4,
+    select_pass_1_3,
+    exit_loop_body_0,
+    enter_else_3,
+    enter_loop_body_3,
+    exit_loop_body_1,
+    select_end_3,
+    enter_loop_cond_4,
+    enter_loop_body_4,
+    ended,
+    enter_loop_cond_0,
+    exit_loop_cond_2,
+    received_b_0;
 commit
     select_pass_1_3,
     select_pass_1_0,
@@ -225,20 +236,20 @@ init
 trans
     enter_loop_cond_0 -> exit_loop_cond_0 { },
     enter_loop_cond_1 -> exit_loop_cond_1 { },
-    enter_loop_body_1 -> receiving_cid_var52_a_0 { sync receiver_trigger[cid_var52_a]!; assign chan_counter[cid_var52_a]--; },
-    receiving_cid_var52_a_0 -> received_cid_var52_a_0 { sync receiver_confirm[cid_var52_a]?; },
-    enter_if_1 -> sending_cid_var53_b_0 { sync sender_trigger[cid_var53_b]!; assign chan_counter[cid_var53_b]++; },
-    sending_cid_var53_b_0 -> sent_cid_var53_b_0 { sync sender_confirm[cid_var53_b]?; },
-    sent_cid_var53_b_0 -> exit_if_1 { },
-    select_default_enter_0 -> select_end_0 { },
+    enter_loop_body_1 -> receiving_a_0 { sync receiver_trigger[cid_var30_a]!; assign chan_counter[cid_var30_a]--; },
+    receiving_a_0 -> received_a_0 { sync receiver_confirm[cid_var30_a]?; },
+    enter_if_1 -> sending_b_0 { sync sender_trigger[cid_var31_b]!; assign chan_counter[cid_var31_b]++; },
+    sending_b_0 -> sent_b_0 { sync sender_confirm[cid_var31_b]?; },
+    sent_b_0 -> exit_if_1 { },
+    select_default_enter_0 -> exit_loop_1 { },
     select_case_1_enter_0 -> select_end_0 { },
-    enter_else_0 -> select_pass_1_0 { assign chan_counter[cid_var53_b]++; },
-    select_pass_1_0 -> select_case_1_trigger_0 { guard chan_buffer[cid_var53_b] < 0 || chan_counter[cid_var53_b] <= chan_buffer[cid_var53_b]; sync sender_trigger[cid_var53_b]!; },
-    select_case_1_trigger_0 -> select_case_1_enter_0 { sync sender_confirm[cid_var53_b]?; },
-    select_pass_1_0 -> select_default_enter_0 { guard !(chan_buffer[cid_var53_b] < 0 || chan_counter[cid_var53_b] <= chan_buffer[cid_var53_b]); assign chan_counter[cid_var53_b]--; },
+    enter_else_0 -> select_pass_1_0 { assign chan_counter[cid_var31_b]++; },
+    select_pass_1_0 -> select_case_1_trigger_0 { guard chan_buffer[cid_var31_b] < 0 || chan_counter[cid_var31_b] <= chan_buffer[cid_var31_b]; sync sender_trigger[cid_var31_b]!; },
+    select_case_1_trigger_0 -> select_case_1_enter_0 { sync sender_confirm[cid_var31_b]?; },
+    select_pass_1_0 -> select_default_enter_0 { guard !(chan_buffer[cid_var31_b] < 0 || chan_counter[cid_var31_b] <= chan_buffer[cid_var31_b]); assign chan_counter[cid_var31_b]--; },
     select_end_0 -> exit_if_1 { },
-    received_cid_var52_a_0 -> enter_if_1 { },
-    received_cid_var52_a_0 -> enter_else_0 { },
+    received_a_0 -> enter_if_1 { },
+    received_a_0 -> enter_else_0 { },
     exit_if_1 -> exit_loop_body_1 { },
     enter_loop_body_0 -> enter_loop_cond_1 { assign i1 = 0; },
     exit_loop_cond_1 -> enter_loop_body_1 { guard i1 < 456; },
@@ -258,27 +269,27 @@ trans
     exit_loop_cond_2 -> enter_loop_body_2 { },
     exit_loop_body_2 -> enter_loop_cond_2 { },
     exit_loop_2 -> select_end_1 { },
-    enter_if_3 -> sending_cid_var53_b_1 { sync sender_trigger[cid_var53_b]!; assign chan_counter[cid_var53_b]++; },
-    sending_cid_var53_b_1 -> sent_cid_var53_b_1 { sync sender_confirm[cid_var53_b]?; },
-    sent_cid_var53_b_1 -> exit_if_3 { },
+    enter_if_3 -> sending_b_1 { sync sender_trigger[cid_var31_b]!; assign chan_counter[cid_var31_b]++; },
+    sending_b_1 -> sent_b_1 { sync sender_confirm[cid_var31_b]?; },
+    sent_b_1 -> exit_if_3 { },
     enter_else_2 -> exit_if_3 { },
     select_case_1_enter_1 -> enter_if_3 { },
     select_case_1_enter_1 -> enter_else_2 { },
     exit_if_3 -> select_end_1 { },
-    enter_if_2 -> select_pass_1_2 { assign chan_counter[cid_var52_a]--; },
-    select_pass_1_2 -> select_case_1_trigger_1 { guard chan_buffer[cid_var52_a] < 0 || chan_counter[cid_var52_a] >= 0; sync receiver_trigger[cid_var52_a]!; },
-    select_case_1_trigger_1 -> select_case_1_enter_1 { sync receiver_confirm[cid_var52_a]?; },
-    select_pass_1_2 -> select_default_enter_1 { guard !(chan_buffer[cid_var52_a] < 0 || chan_counter[cid_var52_a] >= 0); assign chan_counter[cid_var52_a]++; },
+    enter_if_2 -> select_pass_1_2 { assign chan_counter[cid_var30_a]--; },
+    select_pass_1_2 -> select_case_1_trigger_1 { guard chan_buffer[cid_var30_a] < 0 || chan_counter[cid_var30_a] >= 0; sync receiver_trigger[cid_var30_a]!; },
+    select_case_1_trigger_1 -> select_case_1_enter_1 { sync receiver_confirm[cid_var30_a]?; },
+    select_pass_1_2 -> select_default_enter_1 { guard !(chan_buffer[cid_var30_a] < 0 || chan_counter[cid_var30_a] >= 0); assign chan_counter[cid_var30_a]++; },
     select_end_1 -> select_pass_1_3 { },
     select_pass_1_3 -> select_pass_2_1 { },
     select_end_3 -> exit_if_2 { },
     enter_loop_cond_3 -> exit_loop_cond_3 { },
     enter_loop_cond_4 -> exit_loop_cond_4 { },
-    enter_loop_body_4 -> receiving_cid_var53_b_0 { sync receiver_trigger[cid_var53_b]!; assign chan_counter[cid_var53_b]--; },
-    receiving_cid_var53_b_0 -> received_cid_var53_b_0 { sync receiver_confirm[cid_var53_b]?; },
-    received_cid_var53_b_0 -> sending_cid_var52_a_0 { sync sender_trigger[cid_var52_a]!; assign chan_counter[cid_var52_a]++; },
-    sending_cid_var52_a_0 -> sent_cid_var52_a_0 { sync sender_confirm[cid_var52_a]?; },
-    sent_cid_var52_a_0 -> exit_loop_body_4 { },
+    enter_loop_body_4 -> receiving_b_0 { sync receiver_trigger[cid_var31_b]!; assign chan_counter[cid_var31_b]--; },
+    receiving_b_0 -> received_b_0 { sync receiver_confirm[cid_var31_b]?; },
+    received_b_0 -> sending_a_0 { sync sender_trigger[cid_var30_a]!; assign chan_counter[cid_var30_a]++; },
+    sending_a_0 -> sent_a_0 { sync sender_confirm[cid_var30_a]?; },
+    sent_a_0 -> exit_loop_body_4 { },
     enter_loop_body_3 -> enter_loop_cond_4 { assign i1 = 0; },
     exit_loop_cond_4 -> enter_loop_body_4 { guard i1 < 678; },
     exit_loop_cond_4 -> exit_loop_4 { guard i1 >= 567; },
@@ -302,15 +313,6 @@ trans
 }
 
 Channel0 = Channel(0);
-Channel1 = Channel(1);
-Channel2 = Channel(2);
-Channel3 = Channel(3);
-Channel4 = Channel(4);
-Channel5 = Channel(5);
-Channel6 = Channel(6);
-Channel7 = Channel(7);
-Channel8 = Channel(8);
-Channel9 = Channel(9);
-test0 = test(0);
-system Channel0, Channel1, Channel2, Channel3, Channel4, Channel5, Channel6, Channel7, Channel8, Channel9, main, test0;
+test_0 = test(0);
+system Channel0, main, test_0;
 

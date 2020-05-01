@@ -1,0 +1,42 @@
+Options for the verification:
+  Generating no trace
+  Search order is depth first
+  Using conservative space optimisation
+  Seed is 1588268824
+  State space representation uses minimal constraint systems
+[2K
+Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/basic/test2/test2.q:4
+ -- Throughput: 110562 states/sec, Load: 17 states[K -- Throughput: 125991 states/sec, Load: 25 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/basic/test2/test2.q:8
+ -- Throughput: 67 states/sec, Load: 27 states[K -- Throughput: 118327 states/sec, Load: 12 states[K -- Throughput: 130433 states/sec, Load: 18 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/basic/test2/test2.q:12
+ -- Throughput: 35 states/sec, Load: 27 states[K -- Throughput: 130315 states/sec, Load: 12 states[K -- Throughput: 135462 states/sec, Load: 30 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/basic/test2/test2.q:16
+ -- Throughput: 23 states/sec, Load: 27 states[K -- Throughput: 120818 states/sec, Load: 17 states[K -- Throughput: 98134 states/sec, Load: 4 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 5 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/basic/test2/test2.q:20
+ -- Throughput: 17 states/sec, Load: 27 states[K -- Throughput: 70144 states/sec, Load: 18 states[K -- Throughput: 75757 states/sec, Load: 19 states[K -- Throughput: 76097 states/sec, Load: 19 states[K -- Throughput: 70110 states/sec, Load: 17 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 6 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/basic/test2/test2.q:24
+ -- Throughput: 12 states/sec, Load: 27 states[K -- Throughput: 71743 states/sec, Load: 22 states[K -- Throughput: 64464 states/sec, Load: 4 states[K -- Throughput: 75798 states/sec, Load: 22 states[K -- Throughput: 77498 states/sec, Load: 23 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 7 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/basic/test2/test2.q:28
+ -- Throughput: 9 states/sec, Load: 27 states[K -- Throughput: 72305 states/sec, Load: 15 states[K -- Throughput: 75708 states/sec, Load: 13 states[K -- Throughput: 76420 states/sec, Load: 19 states[K -- Throughput: 87476 states/sec, Load: 24 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 8 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/basic/test2/test2.q:32
+ -- Throughput: 7 states/sec, Load: 27 states[K -- Throughput: 69686 states/sec, Load: 15 states[K -- Throughput: 70254 states/sec, Load: 14 states[K -- Throughput: 74854 states/sec, Load: 11 states[K -- Throughput: 75753 states/sec, Load: 21 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 9 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/basic/test2/test2.q:36
+ -- Throughput: 6 states/sec, Load: 27 states[K -- Throughput: 74574 states/sec, Load: 21 states[K -- Throughput: 75096 states/sec, Load: 19 states[K -- Throughput: 74932 states/sec, Load: 23 states[K -- Throughput: 79299 states/sec, Load: 13 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 10 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/basic/test2/test2.q:40
+ -- Throughput: 5 states/sec, Load: 27 states[K -- Throughput: 77979 states/sec, Load: 14 states[K -- Throughput: 73015 states/sec, Load: 16 states[K -- Throughput: 75254 states/sec, Load: 21 states[K -- Throughput: 84428 states/sec, Load: 8 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 11 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/basic/test2/test2.q:44
+ -- Throughput: 4 states/sec, Load: 27 states[K -- Throughput: 76180 states/sec, Load: 12 states[K -- Throughput: 81463 states/sec, Load: 18 states[K -- Throughput: 81868 states/sec, Load: 22 states[K[2K -- Formula is satisfied.
+[2K
+Verifying formula 12 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/basic/test2/test2.q:48
+ -- Throughput: 4 states/sec, Load: 27 states[K -- Throughput: 78987 states/sec, Load: 12 states[K -- Throughput: 79970 states/sec, Load: 12 states[K -- Throughput: 84650 states/sec, Load: 14 states[K[2K -- Formula is satisfied.

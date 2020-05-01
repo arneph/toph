@@ -1,0 +1,356 @@
+prog{
+  scope{
+    var fid_var461_fakeSearch Func = 255
+    var fid_var462_Web Func = -1
+    var fid_var463_SequentialSearch Func = 256
+    var fid_var464_ConcurrentSearch Func = 257
+    var fid_var465_ConcurrentSearchWithCutOff Func = 258
+    var fid_var466_First Func = 259
+    var fid_var467_ReplicaSearch Func = 260
+    var fid_var468_main Func = 254
+  }
+  funcs{
+    func{
+      index: 255
+      name: fakeSearch
+      args: 
+      results: 
+      scope{
+        var fid_var469 Func = 261
+      }
+      stmts{
+        return 0: fid_var469
+      }
+    }
+    func{
+      index: 256
+      name: SequentialSearch
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        return
+      }
+    }
+    func{
+      index: 257
+      name: ConcurrentSearch
+      args: 
+      results: 
+      scope{
+        var cid_var470_c Chan = -1
+      }
+      stmts{
+        cid_var470_c <- make(chan, 0)
+        go 262(0: var cid_var470_c Chan = -1)
+        go 263(0: var cid_var470_c Chan = -1)
+        go 264(0: var cid_var470_c Chan = -1)
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              receive cid_var470_c
+            }
+          }
+        }
+        return
+      }
+    }
+    func{
+      index: 258
+      name: ConcurrentSearchWithCutOff
+      args: 
+      results: 
+      scope{
+        var cid_var474_c Chan = -1
+        var cid_var475_timeout Chan = -1
+      }
+      stmts{
+        cid_var474_c <- make(chan, 0)
+        go 265()
+        go 266()
+        go 267()
+        , 0: var cid_var475_timeout Chan = -1 <- call 268()
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+              select{
+                case receive cid_var474_c {
+                  scope{
+                  }
+                  stmts{
+                  }
+                }
+                case receive cid_var475_timeout {
+                  scope{
+                  }
+                  stmts{
+                    return
+                  }
+                }
+              }
+            }
+          }
+        }
+        return
+      }
+    }
+    func{
+      index: 259
+      name: First
+      args: 
+      results: 
+      scope{
+        var cid_var477_c Chan = -1
+        var fid_var479 Func = 270
+        var fid_var478_searchReplica Func = -1
+      }
+      stmts{
+        cid_var477_c <- make(chan, 1)
+        fid_var478_searchReplica <- fid_var479
+        for{
+          cond{
+            scope{
+            }
+            stmts{
+            }
+          }
+          body{
+            scope{
+            }
+            stmts{
+            }
+          }
+        }
+        receive cid_var477_c
+        return
+      }
+    }
+    func{
+      index: 260
+      name: ReplicaSearch
+      args: 
+      results: 
+      scope{
+        var cid_var480_c Chan = -1
+        var cid_var484_timeout Chan = -1
+      }
+      stmts{
+        cid_var480_c <- make(chan, 0)
+        go 271(0: var cid_var480_c Chan = -1)
+        go 272(0: var cid_var480_c Chan = -1)
+        go 273(0: var cid_var480_c Chan = -1)
+        , 0: var cid_var484_timeout Chan = -1 <- call 268()
+        select{
+          case receive cid_var480_c {
+            scope{
+            }
+            stmts{
+            }
+          }
+          case receive cid_var484_timeout {
+            scope{
+            }
+            stmts{
+              return
+            }
+          }
+        }
+        return
+      }
+    }
+    func{
+      index: 254
+      name: main
+      args: 
+      results: 
+      scope{
+      }
+      stmts{
+        call 255()
+        call 256()
+        call 260()
+      }
+    }
+    func{
+      index: 261
+      name: fakeSearch_func261
+      args: 
+      results: 
+      enclosing func index: 255
+      scope{
+      }
+      stmts{
+        return
+      }
+    }
+    func{
+      index: 262
+      name: ConcurrentSearch_func262
+      args: cid_var471_c
+      results: 
+      enclosing func index: 257
+      scope{
+        var cid_var471_c Chan = -1
+      }
+      stmts{
+        send cid_var471_c
+      }
+    }
+    func{
+      index: 263
+      name: ConcurrentSearch_func263
+      args: cid_var472_c
+      results: 
+      enclosing func index: 257
+      scope{
+        var cid_var472_c Chan = -1
+      }
+      stmts{
+        send cid_var472_c
+      }
+    }
+    func{
+      index: 264
+      name: ConcurrentSearch_func264
+      args: cid_var473_c
+      results: 
+      enclosing func index: 257
+      scope{
+        var cid_var473_c Chan = -1
+      }
+      stmts{
+        send cid_var473_c
+      }
+    }
+    func{
+      index: 265
+      name: ConcurrentSearchWithCutOff_func265
+      args: 
+      results: 
+      enclosing func index: 258
+      scope{
+      }
+      stmts{
+        send cid_var474_c
+      }
+    }
+    func{
+      index: 266
+      name: ConcurrentSearchWithCutOff_func266
+      args: 
+      results: 
+      enclosing func index: 258
+      scope{
+      }
+      stmts{
+        send cid_var474_c
+      }
+    }
+    func{
+      index: 267
+      name: ConcurrentSearchWithCutOff_func267
+      args: 
+      results: 
+      enclosing func index: 258
+      scope{
+      }
+      stmts{
+        send cid_var474_c
+      }
+    }
+    func{
+      index: 268
+      name: time_after
+      args: 
+      results: Chan
+      scope{
+        var cid_var476_ch Chan = -1
+      }
+      stmts{
+        cid_var476_ch <- make(chan, 1)
+        go 269()
+        return 0: cid_var476_ch
+      }
+    }
+    func{
+      index: 269
+      name: time_after_func269
+      args: 
+      results: 
+      enclosing func index: 268
+      scope{
+      }
+      stmts{
+        send cid_var476_ch
+      }
+    }
+    func{
+      index: 270
+      name: First_func270
+      args: 
+      results: 
+      enclosing func index: 259
+      scope{
+      }
+      stmts{
+        send cid_var477_c
+      }
+    }
+    func{
+      index: 271
+      name: ReplicaSearch_func271
+      args: cid_var481_c
+      results: 
+      enclosing func index: 260
+      scope{
+        var cid_var481_c Chan = -1
+      }
+      stmts{
+        send cid_var481_c
+      }
+    }
+    func{
+      index: 272
+      name: ReplicaSearch_func272
+      args: cid_var482_c
+      results: 
+      enclosing func index: 260
+      scope{
+        var cid_var482_c Chan = -1
+      }
+      stmts{
+        send cid_var482_c
+      }
+    }
+    func{
+      index: 273
+      name: ReplicaSearch_func273
+      args: cid_var483_c
+      results: 
+      enclosing func index: 260
+      scope{
+        var cid_var483_c Chan = -1
+      }
+      stmts{
+        send cid_var483_c
+      }
+    }
+  }
+}
