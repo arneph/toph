@@ -1,54 +1,0 @@
-Options for the verification:
-  Generating no trace
-  Search order is depth first
-  Using conservative space optimisation
-  Seed is 1588268806
-  State space representation uses minimal constraint systems
-[2K
-Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:4
-[2K -- Formula is satisfied.
-[2K
-Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:8
- -- Throughput: 400 states/sec, Load: 76 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:12
- -- Throughput: 143 states/sec, Load: 76 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:16
- -- Throughput: 88 states/sec, Load: 76 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 5 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:20
- -- Throughput: 64 states/sec, Load: 76 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 6 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:24
- -- Throughput: 50 states/sec, Load: 76 states[K[2K -- Formula is NOT satisfied.
-[2K
-Verifying formula 7 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:28
- -- Throughput: 49 states/sec, Load: 76 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 8 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:32
- -- Throughput: 39 states/sec, Load: 76 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 9 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:36
- -- Throughput: 33 states/sec, Load: 76 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 10 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:40
- -- Throughput: 29 states/sec, Load: 76 states[K[2K -- Formula is NOT satisfied.
-[2K
-Verifying formula 11 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:44
- -- Throughput: 29 states/sec, Load: 76 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 12 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:48
- -- Throughput: 25 states/sec, Load: 76 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 13 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:52
- -- Throughput: 23 states/sec, Load: 76 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 14 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:56
- -- Throughput: 20 states/sec, Load: 76 states[K[2K -- Formula is NOT satisfied.
-[2K
-Verifying formula 15 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:60
- -- Throughput: 20 states/sec, Load: 76 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 16 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/philo/philo.q:64
- -- Throughput: 19 states/sec, Load: 76 states[K[2K -- Formula is satisfied.

@@ -12,7 +12,6 @@ func R(ch chan int, done chan struct{}) {
 
 func main() {
 	done := make(chan struct{})
-	// toph: min_iter=3, max_iter=3
 	for i := 0; i < 10; i++ {
 		ch := make(chan int)
 		if i%2 == 0 {

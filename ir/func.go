@@ -2,58 +2,73 @@ package ir
 
 import (
 	"fmt"
+	"go/token"
+	"go/types"
 	"strings"
 )
 
 // FuncIndex represents the index of a function.
 type FuncIndex int
 
-var funcCount int
-
 // Func represents go functions and funvction literals.
 type Func struct {
-	index         FuncIndex
-	name          string
-	args          map[int]*Variable
-	resultTypes   map[int]Type
-	results       map[int]*Variable
+	index FuncIndex
+	name  string
+
+	signature *types.Signature
+
+	args        map[int]*Variable
+	resultTypes map[int]Type
+	results     map[int]*Variable
+
 	enclosingFunc *Func
 	body          Body
+
+	Node
 }
 
-// NewOuterFunc creates a new, non-inner blank function.
-func NewOuterFunc(name string, globalScope *Scope) *Func {
+func newOuterFunc(index FuncIndex, name string, signature *types.Signature, globalScope *Scope, pos, end token.Pos) *Func {
 	if name == "" {
-		name = fmt.Sprintf("func%d", funcCount)
+		name = fmt.Sprintf("func%d", index)
 	}
+
 	f := new(Func)
-	f.index = FuncIndex(funcCount)
+	f.index = index
 	f.name = name
+
+	f.signature = signature
+
 	f.args = make(map[int]*Variable)
 	f.resultTypes = make(map[int]Type)
 	f.results = make(map[int]*Variable)
+
 	f.enclosingFunc = nil
 	f.body.init()
 	f.body.scope.superScope = globalScope
 
-	funcCount++
+	f.pos = pos
+	f.end = end
 
 	return f
 }
 
-// NewInnerFunc creates a new, inner blank function.
-func NewInnerFunc(enclosingFunc *Func, enclosingScope *Scope) *Func {
+func newInnerFunc(index FuncIndex, signature *types.Signature, enclosingFunc *Func, enclosingScope *Scope, pos, end token.Pos) *Func {
 	f := new(Func)
-	f.index = FuncIndex(funcCount)
-	f.name = fmt.Sprintf("%s_func%d", enclosingFunc.name, funcCount)
+	f.index = index
+	f.name = fmt.Sprintf("%s_func%d", enclosingFunc.name, index)
+
+	f.signature = signature
+
 	f.args = make(map[int]*Variable)
 	f.resultTypes = make(map[int]Type)
 	f.results = make(map[int]*Variable)
+
 	f.enclosingFunc = enclosingFunc
 	f.body.init()
 	f.body.scope.superScope = enclosingScope
 
-	funcCount++
+	f.pos = pos
+	f.end = end
 
 	return f
 }
@@ -66,6 +81,12 @@ func (f *Func) FuncValue() Value {
 // Name returns the name of the function.
 func (f *Func) Name() string {
 	return f.name
+}
+
+// Signature returns the full type of the function, including argument and
+// result types that are not otherwise included in the IR.
+func (f *Func) Signature() *types.Signature {
+	return f.signature
 }
 
 // Args returns an map from index to argument variables of the function.
@@ -112,6 +133,8 @@ func (f *Func) DefineResult(index int, result *Variable) {
 	f.results[index] = result
 }
 
+// EnclosingFunc returns the function within which the function is defined or
+// nil if the function is defined at package scope.
 func (f *Func) EnclosingFunc() *Func {
 	return f.enclosingFunc
 }

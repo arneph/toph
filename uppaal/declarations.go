@@ -13,6 +13,7 @@ type variableInfo struct {
 // a Process.
 type Declarations struct {
 	headerComment  string
+	types          []string
 	variables      []variableInfo
 	variableLookup map[string]int
 	funcs          []string
@@ -33,6 +34,11 @@ func (d *Declarations) AddSpace() {
 	d.variables = append(d.variables, variableInfo{
 		name: "",
 	})
+}
+
+// AddType adds a type declaration to the list of declarations.
+func (d *Declarations) AddType(_type string) {
+	d.types = append(d.types, _type)
 }
 
 // AddVariable adds a variable declaration to the list of declarations.
@@ -98,10 +104,19 @@ func (d *Declarations) AddInitFuncStmt(stmt string) {
 // AsXTA returns the xta (file format) representation of the declarations.
 func (d *Declarations) AsXTA() string {
 	str := "// " + d.headerComment + "\n"
+	for _, _type := range d.types {
+		str += _type + "\n"
+	}
+	if len(d.types) > 0 {
+		str += "\n"
+	}
 	for _, info := range d.variables {
 		if info.name == "" {
 			str += "\n"
-		} else if info.arraySize < 0 {
+		} else if info.arraySize < 0 && info.initialValue == "" {
+			str += fmt.Sprintf("%s %s;\n",
+				info._type, info.name)
+		} else if info.arraySize < 0 && info.initialValue != "" {
 			str += fmt.Sprintf("%s %s = %s;\n",
 				info._type, info.name, info.initialValue)
 		} else {

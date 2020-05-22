@@ -1,5 +1,0 @@
-main (3) -> test_func12, test_func13
-test (4) -> test_func13, test_func12
-test_func12 (2) -> 
-test_func13 (1) -> 
-

@@ -2,8 +2,18 @@ package ir
 
 import (
 	"fmt"
+	"go/token"
+	"go/types"
 	"strings"
 )
+
+// Callable is the common interface for receivers of function and go calls.
+type Callable interface {
+	callable()
+}
+
+func (v *Variable) callable() {}
+func (f *Func) callable()     {}
 
 // CallKind represents whether a call is synchronous or asynchronous
 // (go statement). Multiple call kinds can be used in a bit map.
@@ -29,31 +39,57 @@ func (k CallKind) String() string {
 
 // CallStmt represents a function call (with or without the go keyword).
 type CallStmt struct {
-	callee  *Func
-	kind    CallKind
-	args    map[int]RValue
-	results map[int]*Variable // Variables to assign results to
+	callee          Callable
+	calleeSignature *types.Signature
+	kind            CallKind
+	args            map[int]RValue
+	results         map[int]*Variable // Variables to assign results to
+
+	Node
 }
 
 // NewCallStmt creates a new call statement to the given callee.
-func NewCallStmt(callee *Func, kind CallKind) *CallStmt {
+func NewCallStmt(callee Callable, calleeSignature *types.Signature, kind CallKind, pos, end token.Pos) *CallStmt {
+	if callee == nil {
+		panic("tried to create CallStmt with nil callee")
+	}
+
 	s := new(CallStmt)
 	s.callee = callee
+	s.calleeSignature = calleeSignature
 	s.kind = kind
 	s.args = make(map[int]RValue)
 	s.results = make(map[int]*Variable)
+	s.pos = pos
+	s.end = end
 
 	return s
 }
 
-// Callee returns the function called by the call statement.
-func (s *CallStmt) Callee() *Func {
+// Callee returns the function or function variable called by the call
+// statement.
+func (s *CallStmt) Callee() Callable {
 	return s.callee
 }
 
-// SetCallee sets the function called by the call statement.
-func (s *CallStmt) SetCallee(callee *Func) {
-	s.callee = callee
+// IsStaticCall returns whether the call statement represents a static function
+// call.
+func (s *CallStmt) IsStaticCall() bool {
+	_, ok := s.callee.(*Func)
+	return ok
+}
+
+// IsDynamicCall returns whether the call statement represents a dynamic
+// function call, involving a function variable.
+func (s *CallStmt) IsDynamicCall() bool {
+	_, ok := s.callee.(*Variable)
+	return ok
+}
+
+// CalleeSignature returns the full callee type, including argument and result
+// types that are otherwise not represented in the IR.
+func (s *CallStmt) CalleeSignature() *types.Signature {
+	return s.calleeSignature
 }
 
 // Kind returns the kind of function call statement.
@@ -95,7 +131,14 @@ func (s *CallStmt) String() string {
 		}
 		str += " <- "
 	}
-	str += fmt.Sprintf("%s %v", s.kind, s.callee.FuncValue())
+	switch callee := s.callee.(type) {
+	case *Func:
+		str += fmt.Sprintf("%s %v", s.kind, callee.FuncValue())
+	case *Variable:
+		str += fmt.Sprintf("dynamic %s %v", s.kind, callee.Handle())
+	default:
+		panic(fmt.Errorf("unexpected callee type: %T", callee))
+	}
 	str += "("
 	firstArg := true
 	for i, arg := range s.args {
@@ -113,12 +156,16 @@ func (s *CallStmt) String() string {
 // ReturnStmt represents a return statement inside a function.
 type ReturnStmt struct {
 	results map[int]RValue
+
+	Node
 }
 
 // NewReturnStmt creates a new return statement.
-func NewReturnStmt() *ReturnStmt {
+func NewReturnStmt(pos, end token.Pos) *ReturnStmt {
 	s := new(ReturnStmt)
 	s.results = make(map[int]RValue)
+	s.pos = pos
+	s.end = end
 
 	return s
 }
@@ -166,15 +213,19 @@ func (s *ReturnStmt) String() string {
 type InlinedCallStmt struct {
 	calleeName string
 	body       Body
+
+	Node
 }
 
 // NewInlinedCallStmt returns a new inlined call to the given function,
 // embedded in the given enclosing scope.
-func NewInlinedCallStmt(calleeName string, superScope *Scope) *InlinedCallStmt {
+func NewInlinedCallStmt(calleeName string, superScope *Scope, pos, end token.Pos) *InlinedCallStmt {
 	s := new(InlinedCallStmt)
 	s.calleeName = calleeName
 	s.body.init()
 	s.body.scope.superScope = superScope
+	s.pos = pos
+	s.end = end
 
 	return s
 }

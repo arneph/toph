@@ -1,60 +1,0 @@
-Options for the verification:
-  Generating no trace
-  Search order is depth first
-  Using conservative space optimisation
-  Seed is 1588268908
-  State space representation uses minimal constraint systems
-[2K
-Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:4
-[2K -- Formula is satisfied.
-[2K
-Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:8
-[2K -- Formula is satisfied.
-[2K
-Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:12
- -- Throughput: 215 states/sec, Load: 126 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:16
- -- Throughput: 142 states/sec, Load: 126 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 5 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:20
- -- Throughput: 83 states/sec, Load: 126 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 6 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:24
- -- Throughput: 62 states/sec, Load: 126 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 7 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:28
- -- Throughput: 49 states/sec, Load: 126 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 8 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:32
- -- Throughput: 41 states/sec, Load: 126 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 9 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:36
- -- Throughput: 34 states/sec, Load: 126 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 10 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:40
- -- Throughput: 30 states/sec, Load: 126 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 11 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:44
- -- Throughput: 26 states/sec, Load: 126 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 12 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:48
- -- Throughput: 23 states/sec, Load: 126 states[K[2K -- Formula is NOT satisfied.
-[2K
-Verifying formula 13 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:52
- -- Throughput: 23 states/sec, Load: 126 states[K[2K -- Formula is NOT satisfied.
-[2K
-Verifying formula 14 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:56
- -- Throughput: 23 states/sec, Load: 126 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 15 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:60
- -- Throughput: 21 states/sec, Load: 126 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 16 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:64
- -- Throughput: 19 states/sec, Load: 126 states[K[2K -- Formula is NOT satisfied.
-[2K
-Verifying formula 17 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:68
- -- Throughput: 19 states/sec, Load: 126 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 18 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/stillwater-sc_concurrency/multiplexer/multiplexer.q:72
- -- Throughput: 17 states/sec, Load: 126 states[K[2K -- Formula is NOT satisfied.

@@ -1,4 +1,0 @@
-main (2) -> 
-getChopsticks (3) -> getChopsticks_func52
-getChopsticks_func52 (1) -> 
-

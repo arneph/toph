@@ -7,7 +7,6 @@ package main
 
 func main() {
 	ch := makenew()
-	// toph: min_iter=2, max_iter=2
 	for i := 0; i < 2; i++ {
 		ch2 := makenew()
 		ch2 <- 22

@@ -34,14 +34,13 @@ func (b *Body) Stmts() []Stmt {
 
 // WalkStmts calls the given visitor function for every statement in the body,
 // including statements contained in other statements, for example loops.
-// The visitor function takes a pointer to a statement which enables it to
-// replace the statement in place.
-func (b *Body) WalkStmts(visitFunc func(stmt *Stmt, scope *Scope)) {
+func (b *Body) WalkStmts(visitFunc func(stmt Stmt, scope *Scope)) {
 	for i, stmt := range b.stmts {
-		visitFunc(&b.stmts[i], b.Scope())
+		visitFunc(b.stmts[i], b.Scope())
 
 		switch stmt := stmt.(type) {
 		case *AssignStmt,
+			*BranchStmt,
 			*MakeChanStmt, *ChanOpStmt,
 			*CallStmt, *ReturnStmt:
 			continue
@@ -74,6 +73,11 @@ func (b *Body) AddStmt(stmt Stmt) {
 // AddStmts appends the given statements at the end of the body.
 func (b *Body) AddStmts(stmts ...Stmt) {
 	b.stmts = append(b.stmts, stmts...)
+}
+
+// SetStmts replaces all statements in the body with the given, new statements.
+func (b *Body) SetStmts(stmts []Stmt) {
+	b.stmts = stmts
 }
 
 func (b *Body) String() string {

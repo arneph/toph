@@ -20,7 +20,6 @@ func test_a(test_channel chan int) {
 
 func test() {
 	test_channel := make(chan int)
-	// toph: min_iter=3, max_iter=3
 	for i := 0; i < 10; i++ {
 		go test_a(test_channel)
 	}

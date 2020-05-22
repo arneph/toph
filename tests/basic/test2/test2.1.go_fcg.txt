@@ -1,5 +1,0 @@
-test_func8 (2) -> 
-test_func9 (3) -> 
-main (1) -> 
-test (4) -> test_func8, test_func9
-

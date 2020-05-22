@@ -60,14 +60,17 @@ func (b *builder) processCallExprWithResultVars(callExpr *ast.CallExpr, callKind
 		}
 	}
 
-	callee := b.findCallee(callExpr.Fun, ctx)
+	callee, calleeSignature := b.findCallee(callExpr.Fun, ctx)
 	if callee == nil {
 		return
 	}
 
-	for i := range callee.Args() {
-		_, ok := argVars[i]
-		if !ok {
+	for i := 0; i < calleeSignature.Params().Len(); i++ {
+		param := calleeSignature.Params().At(i)
+		if _, ok := typesTypeToIrType(param.Type()); !ok {
+			continue
+		}
+		if _, ok := argVars[i]; !ok {
 			argExpr := callExpr.Args[i]
 			p := b.fset.Position(argExpr.Pos())
 			b.addWarning(fmt.Errorf("%v: could not resolve argument: %v", p, argExpr))
@@ -75,14 +78,19 @@ func (b *builder) processCallExprWithResultVars(callExpr *ast.CallExpr, callKind
 		}
 	}
 
-	callStmt := ir.NewCallStmt(callee, callKind)
+	callStmt := ir.NewCallStmt(callee, calleeSignature, callKind, callExpr.Pos(), callExpr.End())
 	ctx.body.AddStmt(callStmt)
 
 	for i, v := range argVars {
 		callStmt.AddArg(i, v)
 	}
 	if callKind != ir.Go {
-		for i, t := range callee.ResultTypes() {
+		for i := 0; i < calleeSignature.Results().Len(); i++ {
+			res := calleeSignature.Results().At(i)
+			t, ok := typesTypeToIrType(res.Type())
+			if !ok {
+				continue
+			}
 			v, ok := results[i]
 			if !ok {
 				v = ir.NewVariable("", t, -1)

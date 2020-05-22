@@ -1,4 +1,0 @@
-main_func348 (1) -> 
-main_func349 (2) -> 
-main (3) -> main_func348, main_func349
-

@@ -1,5 +1,0 @@
-main (4) -> merge, gen, sq
-merge (2) -> 
-gen (3) -> 
-sq (1) -> 
-

@@ -1,6 +1,0 @@
-main_func129 (3) -> 
-main (5) -> philo, main_func127, main_func128, main_func129
-philo (4) -> 
-main_func127 (1) -> 
-main_func128 (2) -> 
-

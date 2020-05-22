@@ -60,7 +60,6 @@ func main() {
 
 	waitChan := make(chan struct{})
 	doneChan := make(chan struct{})
-	// toph: min_iter=2, max_iter=2
 	for i := 0; i < 2; i++ {
 		go func() {
 			countWords(filesChan, wordCountsChan)
@@ -68,7 +67,6 @@ func main() {
 		}()
 	}
 	go func() {
-		// toph: min_iter=2, max_iter=2
 		for i := 0; i < 2; i++ {
 			<-waitChan
 		}

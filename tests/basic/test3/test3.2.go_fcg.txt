@@ -1,4 +1,0 @@
-main (3) -> producer, processor
-producer (1) -> 
-processor (2) -> 
-

@@ -11,6 +11,10 @@ type System struct {
 
 	processes map[string]*Process
 	instances map[string]*ProcessInstance
+
+	progressMeasures []string
+
+	queries []Query
 }
 
 // NewSystem creates a new system.
@@ -59,6 +63,17 @@ func (s *System) AddProcessInstance(procName, instName string) *ProcessInstance 
 	return inst
 }
 
+// AddProgressMeasure adds a progress measure expression to the system. The
+// expression has to be monotonically increasing as the system gets simulated.
+func (s *System) AddProgressMeasure(measure string) {
+	s.progressMeasures = append(s.progressMeasures, measure)
+}
+
+// AddQuery adds a query to be associated with the system.
+func (s *System) AddQuery(query Query) {
+	s.queries = append(s.queries, query)
+}
+
 // AsXTA returns the xta (file format) representation of the system.
 func (s *System) AsXTA() string {
 	str := s.decls.AsXTA() + "\n\n"
@@ -100,6 +115,13 @@ func (s *System) AsXTA() string {
 		}
 		str += ";\n"
 	}
+	if len(s.progressMeasures) > 0 {
+		str += "progress{\n"
+		for _, measure := range s.progressMeasures {
+			str += "    " + measure + ";\n"
+		}
+		str += "}\n"
+	}
 
 	return str
 }
@@ -116,6 +138,10 @@ func (s *System) AsUGI() string {
 // AsQ returns the q (file format) representation of the system.
 func (s *System) AsQ() string {
 	var str string
+
+	for _, query := range s.queries {
+		str += query.AsQ()
+	}
 
 	sortedInstances := make([]*ProcessInstance, 0, len(s.instances))
 	for _, inst := range s.instances {

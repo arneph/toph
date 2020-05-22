@@ -106,7 +106,6 @@ func main() {
 	//	c := fanin1(process_A(), process_B())
 	//	c := fanin2(process_A(), process_B())
 	c := fanin3(process_Aprime(), process_Bprime())
-	// toph: min_iter=10, max_iter=10
 	for i := 0; i < 10; i++ {
 		fmt.Println(<-c)
 	}

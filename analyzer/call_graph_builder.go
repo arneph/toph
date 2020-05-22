@@ -9,28 +9,57 @@ import (
 // BuildFuncCallGraph returns a new function call graph for the given program,
 // program entry function, and call kind. Only calls of the given call kinds
 // are contained in the graph.
-func BuildFuncCallGraph(prog *ir.Program, entry *ir.Func, callKinds ir.CallKind) *FuncCallGraph {
-	fcg := newFuncCallGraph(entry)
-	if entry == nil {
+func BuildFuncCallGraph(program *ir.Program, callKinds ir.CallKind) *FuncCallGraph {
+	fcg := newFuncCallGraph(program.EntryFunc())
+	if program.EntryFunc() == nil {
 		return fcg
 	}
 
-	// Find calleeInfos for each function independently.
-	callerToCalleesInfos := make(map[*ir.Func]calleesInfo, len(prog.Funcs()))
-	for _, caller := range prog.Funcs() {
-		info := findCalleesInfoForBody(caller.Body(), callKinds)
-		callerToCalleesInfos[caller] = info
+	addFuncsToFuncCallGraph(program, fcg)
+	addCallsToFuncCallGraph(program, callKinds, fcg)
+	addCallCountsToFuncCallGraph(program, callKinds, fcg)
 
-		for callee := range info.funcCallCounts {
-			fcg.addCall(caller, callee)
-		}
+	return fcg
+}
+
+func addFuncsToFuncCallGraph(program *ir.Program, fcg *FuncCallGraph) {
+	for _, f := range program.Funcs() {
+		fcg.addFunc(f)
+	}
+}
+
+func addCallsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fcg *FuncCallGraph) {
+	for _, caller := range program.Funcs() {
+		caller.Body().WalkStmts(func(stmt ir.Stmt, scope *ir.Scope) {
+			callStmt, ok := stmt.(*ir.CallStmt)
+			if !ok || callStmt.Kind()&callKinds == 0 {
+				return
+			}
+			switch callee := callStmt.Callee().(type) {
+			case *ir.Func:
+				fcg.addStaticCall(caller, callee)
+			case *ir.Variable:
+				calleeSig := callStmt.CalleeSignature()
+				fcg.addDynamicCall(caller, calleeSig)
+			default:
+				panic(fmt.Errorf("unexpected callee type: %T", callee))
+			}
+		})
+	}
+}
+
+func addCallCountsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fcg *FuncCallGraph) {
+	// Find calleeInfos for each function independently.
+	callerToCalleesInfos := make(map[*ir.Func]calleesInfo, len(program.Funcs()))
+	for _, caller := range program.Funcs() {
+		callerToCalleesInfos[caller] = findCalleesInfoForBody(caller.Body(), callKinds, fcg)
 	}
 
 	// Process all SCCs in topological order (starting from entry):
-	entrySCC := fcg.SCCOfFunc(entry)
+	entrySCC := fcg.SCCOfFunc(program.EntryFunc())
 	sccCallCounts := make(map[SCC]int)
 	sccCallCounts[entrySCC] = 1
-	for i := fcg.sccCount - 1; i > 0; i-- {
+	for i := fcg.SCCCount() - 1; i > 0; i-- {
 		currentSCC := SCC(i)
 		currentSCCFuncs := fcg.FuncsInSCC(currentSCC)
 
@@ -57,7 +86,6 @@ func BuildFuncCallGraph(prog *ir.Program, entry *ir.Func, callKinds ir.CallKind)
 			fcg.addMakeChanCallCount(sccCallCounts[currentSCC] * info.makeChanCount)
 		}
 	}
-	return fcg
 }
 
 type calleesInfo struct {
@@ -110,7 +138,7 @@ func (info *calleesInfo) mergeFromCalleesInfo(other calleesInfo) {
 	}
 }
 
-func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind) (res calleesInfo) {
+func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallGraph) (res calleesInfo) {
 	res.funcCallCounts = make(map[*ir.Func]int)
 	res.makeChanCount = 0
 
@@ -120,19 +148,29 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind) (res calleesIn
 			if stmt.Kind()&callKinds == 0 {
 				continue
 			}
-			res.addFuncCallCount(stmt.Callee(), 1)
+			switch callee := stmt.Callee().(type) {
+			case *ir.Func:
+				res.addFuncCallCount(callee, 1)
+			case *ir.Variable:
+				calleeSig := stmt.CalleeSignature()
+				for _, dynCallee := range fcg.DynamicCallees(calleeSig) {
+					res.addFuncCallCount(dynCallee, 1)
+				}
+			default:
+				panic(fmt.Errorf("unexpected callee type: %T", callee))
+			}
 		case *ir.MakeChanStmt:
 			res.addMakeChanCallCount(1)
 		case *ir.IfStmt:
-			res.addCalleesInfo(findCalleesInfoForIfStmt(stmt, callKinds))
+			res.addCalleesInfo(findCalleesInfoForIfStmt(stmt, callKinds, fcg))
 		case *ir.SelectStmt:
-			res.addCalleesInfo(findCalleesInfoForSelectStmt(stmt, callKinds))
+			res.addCalleesInfo(findCalleesInfoForSelectStmt(stmt, callKinds, fcg))
 		case *ir.ForStmt:
-			res.addCalleesInfo(findCalleesInfoForForStmt(stmt, callKinds))
+			res.addCalleesInfo(findCalleesInfoForForStmt(stmt, callKinds, fcg))
 		case *ir.RangeStmt:
-			res.addCalleesInfo(findCalleesInfoForRangeStmt(stmt, callKinds))
+			res.addCalleesInfo(findCalleesInfoForRangeStmt(stmt, callKinds, fcg))
 		case *ir.InlinedCallStmt:
-			res.addCalleesInfo(findCalleesInfoForBody(stmt.Body(), callKinds))
+			res.addCalleesInfo(findCalleesInfoForBody(stmt.Body(), callKinds, fcg))
 		case *ir.AssignStmt, *ir.BranchStmt, *ir.ChanOpStmt, *ir.ReturnStmt:
 			continue
 		default:
@@ -143,44 +181,44 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind) (res calleesIn
 	return
 }
 
-func findCalleesInfoForIfStmt(ifStmt *ir.IfStmt, callKinds ir.CallKind) (res calleesInfo) {
+func findCalleesInfoForIfStmt(ifStmt *ir.IfStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res calleesInfo) {
 	res.funcCallCounts = make(map[*ir.Func]int)
 	res.makeChanCount = 0
-	res.mergeFromCalleesInfo(findCalleesInfoForBody(ifStmt.IfBranch(), callKinds))
-	res.mergeFromCalleesInfo(findCalleesInfoForBody(ifStmt.ElseBranch(), callKinds))
+	res.mergeFromCalleesInfo(findCalleesInfoForBody(ifStmt.IfBranch(), callKinds, fcg))
+	res.mergeFromCalleesInfo(findCalleesInfoForBody(ifStmt.ElseBranch(), callKinds, fcg))
 	return
 }
 
-func findCalleesInfoForSelectStmt(selectStmt *ir.SelectStmt, callKinds ir.CallKind) (res calleesInfo) {
+func findCalleesInfoForSelectStmt(selectStmt *ir.SelectStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res calleesInfo) {
 	res.funcCallCounts = make(map[*ir.Func]int)
 	res.makeChanCount = 0
 	for _, c := range selectStmt.Cases() {
-		res.mergeFromCalleesInfo(findCalleesInfoForBody(c.Body(), callKinds))
+		res.mergeFromCalleesInfo(findCalleesInfoForBody(c.Body(), callKinds, fcg))
 	}
 	if selectStmt.HasDefault() {
-		res.mergeFromCalleesInfo(findCalleesInfoForBody(selectStmt.DefaultBody(), callKinds))
+		res.mergeFromCalleesInfo(findCalleesInfoForBody(selectStmt.DefaultBody(), callKinds, fcg))
 	}
 	return
 }
 
-func findCalleesInfoForForStmt(forStmt *ir.ForStmt, callKinds ir.CallKind) (res calleesInfo) {
+func findCalleesInfoForForStmt(forStmt *ir.ForStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res calleesInfo) {
 	res.funcCallCounts = make(map[*ir.Func]int)
 	res.makeChanCount = 0
 	f := MaxCallCounts
 	if forStmt.HasMaxIterations() {
 		f = forStmt.MaxIterations()
 	}
-	condRes := findCalleesInfoForBody(forStmt.Cond(), callKinds)
+	condRes := findCalleesInfoForBody(forStmt.Cond(), callKinds, fcg)
 	condRes.multiplyAllByFactor(f + 1)
-	bodyRes := findCalleesInfoForBody(forStmt.Body(), callKinds)
+	bodyRes := findCalleesInfoForBody(forStmt.Body(), callKinds, fcg)
 	bodyRes.multiplyAllByFactor(f)
 	res.addCalleesInfo(condRes)
 	res.addCalleesInfo(bodyRes)
 	return
 }
 
-func findCalleesInfoForRangeStmt(rangeStmt *ir.RangeStmt, callKinds ir.CallKind) calleesInfo {
-	res := findCalleesInfoForBody(rangeStmt.Body(), callKinds)
+func findCalleesInfoForRangeStmt(rangeStmt *ir.RangeStmt, callKinds ir.CallKind, fcg *FuncCallGraph) calleesInfo {
+	res := findCalleesInfoForBody(rangeStmt.Body(), callKinds, fcg)
 	res.multiplyAllByFactor(MaxCallCounts)
 	return res
 }

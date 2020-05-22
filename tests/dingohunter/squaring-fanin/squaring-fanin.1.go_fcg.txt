@@ -1,8 +1,0 @@
-sq (3) -> sq_func229
-sq_func229 (2) -> 
-merge (5) -> merge_func231
-merge_func231 (4) -> 
-main (6) -> 
-gen (7) -> gen_func228
-gen_func228 (1) -> 
-

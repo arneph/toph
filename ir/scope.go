@@ -51,6 +51,9 @@ func (s *Scope) GetVariable(name string) (*Variable, *Scope) {
 
 // AddVariable adds the given variable to the scope.
 func (s *Scope) AddVariable(v *Variable) {
+	if v == nil {
+		panic("tried to add nil variable to scope")
+	}
 	s.variables = append(s.variables, v)
 	s.variableLookup[v.name] = v
 }

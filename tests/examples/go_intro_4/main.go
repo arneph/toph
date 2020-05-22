@@ -11,7 +11,6 @@ import (
 )
 
 func producer(ch chan int) {
-	// toph: min_iter=10, max_iter=10
 	for i := 1; i < 10; i++ {
 		ch <- i
 	}
@@ -28,7 +27,6 @@ func consumer(ch chan int) {
 func main() {
 	ch := make(chan int)
 	go producer(ch)
-	// toph: min_iter=3, max_iter=3
 	for i := 0; i < 3; i++ {
 		go consumer(ch)
 	}

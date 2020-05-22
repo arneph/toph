@@ -1,45 +1,0 @@
-Options for the verification:
-  Generating no trace
-  Search order is depth first
-  Using conservative space optimisation
-  Seed is 1588268806
-  State space representation uses minimal constraint systems
-[2K
-Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:4
-[2K -- Formula is satisfied.
-[2K
-Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:8
-[2K -- Formula is satisfied.
-[2K
-Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:12
-[2K -- Formula is satisfied.
-[2K
-Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:16
- -- Throughput: 293 states/sec, Load: 57 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 5 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:20
-[2K -- Formula is NOT satisfied.
-[2K
-Verifying formula 6 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:24
- -- Throughput: 185 states/sec, Load: 57 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 7 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:28
-[2K -- Formula is NOT satisfied.
-[2K
-Verifying formula 8 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:32
- -- Throughput: 132 states/sec, Load: 57 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 9 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:36
- -- Throughput: 103 states/sec, Load: 57 states[K[2K -- Formula is NOT satisfied.
-[2K
-Verifying formula 10 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:40
- -- Throughput: 103 states/sec, Load: 57 states[K[2K -- Formula is satisfied.
-[2K
-Verifying formula 11 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:44
-[2K -- Formula is NOT satisfied.
-[2K
-Verifying formula 12 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:48
-[2K -- Formula is NOT satisfied.
-[2K
-Verifying formula 13 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/russ-cox-fizzbuzz/russ-cox-fizzbuzz.q:52
- -- Throughput: 84 states/sec, Load: 57 states[K[2K -- Formula is satisfied.

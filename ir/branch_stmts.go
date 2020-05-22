@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"go/token"
 	"strings"
 )
 
@@ -23,16 +24,20 @@ const (
 type IfStmt struct {
 	ifBranch   Body
 	elseBranch Body
+
+	Node
 }
 
 // NewIfStmt creates a new if or else branch, embedded in the given enclosing
 // scope.
-func NewIfStmt(superScope *Scope) *IfStmt {
+func NewIfStmt(superScope *Scope, pos, end token.Pos) *IfStmt {
 	s := new(IfStmt)
 	s.ifBranch.init()
 	s.ifBranch.scope.superScope = superScope
 	s.elseBranch.init()
 	s.elseBranch.scope.superScope = superScope
+	s.pos = pos
+	s.end = end
 
 	return s
 }
@@ -64,10 +69,12 @@ type ForStmt struct {
 	isInfinite    bool
 	minIterations int
 	maxIterations int
+
+	Node
 }
 
 // NewForStmt creates a new loop, embedded in the given enclosing scope.
-func NewForStmt(superScope *Scope) *ForStmt {
+func NewForStmt(superScope *Scope, pos, end token.Pos) *ForStmt {
 	s := new(ForStmt)
 	s.cond.init()
 	s.cond.scope.superScope = superScope
@@ -76,6 +83,8 @@ func NewForStmt(superScope *Scope) *ForStmt {
 	s.isInfinite = false
 	s.minIterations = -1
 	s.maxIterations = -1
+	s.pos = pos
+	s.end = end
 
 	return s
 }
@@ -152,15 +161,19 @@ func (s *ForStmt) String() string {
 type RangeStmt struct {
 	channel *Variable
 	body    Body
+
+	Node
 }
 
 // NewRangeStmt creates a new loop ranging over the give channel and embedded
 // in the given enclosing scope.
-func NewRangeStmt(channel *Variable, superScope *Scope) *RangeStmt {
+func NewRangeStmt(channel *Variable, superScope *Scope, pos, end token.Pos) *RangeStmt {
 	s := new(RangeStmt)
 	s.channel = channel
 	s.body.init()
 	s.body.scope.superScope = superScope
+	s.pos = pos
+	s.end = end
 
 	return s
 }
@@ -216,13 +229,17 @@ func (k BranchKind) String() string {
 type BranchStmt struct {
 	loop Loop
 	kind BranchKind
+
+	Node
 }
 
 // NewBranchStmt creates a new continue or break statement in a loop.
-func NewBranchStmt(loop Loop, kind BranchKind) *BranchStmt {
+func NewBranchStmt(loop Loop, kind BranchKind, pos, end token.Pos) *BranchStmt {
 	b := new(BranchStmt)
 	b.loop = loop
 	b.kind = kind
+	b.pos = pos
+	b.end = end
 
 	return b
 }

@@ -2,6 +2,7 @@ package ir
 
 import (
 	"fmt"
+	"go/token"
 	"strings"
 )
 
@@ -9,14 +10,18 @@ import (
 type MakeChanStmt struct {
 	channel    *Variable
 	bufferSize int
+
+	Node
 }
 
 // NewMakeChanStmt creates a new MakeChanStmt for the given channel and buffer
 // size.
-func NewMakeChanStmt(channel *Variable, bufferSize int) *MakeChanStmt {
+func NewMakeChanStmt(channel *Variable, bufferSize int, pos, end token.Pos) *MakeChanStmt {
 	s := new(MakeChanStmt)
 	s.channel = channel
 	s.bufferSize = bufferSize
+	s.pos = pos
+	s.end = end
 
 	return s
 }
@@ -65,14 +70,18 @@ func (o ChanOp) String() string {
 type ChanOpStmt struct {
 	channel *Variable
 	op      ChanOp
+
+	Node
 }
 
 // NewChanOpStmt creates a new channel operation statement for the given
 // channel and with the given channel operation.
-func NewChanOpStmt(channel *Variable, op ChanOp) *ChanOpStmt {
+func NewChanOpStmt(channel *Variable, op ChanOp, pos, end token.Pos) *ChanOpStmt {
 	s := new(ChanOpStmt)
 	s.channel = channel
 	s.op = op
+	s.pos = pos
+	s.end = end
 
 	return s
 }
@@ -134,17 +143,21 @@ type SelectStmt struct {
 	defaultBody Body
 
 	superScope *Scope
+
+	Node
 }
 
 // NewSelectStmt creates a new select statement, embedded in the given
 // enclosing scope.
-func NewSelectStmt(superScope *Scope) *SelectStmt {
+func NewSelectStmt(superScope *Scope, pos, end token.Pos) *SelectStmt {
 	s := new(SelectStmt)
 	s.cases = nil
 	s.hasDefault = false
 	s.defaultBody.init()
 	s.defaultBody.scope.superScope = superScope
 	s.superScope = superScope
+	s.pos = pos
+	s.end = end
 
 	return s
 }

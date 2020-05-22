@@ -1,23 +1,30 @@
 package ir
 
-import "strings"
+import (
+	"go/token"
+	"go/types"
+	"strings"
+)
 
 // Program represents an entire go program (consisting of functions).
 type Program struct {
-	funcs           []*Func
-	funcIndexLookup map[FuncIndex]*Func
-	funcNameLookup  map[string]*Func
+	funcs     []*Func
+	entryFunc *Func
+	funcCount int
 
 	scope Scope
+
+	fset *token.FileSet
 }
 
 // NewProgram creates a new program.
-func NewProgram() *Program {
+func NewProgram(fset *token.FileSet) *Program {
 	p := new(Program)
 	p.funcs = nil
-	p.funcIndexLookup = make(map[FuncIndex]*Func)
-	p.funcNameLookup = make(map[string]*Func)
+	p.entryFunc = nil
+	p.funcCount = 0
 	p.scope.init()
+	p.fset = fset
 
 	return p
 }
@@ -27,30 +34,42 @@ func (p *Program) Funcs() []*Func {
 	return p.funcs
 }
 
-// GetFunc returns the function with the given name.
-func (p *Program) GetFunc(name string) *Func {
-	return p.funcNameLookup[name]
+// EntryFunc returns the entry function of the program.
+func (p *Program) EntryFunc() *Func {
+	return p.entryFunc
 }
 
-// AddFunc adds the given function to the program.
-func (p *Program) AddFunc(f *Func) {
+// SetEntryFunc sets the entry function of the program.
+func (p *Program) SetEntryFunc(f *Func) {
+	p.entryFunc = f
+}
+
+// AddOuterFunc adds a new, non-inner, empty function to the program and returns
+// the new function.
+func (p *Program) AddOuterFunc(name string, signature *types.Signature, pos, end token.Pos) *Func {
+	f := newOuterFunc(FuncIndex(p.funcCount), name, signature, &p.scope, pos, end)
+	p.funcCount++
+
 	p.funcs = append(p.funcs, f)
-	p.funcIndexLookup[f.index] = f
-	p.funcNameLookup[f.name] = f
+
+	return f
 }
 
-// AddFuncs adds all the given functions to the program.
-func (p *Program) AddFuncs(funcs []*Func) {
-	for _, f := range funcs {
-		p.AddFunc(f)
-	}
+// AddInnerFunc adds a new, inner, empty function to the program and returns
+// the new function.
+func (p *Program) AddInnerFunc(signature *types.Signature, enclosingFunc *Func, enclosingScope *Scope, pos, end token.Pos) *Func {
+	f := newInnerFunc(FuncIndex(p.funcCount), signature, enclosingFunc, enclosingScope, pos, end)
+	p.funcCount++
+
+	p.funcs = append(p.funcs, f)
+
+	return f
 }
 
 // RemoveFuncs removes all functions from the program.
 func (p *Program) RemoveFuncs() {
 	p.funcs = nil
-	p.funcIndexLookup = make(map[FuncIndex]*Func)
-	p.funcNameLookup = make(map[string]*Func)
+	p.entryFunc = nil
 }
 
 // Scope returns the global scope of the program.

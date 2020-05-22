@@ -18,7 +18,6 @@ func main() {
 	chB := make(chan int)
 
 	go func() {
-		// toph: min_iter=5, max_iter=5
 		for i := 0; i < 5; i++ {
 			chA <- 42 + i
 		}

@@ -85,15 +85,15 @@ func ReplicaSearch(query string) (results []Result) {
 	go func(c chan Result) { c <- Video1(query) }(c)
 
 	timeout := time.After(80 * time.Millisecond)
-	//for i := 0; i < 3; i++ {
-	select {
-	case result := <-c:
-		results = append(results, result)
-	case <-timeout:
-		fmt.Println("seach timed out")
-		return
+	for i := 0; i < 3; i++ {
+		select {
+		case result := <-c:
+			results = append(results, result)
+		case <-timeout:
+			fmt.Println("seach timed out")
+			return
+		}
 	}
-	//}
 	return
 }
 
@@ -102,10 +102,11 @@ func main() {
 	start := time.Now()
 
 	results := SequentialSearch("golang")
-	//results := ConcurrentSearch("golang")
+	//  results := ConcurrentSearch("golang")
 	//	results := ConcurrentSearchWithCutOff("golang")
 	//	results := First("golang", fakeSearch("replica-1"), fakeSearch("replica-2"))
-	results = ReplicaSearch("golang")
+	/*results = */
+	ReplicaSearch("golang")
 
 	elapsed := time.Since(start)
 	fmt.Println(results)

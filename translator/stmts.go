@@ -38,9 +38,12 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 
 func (t *translator) translateAssignStmt(stmt *ir.AssignStmt, ctx *context) {
 	s := t.translateRValue(stmt.Source(), ctx)
+	if _, ok := stmt.Source().(ir.Value); ok && stmt.Destination().Type() == ir.FuncType {
+		s = "make_fid(" + s + ", pid)"
+	}
 	d := t.translateVariable(stmt.Destination(), ctx)
 
-	assigned := ctx.proc.AddState("assigned_"+d+"_", uppaal.Renaming)
+	assigned := ctx.proc.AddState("assigned_"+stmt.Destination().Handle()+"_", uppaal.Renaming)
 	assigned.SetLocationAndResetNameLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	assign := ctx.proc.AddTrans(ctx.currentState, assigned)
@@ -52,27 +55,92 @@ func (t *translator) translateAssignStmt(stmt *ir.AssignStmt, ctx *context) {
 }
 
 func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
-	calleeFunc := stmt.Callee()
+	switch callee := stmt.Callee().(type) {
+	case *ir.Func:
+		t.translateCall(stmt, calleeInfo{
+			f:          callee,
+			parPid:     "pid",
+			startState: ctx.currentState,
+			endState:   nil,
+		}, ctx)
+	case *ir.Variable:
+		handle := t.translateVariable(callee, ctx)
+
+		nilState := ctx.proc.AddState(callee.Handle()+"_is_nil_", uppaal.Renaming)
+		nilState.SetLocationAndResetNameLocation(
+			ctx.currentState.Location().Add(uppaal.Location{0, 136}))
+		ctx.proc.AddQuery(uppaal.MakeQuery(
+			"A[] (not out_of_resources) imply (not $."+nilState.Name()+")",
+			"check function variable not nil"))
+		nilTrans := ctx.proc.AddTrans(ctx.currentState, nilState)
+		nilTrans.SetGuard(handle + ".id == -1")
+		nilTrans.SetGuardLocation(
+			ctx.currentState.Location().Add(uppaal.Location{4, 28}))
+
+		endState := ctx.proc.AddState("called_"+callee.Handle()+"_", uppaal.Renaming)
+		switch stmt.Kind() {
+		case ir.Go:
+			endState.SetLocationAndResetNameLocation(
+				ctx.currentState.Location().Add(uppaal.Location{0, 544}))
+		case ir.Call:
+			endState.SetLocationAndResetNameLocation(
+				ctx.currentState.Location().Add(uppaal.Location{0, 680}))
+		}
+
+		calleeSig := stmt.CalleeSignature()
+		for i, calleeFunc := range t.fcg.DynamicCallees(calleeSig) {
+			startState := ctx.proc.AddState(callee.Handle()+"_is_"+calleeFunc.Name()+"_", uppaal.Renaming)
+			startState.SetLocationAndResetNameLocation(
+				ctx.currentState.Location().Add(uppaal.Location{(i + 1) * 136, 136}))
+			startTrans := ctx.proc.AddTrans(ctx.currentState, startState)
+			startTrans.SetGuard(handle + ".id == " + calleeFunc.FuncValue().String())
+			startTrans.SetGuardLocation(
+				ctx.currentState.Location().Add(uppaal.Location{(i+1)*136 + 4, 44 + i*16}))
+
+			t.translateCall(stmt, calleeInfo{
+				f:          calleeFunc,
+				parPid:     handle + ".par_pid",
+				startState: startState,
+				endState:   endState,
+			}, ctx)
+		}
+
+		ctx.currentState = endState
+		ctx.addLocation(endState.Location())
+	default:
+		panic(fmt.Errorf("unexpected callee type: %T", callee))
+	}
+}
+
+type calleeInfo struct {
+	f          *ir.Func
+	parPid     string
+	startState *uppaal.State
+	endState   *uppaal.State
+}
+
+func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *context) {
+	calleeFunc := info.f
 	calleeProc := t.funcToProcess[calleeFunc]
 
 	createdInst := ctx.proc.AddState("created_"+calleeProc.Name()+"_", uppaal.Renaming)
 	createdInst.SetLocationAndResetNameLocation(
-		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-	create := ctx.proc.AddTrans(ctx.currentState, createdInst)
+		info.startState.Location().Add(uppaal.Location{0, 136}))
+	create := ctx.proc.AddTrans(info.startState, createdInst)
 	if calleeFunc.EnclosingFunc() != nil {
-		if calleeFunc.EnclosingFunc() != ctx.f {
-			panic("attempted to call enclosed function not from enclosing function")
-		}
-		create.AddUpdate("p = make_" + calleeProc.Name() + "(pid)")
+		create.AddUpdate("p = make_" + calleeProc.Name() + "(" + info.parPid + ")")
 	} else {
 		create.AddUpdate("p = make_" + calleeProc.Name() + "()")
 	}
-	create.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 60}))
+	create.SetUpdateLocation(info.startState.Location().Add(uppaal.Location{4, 60}))
 
 	for i, calleeArg := range calleeFunc.Args() {
 		calleeArgStr := t.translateArg(calleeArg, "p")
 		callerArg := stmt.Args()[i]
 		callerArgStr := t.translateRValue(callerArg, ctx)
+		if _, ok := callerArg.(ir.Value); ok && calleeArg.Type() == ir.FuncType {
+			callerArgStr = "make_fid(" + calleeArgStr + ", pid)"
+		}
 		create.AddUpdate(
 			fmt.Sprintf("%s = %s", calleeArgStr, callerArgStr))
 	}
@@ -88,7 +156,11 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 		start.SetSyncLocation(
 			createdInst.Location().Add(uppaal.Location{4, 60}))
 
-		ctx.currentState = startedInst
+		if info.endState == nil {
+			ctx.currentState = startedInst
+		} else {
+			ctx.proc.AddTrans(startedInst, info.endState)
+		}
 		ctx.addLocation(createdInst.Location())
 		ctx.addLocation(startedInst.Location())
 
@@ -113,7 +185,11 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 		wait.SetUpdateLocation(
 			startedInst.Location().Add(uppaal.Location{4, 64}))
 
-		ctx.currentState = awaitedInst
+		if info.endState == nil {
+			ctx.currentState = awaitedInst
+		} else {
+			ctx.proc.AddTrans(awaitedInst, info.endState)
+		}
 		ctx.addLocation(createdInst.Location())
 		ctx.addLocation(startedInst.Location())
 		ctx.addLocation(awaitedInst.Location())
@@ -151,6 +227,9 @@ func (t *translator) translateReturnStmt(stmt *ir.ReturnStmt, ctx *context) {
 			resVar = ctx.f.Results()[i]
 		}
 		resStr := t.translateRValue(resVar, ctx)
+		if _, ok := resVar.(ir.Value); ok && resType == ir.FuncType {
+			resStr = "make_fid(" + resStr + ", pid)"
+		}
 
 		ret.AddUpdate(fmt.Sprintf("res_%s_%d_%v[pid] = %s",
 			ctx.proc.Name(), i, resType, resStr))
@@ -307,7 +386,7 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 		receiving.Location().Add(uppaal.Location{4, 60}))
 
 	ctx.proc.AddQuery(uppaal.MakeQuery(
-		"A[] not (deadlock and $."+receiving.Name()+")",
+		"A[] (not out_of_resources) imply (not (deadlock and $."+receiving.Name()+"))",
 		"check deadlock with pending channel operation unreachable"))
 
 	bodyEnter := ctx.proc.AddState("enter_loop_body_", uppaal.Renaming)

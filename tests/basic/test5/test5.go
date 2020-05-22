@@ -7,7 +7,6 @@ func main() {
 }
 
 func a() {
-	// toph: max_iter=3, min_iter=3
 	for i := 0; i < 10; i++ {
 		b()
 	}
@@ -39,7 +38,6 @@ func d() {
 }
 
 func e() {
-	// toph: max_iter=3, min_iter=3
 	for i := 0; i < 10; i++ {
 		ch := make(chan int)
 		close(ch)

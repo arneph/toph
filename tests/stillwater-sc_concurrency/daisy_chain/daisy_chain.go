@@ -14,7 +14,6 @@ func main() {
 	start := make(chan int)
 	left := start
 	right := left
-	// toph: min_iter=3, max_iter=3
 	for i := 0; i < n; i++ {
 		right = make(chan int)
 		go stage(left, right)

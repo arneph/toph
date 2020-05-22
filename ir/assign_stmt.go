@@ -1,15 +1,20 @@
 package ir
 
-import "fmt"
+import (
+	"fmt"
+	"go/token"
+)
 
 // AssignStmt represents an assignment statement.
 type AssignStmt struct {
 	source      RValue
 	destination *Variable
+
+	Node
 }
 
 // NewAssignStmt createas a new assignment statement.
-func NewAssignStmt(source RValue, destination *Variable) *AssignStmt {
+func NewAssignStmt(source RValue, destination *Variable, pos, end token.Pos) *AssignStmt {
 	if source == nil || destination == nil {
 		panic("tried to create AssignStmt with nil source or destination")
 	}
@@ -17,6 +22,8 @@ func NewAssignStmt(source RValue, destination *Variable) *AssignStmt {
 	a := new(AssignStmt)
 	a.source = source
 	a.destination = destination
+	a.pos = pos
+	a.end = end
 
 	return a
 }

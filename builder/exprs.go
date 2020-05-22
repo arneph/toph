@@ -26,9 +26,6 @@ func (b *builder) processExprs(exprs []ast.Expr, ctx *context) map[int]ir.RValue
 func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 	switch e := expr.(type) {
 	case *ast.BasicLit:
-		if e.Value == "nil" {
-			return ir.Value(-1)
-		}
 		return nil
 	case *ast.BinaryExpr:
 		b.processExprs([]ast.Expr{e.X, e.Y}, ctx)
@@ -51,11 +48,7 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		ctx.body.Scope().AddVariable(v)
 		return v
 	case *ast.Ident:
-		v := b.processIdent(e, ctx)
-		if v != nil {
-			return ir.RValue(v)
-		}
-		return nil
+		return b.processIdent(e, ctx)
 	case *ast.IndexExpr:
 		b.processExprs([]ast.Expr{e.X, e.Index}, ctx)
 		return nil
@@ -87,7 +80,7 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 				return nil
 			}
 
-			ctx.body.AddStmt(ir.NewChanOpStmt(v, ir.Receive))
+			ctx.body.AddStmt(ir.NewChanOpStmt(v, ir.Receive, e.Pos(), e.End()))
 		} else {
 			b.processExpr(e.X, ctx)
 		}
@@ -108,34 +101,51 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 	}
 }
 
-func (b *builder) processIdent(ident *ast.Ident, ctx *context) *ir.Variable {
+func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
+	if ident.Name == "nil" {
+		return ir.Value(-1)
+	}
+
 	v, s := ctx.body.Scope().GetVariable(ident.Name)
 	if v == nil {
 		return nil
 	}
 
-	varType, ok := b.info.Uses[ident].(*types.Var)
+	obj, ok := b.info.Uses[ident]
 	if !ok {
-		varType, ok = b.info.Defs[ident].(*types.Var)
+		obj, ok = b.info.Defs[ident]
 	}
-	if ok {
-		u := b.varTypes[varType]
-		if u != v {
-			ok = false
+	switch obj := obj.(type) {
+	case *types.Var:
+		u := b.varTypes[obj]
+		if u == nil {
+			return nil
+		} else if u != v {
+			p := b.fset.Position(ident.Pos())
+			b.addWarning(
+				fmt.Errorf("%v: identifier does not refer to known variable with name: %s",
+					p, ident.Name))
+			return nil
 		}
-	}
-	if !ok {
-		p := b.fset.Position(ident.Pos())
-		b.addWarning(
-			fmt.Errorf("%v: identifier does not refer to known variable with name: %s",
-				p, ident.Name))
-		return nil
-	}
 
-	if s != b.program.Scope() && s.IsSuperScopeOf(ctx.currentFunc().Scope()) {
-		v.SetCaptured(true)
+		if s != b.program.Scope() && s.IsSuperScopeOf(ctx.currentFunc().Scope()) {
+			v.SetCaptured(true)
+		}
+		return v
+
+	case *types.Func:
+		f := b.funcTypes[obj]
+		if f.FuncValue() != v.InitialValue() {
+			p := b.fset.Position(ident.Pos())
+			b.addWarning(
+				fmt.Errorf("%v: identifier does not refer to known variable with name: %s",
+					p, ident.Name))
+			return nil
+		}
+		return v
+	default:
+		panic(fmt.Errorf("unexpected types.Object type: %T", obj))
 	}
-	return v
 }
 
 func (b *builder) processMakeExpr(callExpr *ast.CallExpr, result *ir.Variable, ctx *context) {
@@ -164,7 +174,7 @@ func (b *builder) processMakeExpr(callExpr *ast.CallExpr, result *ir.Variable, c
 		}
 	}
 
-	makeStmt := ir.NewMakeChanStmt(result, bufferSize)
+	makeStmt := ir.NewMakeChanStmt(result, bufferSize, callExpr.Pos(), callExpr.End())
 	ctx.body.AddStmt(makeStmt)
 }
 
@@ -175,6 +185,6 @@ func (b *builder) processCloseExpr(callExpr *ast.CallExpr, ctx *context) {
 		return
 	}
 
-	closeStmt := ir.NewChanOpStmt(v, ir.Close)
+	closeStmt := ir.NewChanOpStmt(v, ir.Close, callExpr.Pos(), callExpr.End())
 	ctx.body.AddStmt(closeStmt)
 }

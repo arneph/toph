@@ -8,17 +8,14 @@ package main
 
 func main() {
 	chans := make([]chan int, 5)
-	// toph: min_iter=5, max_iter=5
 	for i := range chans {
 		chans[i] = make(chan int, 1)
 	}
 
-	// toph: min_iter=5, max_iter=5
 	for _, ch := range chans {
 		ch <- 42
 	}
 
-	// toph: min_iter=5, max_iter=5
 	for _, ch := range chans {
 		<-ch
 	}

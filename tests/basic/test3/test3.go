@@ -3,7 +3,6 @@ package main
 import "fmt"
 
 func producer(out chan<- int) {
-	/* toph: min_iter=5, max_iter=10 */
 	for i := 0; i < 10; i++ {
 		out <- i
 	}

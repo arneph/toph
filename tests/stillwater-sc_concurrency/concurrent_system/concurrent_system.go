@@ -43,7 +43,6 @@ func ConcurrentSearch(query string) (results []Result) {
 	go func() { c <- Image(query) }()
 	go func() { c <- Video(query) }()
 
-	// toph: min_iter=3, max_iter=3
 	for i := 0; i < 3; i++ {
 		result := <-c
 		results = append(results, result)
@@ -58,7 +57,6 @@ func ConcurrentSearchWithCutOff(query string) (results []Result) {
 	go func() { c <- Video(query) }()
 
 	timeout := time.After(80 * time.Millisecond)
-	// toph: min_iter=3, max_iter=3
 	for i := 0; i < 3; i++ { // for each goroutine that is ready pick up results
 		select {
 		case result := <-c:
@@ -88,7 +86,6 @@ func ReplicaSearch(query string) (results []Result) {
 	go func() { c <- First(query, Video1, Video2, Video3) }()
 
 	timeout := time.After(80 * time.Millisecond)
-	// toph: min_iter=3, max_iter=3
 	for i := 0; i < 3; i++ {
 		select {
 		case result := <-c:

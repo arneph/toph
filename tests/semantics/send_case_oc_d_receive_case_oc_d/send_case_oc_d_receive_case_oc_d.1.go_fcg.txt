@@ -1,4 +1,0 @@
-main_func378 (2) -> 
-main_func379 (1) -> 
-main (3) -> main_func378, main_func379
-

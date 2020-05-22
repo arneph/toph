@@ -8,10 +8,10 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
-func (b *builder) findIterationBounds(stmt ast.Stmt, ctx *context) (min, max int) {
+func (b *builder) findIterationBoundsFromAnnotation(stmt ast.Stmt, ctx *context) (min, max int) {
 	min, max = -1, -1
 
-	for _, info := range b.findInfos(stmt, ctx) {
+	for _, info := range b.findAnnotations(stmt, ctx) {
 		if strings.HasPrefix(info, "min_iter=") {
 			r, err := strconv.Atoi(info[9:])
 			if err == nil {
@@ -27,8 +27,8 @@ func (b *builder) findIterationBounds(stmt ast.Stmt, ctx *context) (min, max int
 	return
 }
 
-func (b *builder) findReachabilityRequirement(stmt ast.Stmt, ctx *context) ir.ReachabilityRequirement {
-	for _, info := range b.findInfos(stmt, ctx) {
+func (b *builder) findReachabilityRequirementFromAnnotation(stmt ast.Stmt, ctx *context) ir.ReachabilityRequirement {
+	for _, info := range b.findAnnotations(stmt, ctx) {
 		if strings.HasPrefix(info, "check=") {
 			if info[6:] == "reachable" {
 				return ir.Reachable
@@ -40,7 +40,7 @@ func (b *builder) findReachabilityRequirement(stmt ast.Stmt, ctx *context) ir.Re
 	return ir.NoReachabilityRequirement
 }
 
-func (b *builder) findInfos(stmt ast.Stmt, ctx *context) (infos []string) {
+func (b *builder) findAnnotations(stmt ast.Stmt, ctx *context) (infos []string) {
 	for _, commentGroup := range ctx.cmap[stmt] {
 		text := commentGroup.Text()
 		for {

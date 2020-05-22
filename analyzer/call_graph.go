@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"fmt"
+	"go/types"
 
 	"github.com/arneph/toph/ir"
 )
@@ -16,12 +17,20 @@ type SCC int
 // function via the function call graph.
 const FuncNotCalled SCC = 0
 
+type dynamicCallInfo struct {
+	signature *types.Signature
+	callers   map[*ir.Func]struct{}
+	callees   map[*ir.Func]struct{}
+}
+
 // FuncCallGraph represents a directed call graph of functions.
 type FuncCallGraph struct {
 	entry *ir.Func
 
 	callerToCallees map[*ir.Func]map[*ir.Func]struct{}
 	calleeToCallers map[*ir.Func]map[*ir.Func]struct{}
+
+	dynamicCallInfos []dynamicCallInfo
 
 	funcCallCounts map[*ir.Func]int
 	makeChanCount  int
@@ -38,6 +47,7 @@ func newFuncCallGraph(entry *ir.Func) *FuncCallGraph {
 	fcg.entry = entry
 	fcg.callerToCallees = make(map[*ir.Func]map[*ir.Func]struct{})
 	fcg.calleeToCallers = make(map[*ir.Func]map[*ir.Func]struct{})
+	fcg.dynamicCallInfos = nil
 	fcg.funcCallCounts = make(map[*ir.Func]int)
 	fcg.makeChanCount = 0
 	fcg.sccsOk = false
@@ -56,8 +66,8 @@ func (fcg *FuncCallGraph) ContainsEdge(caller, callee *ir.Func) bool {
 	return ok
 }
 
-// Callees returns all callees of the given caller.
-func (fcg *FuncCallGraph) Callees(caller *ir.Func) []*ir.Func {
+// AllCallees returns all callees of the given caller.
+func (fcg *FuncCallGraph) AllCallees(caller *ir.Func) []*ir.Func {
 	var callees []*ir.Func
 	for callee := range fcg.callerToCallees[caller] {
 		callees = append(callees, callee)
@@ -65,13 +75,39 @@ func (fcg *FuncCallGraph) Callees(caller *ir.Func) []*ir.Func {
 	return callees
 }
 
-// Callers returns all callers of the given callee.
-func (fcg *FuncCallGraph) Callers(callee *ir.Func) []*ir.Func {
+// AllCallers returns all callers of the given callee.
+func (fcg *FuncCallGraph) AllCallers(callee *ir.Func) []*ir.Func {
 	var callers []*ir.Func
 	for caller := range fcg.calleeToCallers[callee] {
 		callers = append(callers, caller)
 	}
 	return callers
+}
+
+// DynamicCallees returns all callees of dynamic function calls of the given
+// signature.
+func (fcg *FuncCallGraph) DynamicCallees(signature *types.Signature) []*ir.Func {
+	if dynInfo := fcg.dynamicCallInfoForSignature(signature); dynInfo != nil {
+		var callees []*ir.Func
+		for callee := range dynInfo.callees {
+			callees = append(callees, callee)
+		}
+		return callees
+	}
+	return nil
+}
+
+// DynamicCallers returns all callers with dynamic function calls of the given
+// signature.
+func (fcg *FuncCallGraph) DynamicCallers(signature *types.Signature) []*ir.Func {
+	if dynInfo := fcg.dynamicCallInfoForSignature(signature); dynInfo != nil {
+		var callers []*ir.Func
+		for caller := range dynInfo.callers {
+			callers = append(callers, caller)
+		}
+		return callers
+	}
+	return nil
 }
 
 // CallCount returns how many times a function gets called.
@@ -82,6 +118,13 @@ func (fcg *FuncCallGraph) CallCount(callee *ir.Func) int {
 // MakeChanCount returns how many times a channel gets created.
 func (fcg *FuncCallGraph) MakeChanCount() int {
 	return fcg.makeChanCount
+}
+
+// SCCCount returns the number of strongly connected components in the
+// function graph. Disconnected functions are counted in SCC 0.
+func (fcg *FuncCallGraph) SCCCount() int {
+	fcg.updateSCCs()
+	return fcg.sccCount
 }
 
 // SCCOfFunc returns the strongly connected component of the given function in the
@@ -98,26 +141,68 @@ func (fcg *FuncCallGraph) FuncsInSCC(scc SCC) []*ir.Func {
 	return fcg.sccToFuncs[scc]
 }
 
+func (fcg *FuncCallGraph) dynamicCallInfoForSignature(signature *types.Signature) *dynamicCallInfo {
+	for i, info := range fcg.dynamicCallInfos {
+		if types.Identical(info.signature, signature.Underlying()) {
+			return &fcg.dynamicCallInfos[i]
+		}
+	}
+	return nil
+}
+
 func (fcg *FuncCallGraph) addFunc(f *ir.Func) {
-	_, ok := fcg.callerToCallees[f]
-	if ok {
+	if _, ok := fcg.callerToCallees[f]; ok {
 		return
 	}
 
 	fcg.callerToCallees[f] = make(map[*ir.Func]struct{})
 	fcg.calleeToCallers[f] = make(map[*ir.Func]struct{})
 
+	if f != fcg.entry {
+		if dynInfo := fcg.dynamicCallInfoForSignature(f.Signature()); dynInfo != nil {
+			dynInfo.callees[f] = struct{}{}
+		} else {
+			fcg.dynamicCallInfos = append(fcg.dynamicCallInfos,
+				dynamicCallInfo{
+					signature: f.Signature().Underlying().(*types.Signature),
+					callers:   map[*ir.Func]struct{}{},
+					callees:   map[*ir.Func]struct{}{f: {}},
+				})
+		}
+	}
+
 	fcg.sccsOk = false
 }
 
-func (fcg *FuncCallGraph) addCall(caller, callee *ir.Func) {
-	fcg.addFunc(caller)
-	fcg.addFunc(callee)
-
+func (fcg *FuncCallGraph) addStaticCall(caller, callee *ir.Func) {
 	callees := fcg.callerToCallees[caller]
 	callees[callee] = struct{}{}
 	callers := fcg.calleeToCallers[callee]
 	callers[caller] = struct{}{}
+
+	fcg.sccsOk = false
+}
+
+func (fcg *FuncCallGraph) addDynamicCall(caller *ir.Func, calleeSignature *types.Signature) {
+	dynInfo := fcg.dynamicCallInfoForSignature(calleeSignature)
+	if dynInfo == nil {
+		fcg.dynamicCallInfos = append(fcg.dynamicCallInfos,
+			dynamicCallInfo{
+				signature: calleeSignature.Underlying().(*types.Signature),
+				callers:   map[*ir.Func]struct{}{caller: {}},
+				callees:   map[*ir.Func]struct{}{},
+			})
+	} else {
+		if _, ok := dynInfo.callers[caller]; ok {
+			return
+		}
+
+		dynInfo.callers[caller] = struct{}{}
+
+		for callee := range dynInfo.callees {
+			fcg.addStaticCall(caller, callee)
+		}
+	}
 
 	fcg.sccsOk = false
 }

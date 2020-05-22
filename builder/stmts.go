@@ -88,7 +88,7 @@ func (b *builder) getAssignedVarsInAssignStmt(stmt *ast.AssignStmt, definedVars 
 		if v == nil {
 			continue
 		}
-		lhs[i] = v
+		lhs[i] = v.(*ir.Variable)
 	}
 	return lhs
 }
@@ -139,7 +139,7 @@ func (b *builder) processAssignStmt(stmt *ast.AssignStmt, ctx *context) {
 			continue
 		}
 
-		assignStmt := ir.NewAssignStmt(r, l)
+		assignStmt := ir.NewAssignStmt(r, l, stmt.Pos(), stmt.End())
 		ctx.body.AddStmt(assignStmt)
 	}
 }
@@ -157,7 +157,7 @@ func (b *builder) processIfStmt(stmt *ast.IfStmt, ctx *context) {
 
 	b.processExpr(stmt.Cond, ctx)
 
-	ifStmt := ir.NewIfStmt(ctx.body.Scope())
+	ifStmt := ir.NewIfStmt(ctx.body.Scope(), stmt.Pos(), stmt.End())
 	ctx.body.AddStmt(ifStmt)
 
 	b.processStmt(stmt.Body, ctx.subContextForBody(ifStmt, "", ifStmt.IfBranch()))
@@ -172,16 +172,28 @@ func (b *builder) processForStmt(stmt *ast.ForStmt, label string, ctx *context) 
 		b.processStmt(stmt.Init, ctx)
 	}
 
-	forStmt := ir.NewForStmt(ctx.body.Scope())
+	forStmt := ir.NewForStmt(ctx.body.Scope(), stmt.Pos(), stmt.End())
 	ctx.body.AddStmt(forStmt)
 
 	if stmt.Cond != nil {
 		b.processExpr(stmt.Cond, ctx.subContextForBody(forStmt, "", forStmt.Cond()))
 	}
-	min, max := b.findIterationBounds(stmt, ctx)
 	forStmt.SetIsInfinite(stmt.Cond == nil)
-	forStmt.SetMinIterations(min)
-	forStmt.SetMaxIterations(max)
+
+	minAnn, maxAnn := b.findIterationBoundsFromAnnotation(stmt, ctx)
+	iters := b.findIterationBoundThroughAnalysis(stmt, ctx)
+	if minAnn != -1 || maxAnn != -1 {
+		if iters != -1 {
+			p := b.fset.Position(stmt.Pos())
+			b.addWarning(
+				fmt.Errorf("%v: unnecessary loop iter annotation", p))
+		}
+		forStmt.SetMinIterations(minAnn)
+		forStmt.SetMaxIterations(maxAnn)
+	} else if iters != -1 {
+		forStmt.SetMinIterations(iters)
+		forStmt.SetMaxIterations(iters)
+	}
 
 	b.processStmt(stmt.Body, ctx.subContextForBody(forStmt, label, forStmt.Body()))
 	if stmt.Post != nil {
@@ -194,7 +206,7 @@ func (b *builder) processRangeStmt(stmt *ast.RangeStmt, label string, ctx *conte
 	v, ok := rv.(*ir.Variable)
 	if ok && v != nil && v.Type() == ir.ChanType {
 		// Range over channel:
-		rangeStmt := ir.NewRangeStmt(v, ctx.body.Scope())
+		rangeStmt := ir.NewRangeStmt(v, ctx.body.Scope(), stmt.Pos(), stmt.End())
 		ctx.body.AddStmt(rangeStmt)
 
 		b.processStmt(stmt.Body, ctx.subContextForBody(rangeStmt, label, rangeStmt.Body()))
@@ -203,10 +215,10 @@ func (b *builder) processRangeStmt(stmt *ast.RangeStmt, label string, ctx *conte
 		// Fallback: for statement
 		b.processExpr(stmt.X, ctx)
 
-		forStmt := ir.NewForStmt(ctx.body.Scope())
+		forStmt := ir.NewForStmt(ctx.body.Scope(), stmt.Pos(), stmt.End())
 		ctx.body.AddStmt(forStmt)
 
-		min, max := b.findIterationBounds(stmt, ctx)
+		min, max := b.findIterationBoundsFromAnnotation(stmt, ctx)
 		forStmt.SetMinIterations(min)
 		forStmt.SetMaxIterations(max)
 
@@ -246,7 +258,7 @@ func (b *builder) processBranchStmt(branchStmt *ast.BranchStmt, ctx *context) {
 			loop = ctx.currentLabeledLoop(branchStmt.Label.Name)
 		}
 
-		branchStmt := ir.NewBranchStmt(loop, kind)
+		branchStmt := ir.NewBranchStmt(loop, kind, branchStmt.Pos(), branchStmt.End())
 		ctx.body.AddStmt(branchStmt)
 
 	default:
@@ -259,7 +271,7 @@ func (b *builder) processBranchStmt(branchStmt *ast.BranchStmt, ctx *context) {
 
 func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
 	resultVars := b.processExprs(stmt.Results, ctx)
-	returnStmt := ir.NewReturnStmt()
+	returnStmt := ir.NewReturnStmt(stmt.Pos(), stmt.End())
 	ctx.body.AddStmt(returnStmt)
 
 	for i, v := range resultVars {
@@ -268,11 +280,11 @@ func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
 }
 
 func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx *context) {
-	selectStmt := ir.NewSelectStmt(ctx.body.Scope())
+	selectStmt := ir.NewSelectStmt(ctx.body.Scope(), stmt.Pos(), stmt.End())
 
 	for _, stmt := range stmt.Body.List {
 		commClause := stmt.(*ast.CommClause)
-		reachReq := b.findReachabilityRequirement(commClause, ctx)
+		reachReq := b.findReachabilityRequirementFromAnnotation(commClause, ctx)
 
 		var body *ir.Body
 		switch stmt := commClause.Comm.(type) {
@@ -287,7 +299,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx *context) {
 				continue
 			}
 
-			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Send))
+			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Send, stmt.Pos(), stmt.End()))
 			selectCase.SetReachReq(reachReq)
 			body = selectCase.Body()
 
@@ -302,7 +314,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx *context) {
 				continue
 			}
 
-			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Receive))
+			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Receive, stmt.Pos(), stmt.End()))
 			selectCase.SetReachReq(reachReq)
 			body = selectCase.Body()
 
@@ -317,7 +329,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx *context) {
 				continue
 			}
 
-			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Receive))
+			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Receive, stmt.Pos(), stmt.End()))
 			selectCase.SetReachReq(reachReq)
 			body = selectCase.Body()
 
@@ -369,6 +381,6 @@ func (b *builder) processSendStmt(stmt *ast.SendStmt, ctx *context) {
 		return
 	}
 
-	sendStmt := ir.NewChanOpStmt(v, ir.Send)
+	sendStmt := ir.NewChanOpStmt(v, ir.Send, stmt.Pos(), stmt.End())
 	ctx.body.AddStmt(sendStmt)
 }

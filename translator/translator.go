@@ -9,22 +9,21 @@ import (
 	"github.com/arneph/toph/uppaal"
 )
 
-const maxProcessCount = 20
-const maxChannelCount = 20
+const maxProcessCount = 100
+const maxChannelCount = 100
 
 // TranslateProg translates an ir.Prog to a uppaal.System.
 func TranslateProg(program *ir.Program) (*uppaal.System, []error) {
 	t := new(translator)
 	t.program = program
-	t.mainFunc = program.GetFunc("main")
 	t.funcToProcess = make(map[*ir.Func]*uppaal.Process)
 	t.system = uppaal.NewSystem()
-	t.fcg = analyzer.BuildFuncCallGraph(program, t.mainFunc, ir.Call|ir.Go)
+	t.fcg = analyzer.BuildFuncCallGraph(program, ir.Call|ir.Go)
 
-	if t.mainFunc == nil {
-		t.addWarning(fmt.Errorf("program has no main function"))
-	} else if len(t.fcg.Callers(t.mainFunc)) > 0 {
-		t.addWarning(fmt.Errorf("main function gets called within program"))
+	if t.program.EntryFunc() == nil {
+		t.addWarning(fmt.Errorf("program has no entry function"))
+	} else if len(t.fcg.AllCallers(t.program.EntryFunc())) > 0 {
+		t.addWarning(fmt.Errorf("entry function gets called within program"))
 	}
 
 	t.translateProgram()
@@ -34,7 +33,6 @@ func TranslateProg(program *ir.Program) (*uppaal.System, []error) {
 
 type translator struct {
 	program       *ir.Program
-	mainFunc      *ir.Func
 	funcToProcess map[*ir.Func]*uppaal.Process
 
 	system         *uppaal.System
@@ -49,134 +47,24 @@ func (t *translator) addWarning(err error) {
 	t.warnings = append(t.warnings, err)
 }
 
-type context struct {
-	f    *ir.Func
-	body *ir.Body
-	proc *uppaal.Process
-
-	currentState *uppaal.State
-	exitState    *uppaal.State
-
-	exitFuncState      *uppaal.State
-	continueLoopStates map[ir.Loop]*uppaal.State
-	breakLoopStates    map[ir.Loop]*uppaal.State
-
-	minLoc, maxLoc uppaal.Location
-}
-
-func newContext(f *ir.Func, p *uppaal.Process, current, exit *uppaal.State) *context {
-	ctx := new(context)
-	ctx.f = f
-	ctx.body = f.Body()
-	ctx.proc = p
-
-	ctx.currentState = current
-	ctx.exitState = exit
-	ctx.exitFuncState = exit
-
-	ctx.minLoc = current.Location()
-	ctx.maxLoc = current.Location()
-
-	return ctx
-}
-
-func (c *context) isInSpecialControlFlowState() bool {
-	if c.currentState == c.exitFuncState {
-		return true
-	}
-	for _, s := range c.continueLoopStates {
-		if c.currentState == s {
-			return true
-		}
-	}
-	for _, s := range c.breakLoopStates {
-		if c.currentState == s {
-			return true
-		}
-	}
-	return false
-}
-
-func (c *context) subContextForBody(body *ir.Body, current, exit *uppaal.State) *context {
-	ctx := new(context)
-
-	ctx.f = c.f
-	ctx.body = body
-	ctx.proc = c.proc
-
-	ctx.currentState = current
-	ctx.exitState = exit
-
-	ctx.exitFuncState = c.exitFuncState
-	ctx.continueLoopStates = c.continueLoopStates
-	ctx.breakLoopStates = c.breakLoopStates
-
-	ctx.minLoc = current.Location()
-	ctx.maxLoc = current.Location()
-
-	return ctx
-}
-
-func (c *context) subContextForInlinedCallBody(body *ir.Body, current, exit *uppaal.State) *context {
-	ctx := new(context)
-
-	ctx.f = c.f
-	ctx.body = body
-	ctx.proc = c.proc
-
-	ctx.currentState = current
-	ctx.exitState = exit
-
-	ctx.exitFuncState = exit
-	ctx.continueLoopStates = c.continueLoopStates
-	ctx.breakLoopStates = c.breakLoopStates
-
-	ctx.minLoc = current.Location()
-	ctx.maxLoc = current.Location()
-
-	return ctx
-}
-
-func (c *context) subContextForLoopBody(loop ir.Loop, current, continueLoop, breakLoop *uppaal.State) *context {
-	ctx := new(context)
-	ctx.f = c.f
-	ctx.body = loop.Body()
-	ctx.proc = c.proc
-
-	ctx.currentState = current
-	ctx.exitState = continueLoop
-
-	ctx.exitFuncState = c.exitFuncState
-	ctx.continueLoopStates = make(map[ir.Loop]*uppaal.State)
-	for l, s := range c.continueLoopStates {
-		ctx.continueLoopStates[l] = s
-	}
-	ctx.continueLoopStates[loop] = continueLoop
-	ctx.breakLoopStates = make(map[ir.Loop]*uppaal.State)
-	for l, s := range c.breakLoopStates {
-		ctx.breakLoopStates[l] = s
-	}
-	ctx.breakLoopStates[loop] = breakLoop
-
-	ctx.minLoc = current.Location()
-	ctx.maxLoc = current.Location()
-
-	return ctx
-}
-
-func (c *context) addLocation(l uppaal.Location) {
-	c.minLoc = uppaal.Min(c.minLoc, l)
-	c.maxLoc = uppaal.Max(c.maxLoc, l)
-}
-
-func (c *context) addLocationsFromSubContext(s *context) {
-	c.minLoc = uppaal.Min(c.minLoc, s.minLoc)
-	c.minLoc = uppaal.Min(c.minLoc, s.maxLoc)
-	c.maxLoc = uppaal.Max(c.maxLoc, s.minLoc)
-	c.maxLoc = uppaal.Max(c.maxLoc, s.maxLoc)
-}
-
 func (t *translator) translateProgram() {
+	t.system.Declarations().AddType(`typedef struct {
+	int id;
+	int par_pid;
+} fid;
+
+fid make_fid(int id, int par_pid) {
+	fid t = {id, par_pid};
+	return t;
+}`)
+	t.system.Declarations().AddVariable("out_of_resources", "bool", "false")
+	t.system.AddProgressMeasure("out_of_resources")
+	t.system.AddQuery(uppaal.MakeQuery(
+		"A[] not out_of_resources",
+		"check system never runs out of resources"))
+	t.system.Declarations().AddVariable("active_go_routines", "int", "1")
+	t.system.Declarations().AddSpace()
+
 	t.translateGlobalScope()
 	t.system.Declarations().SetInitFuncName("global_initialize")
 
@@ -204,7 +92,7 @@ func (t *translator) prepareProcess(f *ir.Func) {
 	name := f.Name()
 	proc := t.system.AddProcess(name)
 	t.funcToProcess[f] = proc
-	if f == t.mainFunc {
+	if f == t.program.EntryFunc() {
 		t.system.AddProcessInstance(proc.Name(), name)
 	} else {
 		c := t.callCount(f)
@@ -218,7 +106,7 @@ func (t *translator) prepareProcess(f *ir.Func) {
 			inst.AddParameter(fmt.Sprintf("%d", i))
 		}
 	}
-	if f != t.mainFunc {
+	if f != t.program.EntryFunc() {
 		t.addProcessDeclarations(f, proc)
 	}
 }
@@ -233,11 +121,25 @@ func (t translator) addProcessDeclarations(f *ir.Func, p *uppaal.Process) {
 	}
 	for _, arg := range f.Args() {
 		name := t.translateArgName(arg)
-		t.system.Declarations().AddArray(name, t.callCount(f), "int")
+		var typStr string
+		switch arg.Type() {
+		case ir.FuncType:
+			typStr = "fid"
+		default:
+			typStr = "int"
+		}
+		t.system.Declarations().AddArray(name, t.callCount(f), typStr)
 	}
-	for i := range f.ResultTypes() {
+	for i, typ := range f.ResultTypes() {
 		name := t.translateResultName(f, i)
-		t.system.Declarations().AddArray(name, t.callCount(f), "int")
+		var typStr string
+		switch typ {
+		case ir.FuncType:
+			typStr = "fid"
+		default:
+			typStr = "int"
+		}
+		t.system.Declarations().AddArray(name, t.callCount(f), typStr)
 	}
 
 	t.system.Declarations().AddSpace()
@@ -245,25 +147,35 @@ func (t translator) addProcessDeclarations(f *ir.Func, p *uppaal.Process) {
 	if f.EnclosingFunc() == nil {
 		t.system.Declarations().AddFunc(
 			fmt.Sprintf(`int make_%[1]s() {
-	int pid = %[1]s_count;
+	int pid;
+	if (%[1]s_count == %[2]d) {
+		out_of_resources = true;
+		return 0;
+	}
+	pid = %[1]s_count;
 	%[1]s_count++;
 	return pid;
-}`, p.Name()))
+}`, p.Name(), maxProcessCount))
 	} else {
 		t.system.Declarations().AddFunc(
 			fmt.Sprintf(`int make_%[1]s(int par_pid) {
-	int pid = %[1]s_count;
+	int pid;
+	if (%[1]s_count == %[2]d) {
+		out_of_resources = true;
+		return 0;
+	}
+	pid = %[1]s_count;
 	%[1]s_count++;
 	par_pid_%[1]s[pid] = par_pid;
 	return pid;
-}`, p.Name()))
+}`, p.Name(), maxProcessCount))
 	}
 }
 
 func (t *translator) translateFunc(f *ir.Func) {
 	proc := t.funcToProcess[f]
 
-	if f != t.mainFunc {
+	if f != t.program.EntryFunc() {
 		proc.AddParameter(fmt.Sprintf("int[0, %d] pid", t.callCount(f)-1))
 	} else {
 		proc.Declarations().AddVariable("pid", "int", "0")
@@ -300,7 +212,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 			fmt.Sprintf("%s = %s;", varStr, argStr))
 	}
 
-	if f == t.mainFunc {
+	if f == t.program.EntryFunc() {
 		start := proc.AddTrans(starting, started)
 		if t.system.Declarations().RequiresInitFunc() {
 			start.AddUpdate("global_initialize()")
@@ -314,8 +226,9 @@ func (t *translator) translateFunc(f *ir.Func) {
 		startAsync := proc.AddTrans(starting, started)
 		startAsync.SetSync("async_" + proc.Name() + "[pid]?")
 		startAsync.AddUpdate("is_sync = false")
+		startAsync.AddUpdate("\nactive_go_routines++")
 		if proc.Declarations().RequiresInitFunc() {
-			startAsync.AddUpdate("initialize()")
+			startAsync.AddUpdate("\ninitialize()")
 		}
 		startAsync.AddNail(uppaal.Location{-34, 34})
 		startAsync.AddNail(uppaal.Location{-34, 102})
@@ -334,15 +247,20 @@ func (t *translator) translateFunc(f *ir.Func) {
 		startSync.SetUpdateLocation(uppaal.Location{38, 64})
 	}
 
-	if f == t.mainFunc {
-		proc.AddTrans(ending, ended)
+	if f == t.program.EntryFunc() {
+		end := proc.AddTrans(ending, ended)
+		end.SetGuard("active_go_routines == 1")
+		end.SetGuardLocation(uppaal.Location{4, endingY + 64})
+		proc.AddQuery(uppaal.MakeQuery("$.ending --> $.ended", ""))
 
 	} else {
 		endAsync := proc.AddTrans(ending, ended)
 		endAsync.SetGuard("is_sync == false")
+		endAsync.AddUpdate("active_go_routines--")
 		endAsync.AddNail(uppaal.Location{-34, endingY + 34})
 		endAsync.AddNail(uppaal.Location{-34, endingY + 102})
 		endAsync.SetGuardLocation(uppaal.Location{-160, endingY + 48})
+		endAsync.SetUpdateLocation(uppaal.Location{-194, endingY + 64})
 
 		endSync := proc.AddTrans(ending, ended)
 		endSync.SetGuard("is_sync == true")

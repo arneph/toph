@@ -1,135 +1,0 @@
-Options for the verification:
-  Generating no trace
-  Search order is depth first
-  Using conservative space optimisation
-  Seed is 1588268818
-  State space representation uses minimal constraint systems
-[2K
-Verifying formula 1 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:4
-[2K -- Aborted.
-[2K
-Verifying formula 2 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:8
-[2K -- Aborted.
-[2K
-Verifying formula 3 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:12
-[2K -- Aborted.
-[2K
-Verifying formula 4 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:16
-[2K -- Aborted.
-[2K
-Verifying formula 5 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:20
-[2K -- Aborted.
-[2K
-Verifying formula 6 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:24
-[2K -- Aborted.
-[2K
-Verifying formula 7 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:28
- -- Throughput: 342 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 8 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:32
- -- Throughput: 295 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 9 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:36
- -- Throughput: 260 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 10 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:40
- -- Throughput: 232 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 11 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:44
- -- Throughput: 209 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 12 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:48
- -- Throughput: 190 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 13 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:52
- -- Throughput: 172 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 14 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:56
- -- Throughput: 158 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 15 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:60
- -- Throughput: 147 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 16 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:64
- -- Throughput: 138 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 17 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:68
- -- Throughput: 129 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 18 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:72
- -- Throughput: 122 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 19 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:76
- -- Throughput: 115 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 20 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:80
- -- Throughput: 109 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 21 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:84
- -- Throughput: 104 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 22 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:88
- -- Throughput: 95 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 23 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:92
- -- Throughput: 88 states/sec, Load: 14 states[K[2K -- Formula is NOT satisfied.
-[2K
-Verifying formula 24 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:96
- -- Throughput: 86 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 25 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:100
- -- Throughput: 79 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 26 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:104
- -- Throughput: 74 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 27 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:108
- -- Throughput: 68 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 28 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:112
- -- Throughput: 64 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 29 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:116
- -- Throughput: 61 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 30 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:120
- -- Throughput: 58 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 31 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:124
- -- Throughput: 55 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 32 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:128
- -- Throughput: 52 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 33 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:132
- -- Throughput: 50 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 34 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:136
- -- Throughput: 48 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 35 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:140
- -- Throughput: 46 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 36 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:144
- -- Throughput: 44 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 37 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:148
- -- Throughput: 43 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 38 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:152
- -- Throughput: 41 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 39 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:156
- -- Throughput: 40 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 40 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:160
- -- Throughput: 38 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 41 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:164
- -- Throughput: 37 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 42 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:168
- -- Throughput: 36 states/sec, Load: 14 states[K[2K -- Aborted.
-[2K
-Verifying formula 43 at /Users/arne/Documents/Go/src/github.com/arneph/toph/tests/examples/go_intro_5/go_intro_5.q:172
- -- Throughput: 35 states/sec, Load: 14 states[K[2K -- Aborted.

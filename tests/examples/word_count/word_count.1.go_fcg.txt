@@ -1,5 +1,0 @@
-main (4) -> main_func343, findFilesInFolder, main_func342
-main_func343 (1) -> 
-findFilesInFolder (2) -> 
-main_func342 (3) -> 
-

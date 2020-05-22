@@ -7,43 +7,46 @@ import (
 )
 
 func (b *builder) getSubstitute(funcType *types.Func) *ir.Func {
-	funcSub, ok := b.addedSubstitutes[funcType]
-	if ok {
-		return funcSub
-	}
-
+	var subFuncName string
 	switch funcType.Pkg().Name() {
 	case "time":
 		if funcType.Name() == "After" {
-			funcSub = b.makeTimeAfterSubstitute()
+			subFuncName = "subTimeAfter"
+		}
+	case "filepath":
+		if funcType.Name() == "Walk" {
+			subFuncName = "subFilepathWalk"
 		}
 	}
-	if funcSub != nil {
-		b.addedSubstitutes[funcType] = funcSub
+	for _, f := range b.program.Funcs() {
+		if f.Name() == subFuncName {
+			return f
+		}
 	}
-	return funcSub
+	return nil
 }
 
-func (b *builder) makeTimeAfterSubstitute() *ir.Func {
-	timeAfter := ir.NewOuterFunc("time_after", b.program.Scope())
-	timeAfter.AddResultType(0, ir.ChanType)
+const substitutesCode = `
+package subs
 
-	b.program.AddFunc(timeAfter)
+import (
+	"math/rand"
+	"path/filepath"
+	"time"
+)
 
-	chVar := ir.NewVariable("ch", ir.ChanType, -1)
-	chVar.SetCaptured(true)
-	timeAfter.Scope().AddVariable(chVar)
-	timeAfter.Body().AddStmt(ir.NewMakeChanStmt(chVar, 1))
-
-	timeAfterHelper := ir.NewInnerFunc(timeAfter, timeAfter.Scope())
-	timeAfterHelper.Body().AddStmt(ir.NewChanOpStmt(chVar, ir.Send))
-	timeAfter.Body().AddStmt(ir.NewCallStmt(timeAfterHelper, ir.Go))
-
-	b.program.AddFunc(timeAfterHelper)
-
-	returnStmt := ir.NewReturnStmt()
-	returnStmt.AddResult(0, chVar)
-	timeAfter.Body().AddStmt(returnStmt)
-
-	return timeAfter
+func subTimeAfter(time.Duration) <-chan time.Time {
+	ch := make(chan time.Time, 1)
+	go func() {
+		ch <- time.Time{}
+	}()
+	return ch
 }
+
+func subFilepathWalk(root string, walkFn filepath.WalkFunc) error {
+	for rand.Int() == 0 {
+		walkFn("", nil, nil)
+	}
+	return nil
+}
+`

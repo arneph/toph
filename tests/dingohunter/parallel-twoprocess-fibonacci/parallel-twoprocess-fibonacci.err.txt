@@ -1,6 +1,0 @@
-/Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/parallel-twoprocess-fibonacci/parallel-twoprocess-fibonacci.xta::124: [error] Index value 20 is out of range. Array range = 0..19.
-/Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/parallel-twoprocess-fibonacci/parallel-twoprocess-fibonacci.xta::124: [error] Index value 20 is out of range. Array range = 0..19.
-/Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/parallel-twoprocess-fibonacci/parallel-twoprocess-fibonacci.xta::164: [error] Index value 20 is out of range. Array range = 0..19.
-/Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/parallel-twoprocess-fibonacci/parallel-twoprocess-fibonacci.xta::209: [error] Index value 2 is out of range. Array range = 0..1.
-/Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/parallel-twoprocess-fibonacci/parallel-twoprocess-fibonacci.xta::209: [error] Index value 2 is out of range. Array range = 0..1.
-/Users/arne/Documents/Go/src/github.com/arneph/toph/tests/dingohunter/parallel-twoprocess-fibonacci/parallel-twoprocess-fibonacci.xta::209: [error] Index value 2 is out of range. Array range = 0..1.

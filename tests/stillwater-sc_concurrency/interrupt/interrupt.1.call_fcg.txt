@@ -1,4 +1,0 @@
-time_after (2) -> 
-process2 (1) -> 
-main (3) -> time_after, process2
-

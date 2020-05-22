@@ -32,14 +32,19 @@ func (t *translator) addChannelDeclarations() {
 	t.system.Declarations().AddArray("receiver_trigger", t.channelCount(), "chan")
 	t.system.Declarations().AddArray("receiver_confirm", t.channelCount(), "chan")
 	t.system.Declarations().AddArray("close", t.channelCount(), "chan")
-	t.system.Declarations().AddFunc(
+	t.system.Declarations().AddFunc(fmt.Sprintf(
 		`int make_chan(int buffer) {
-	int cid = chan_count;
+	int cid;
+	if (chan_count == %d) {
+		out_of_resources = true;
+		return 0;
+	}
+	cid = chan_count;
 	chan_count++;
 	chan_counter[cid] = 0;
 	chan_buffer[cid] = buffer;
 	return cid;
-}`)
+}`, maxChannelCount))
 	t.system.Declarations().AddSpace()
 }
 
@@ -65,7 +70,7 @@ func (t *translator) addChannelProcess() {
 
 	// Queries:
 	proc.AddQuery(uppaal.MakeQuery(
-		"A[] not $.bad",
+		"A[] (not out_of_resources) imply (not $.bad)",
 		"check Channel.bad state unreachable"))
 
 	// States:
@@ -212,9 +217,11 @@ func (t *translator) addChannelProcess() {
 
 	trans16 := proc.AddTrans(confirmingClosed, closed)
 	trans16.SetSync("receiver_confirm[i]!")
+	trans16.AddUpdate("chan_counter[i] = (chan_counter[i] >= 0) ? chan_counter[i] : 0")
 	trans16.AddNail(uppaal.Location{408, -102})
 	trans16.AddNail(uppaal.Location{306, -102})
 	trans16.SetSyncLocation(uppaal.Location{298, -118})
+	trans16.SetUpdateLocation(uppaal.Location{298, -102})
 
 	trans17 := proc.AddTrans(closed, bad)
 	trans17.SetSync("sender_trigger[i]?")
