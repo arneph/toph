@@ -13,7 +13,8 @@ func (t *translator) translateMakeChanStmt(stmt *ir.MakeChanStmt, ctx *context) 
 	b := stmt.BufferSize()
 
 	made := ctx.proc.AddState("made_"+name+"_", uppaal.Renaming)
-	made.SetLocationAndResetNameLocation(
+	made.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+	made.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	make := ctx.proc.AddTrans(ctx.currentState, made)
 	make.AddUpdate(fmt.Sprintf("%s = make_chan(%d)", handle, b))
@@ -39,7 +40,8 @@ func (t *translator) translateCloseChanStmt(stmt *ir.ChanOpStmt, ctx *context) {
 	name := stmt.Channel().Name()
 
 	closed := ctx.proc.AddState("closed_"+name+"_", uppaal.Renaming)
-	closed.SetLocationAndResetNameLocation(
+	closed.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+	closed.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	close := ctx.proc.AddTrans(ctx.currentState, closed)
 	close.SetSync("close[" + handle + "]!")
@@ -71,7 +73,8 @@ func (t *translator) translateChanCommStmt(stmt *ir.ChanOpStmt, ctx *context) {
 	}
 
 	pending := ctx.proc.AddState(pendingName+"_"+name+"_", uppaal.Renaming)
-	pending.SetLocationAndResetNameLocation(
+	pending.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+	pending.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
 	trigger := ctx.proc.AddTrans(ctx.currentState, pending)
@@ -81,7 +84,8 @@ func (t *translator) translateChanCommStmt(stmt *ir.ChanOpStmt, ctx *context) {
 	trigger.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
 
 	confirmed := ctx.proc.AddState(confirmedName+"_"+name+"_", uppaal.Renaming)
-	confirmed.SetLocationAndResetNameLocation(
+	confirmed.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+	confirmed.SetLocationAndResetNameAndCommentLocation(
 		pending.Location().Add(uppaal.Location{0, 136}))
 
 	confirm := ctx.proc.AddTrans(pending, confirmed)
@@ -137,6 +141,7 @@ func (t *translator) infoForSelectCase(selectCase *ir.SelectCase, ctx *context) 
 func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 	// Generate select exit state:
 	exitSelect := ctx.proc.AddState("select_end_", uppaal.Renaming)
+	exitSelect.SetComment(t.program.FileSet().Position(stmt.End()).String())
 
 	// Keep track of body position information for each case and default:
 	caseXs := make([]int, len(stmt.Cases()))
@@ -146,7 +151,8 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 	var exitPass1Unsuccessful *uppaal.State
 	if stmt.HasDefault() {
 		defaultEnter := ctx.proc.AddState("select_default_enter_", uppaal.Renaming)
-		defaultEnter.SetLocationAndResetNameLocation(
+		defaultEnter.SetComment(t.program.FileSet().Position(stmt.DefaultPos()).String())
+		defaultEnter.SetLocationAndResetNameAndCommentLocation(
 			ctx.currentState.Location().Add(uppaal.Location{0, 408}))
 
 		bodySubCtx := ctx.subContextForBody(stmt.DefaultBody(), defaultEnter, exitSelect)
@@ -166,7 +172,8 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 
 	} else {
 		pass2 := ctx.proc.AddState("select_pass_2_", uppaal.Renaming)
-		pass2.SetLocationAndResetNameLocation(
+		pass2.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+		pass2.SetLocationAndResetNameAndCommentLocation(
 			ctx.currentState.Location().Add(uppaal.Location{0, 272}))
 
 		ctx.proc.AddQuery(uppaal.MakeQuery(
@@ -186,7 +193,8 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 	caseEnters := make([]*uppaal.State, len(stmt.Cases()))
 	for i, c := range stmt.Cases() {
 		caseEnter := ctx.proc.AddState(fmt.Sprintf("select_case_%d_enter_", i+1), uppaal.Renaming)
-		caseEnter.SetLocationAndResetNameLocation(uppaal.Location{caseXs[i], ctx.currentState.Location()[1] + 408})
+		caseEnter.SetComment(t.program.FileSet().Position(c.Pos()).String())
+		caseEnter.SetLocationAndResetNameAndCommentLocation(uppaal.Location{caseXs[i], ctx.currentState.Location()[1] + 408})
 		caseEnters[i] = caseEnter
 
 		// Add queries for reachability:
@@ -215,7 +223,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 	}
 
 	// Position select exit state after all bodies are in place:
-	exitSelect.SetLocationAndResetNameLocation(
+	exitSelect.SetLocationAndResetNameAndCommentLocation(
 		uppaal.Location{ctx.currentState.Location()[0], maxY + 136})
 
 	// Prepare channel op information for each case:
@@ -234,8 +242,9 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 
 	// Generate pass1 and entry transition:
 	pass1 := ctx.proc.AddState("select_pass_1_", uppaal.Renaming)
+	pass1.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	pass1.SetType(uppaal.Committed)
-	pass1.SetLocationAndResetNameLocation(
+	pass1.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
 	enteringPass1 := ctx.proc.AddTrans(ctx.currentState, pass1)
@@ -247,9 +256,10 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
 
 	// Poll channels (pass 1):
-	for i := range stmt.Cases() {
+	for i, c := range stmt.Cases() {
 		triggeredCase := ctx.proc.AddState(fmt.Sprintf("select_case_%d_trigger_", i+1), uppaal.Renaming)
-		triggeredCase.SetLocationAndResetNameLocation(
+		triggeredCase.SetComment(t.program.FileSet().Position(c.Pos()).String())
+		triggeredCase.SetLocationAndResetNameAndCommentLocation(
 			uppaal.Location{caseXs[i], ctx.currentState.Location()[1] + 272})
 
 		triggeringCase := ctx.proc.AddTrans(pass1, triggeredCase)

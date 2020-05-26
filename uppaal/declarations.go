@@ -103,36 +103,36 @@ func (d *Declarations) AddInitFuncStmt(stmt string) {
 
 // AsXTA returns the xta (file format) representation of the declarations.
 func (d *Declarations) AsXTA() string {
-	str := "// " + d.headerComment + "\n"
+	str := "// " + d.headerComment
 	for _, _type := range d.types {
-		str += _type + "\n"
+		str += "\n" + _type
 	}
 	if len(d.types) > 0 {
-		str += "\n"
+		str += "\n\n"
 	}
 	for _, info := range d.variables {
 		if info.name == "" {
 			str += "\n"
 		} else if info.arraySize < 0 && info.initialValue == "" {
-			str += fmt.Sprintf("%s %s;\n",
+			str += fmt.Sprintf("\n%s %s;",
 				info._type, info.name)
 		} else if info.arraySize < 0 && info.initialValue != "" {
-			str += fmt.Sprintf("%s %s = %s;\n",
+			str += fmt.Sprintf("\n%s %s = %s;",
 				info._type, info.name, info.initialValue)
 		} else {
-			str += fmt.Sprintf("%s %s[%d];\n",
+			str += fmt.Sprintf("\n%s %s[%d];",
 				info._type, info.name, info.arraySize)
 		}
 	}
 	if d.RequiresInitFunc() {
-		str += "void " + d.initFuncName + "() {\n"
+		str += "\nvoid " + d.initFuncName + "() {\n"
 		for _, stmt := range d.initFuncStmts {
 			str += "    " + stmt + "\n"
 		}
-		str += "}\n\n"
+		str += "}"
 	}
 	for _, f := range d.funcs {
-		str += f + "\n\n"
+		str += "\n\n" + f
 	}
 	return str
 }

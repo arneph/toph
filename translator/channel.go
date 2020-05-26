@@ -76,7 +76,7 @@ func (t *translator) addChannelProcess() {
 	// States:
 	// Open
 	idle := proc.AddState("idle", uppaal.NoRenaming)
-	idle.SetLocationAndResetNameLocation(uppaal.Location{272, 306})
+	idle.SetLocationAndResetNameAndCommentLocation(uppaal.Location{272, 306})
 
 	proc.SetInitialState(idle)
 
@@ -108,11 +108,11 @@ func (t *translator) addChannelProcess() {
 
 	// Closed
 	closed := proc.AddState("closed", uppaal.NoRenaming)
-	closed.SetLocationAndResetNameLocation(uppaal.Location{272, -34})
+	closed.SetLocationAndResetNameAndCommentLocation(uppaal.Location{272, -34})
 
 	confirmingClosed := proc.AddState("confirming_closed", uppaal.NoRenaming)
 	confirmingClosed.SetType(uppaal.Committed)
-	confirmingClosed.SetLocationAndResetNameLocation(uppaal.Location{442, -34})
+	confirmingClosed.SetLocationAndResetNameAndCommentLocation(uppaal.Location{442, -34})
 
 	// Bad
 	bad := proc.AddState("bad", uppaal.NoRenaming)

@@ -188,12 +188,16 @@ func (t *translator) translateFunc(f *ir.Func) {
 	proc.Declarations().AddSpace()
 
 	starting := proc.AddState("starting", uppaal.NoRenaming)
-	starting.SetLocationAndResetNameLocation(uppaal.Location{0, 0})
+	starting.SetComment(t.program.FileSet().Position(f.Pos()).String())
+	starting.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, 0})
 	started := proc.AddState("started", uppaal.NoRenaming)
-	started.SetLocationAndResetNameLocation(uppaal.Location{0, 136})
+	started.SetComment(t.program.FileSet().Position(f.Pos()).String())
+	started.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, 136})
 
 	ending := proc.AddState("ending", uppaal.NoRenaming)
+	ending.SetComment(t.program.FileSet().Position(f.End()).String())
 	ended := proc.AddState("ended", uppaal.NoRenaming)
+	ended.SetComment(t.program.FileSet().Position(f.End()).String())
 
 	proc.SetInitialState(starting)
 
@@ -202,8 +206,8 @@ func (t *translator) translateFunc(f *ir.Func) {
 
 	endingY := bodyCtx.maxLoc[1] + 136
 
-	ending.SetLocationAndResetNameLocation(uppaal.Location{0, endingY})
-	ended.SetLocationAndResetNameLocation(uppaal.Location{0, endingY + 136})
+	ending.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, endingY})
+	ended.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, endingY + 136})
 
 	for _, arg := range f.Args() {
 		argStr := t.translateArg(arg, "pid")

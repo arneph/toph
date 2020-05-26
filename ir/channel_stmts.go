@@ -106,6 +106,8 @@ type SelectCase struct {
 	body Body
 
 	reachReq ReachabilityRequirement
+
+	pos token.Pos
 }
 
 // OpStmt returns the operation of the select case.
@@ -128,6 +130,11 @@ func (c *SelectCase) SetReachReq(reachReq ReachabilityRequirement) {
 	c.reachReq = reachReq
 }
 
+// Pos returns the source code position of the select case.
+func (c *SelectCase) Pos() token.Pos {
+	return c.pos
+}
+
 func (c *SelectCase) String() string {
 	str := "case " + c.op.String() + " {\n"
 	str += "  " + strings.ReplaceAll(c.body.String(), "\n", "\n  ") + "\n"
@@ -145,6 +152,7 @@ type SelectStmt struct {
 	superScope *Scope
 
 	Node
+	defaultPos token.Pos
 }
 
 // NewSelectStmt creates a new select statement, embedded in the given
@@ -171,11 +179,12 @@ func (s *SelectStmt) Cases() []*SelectCase {
 // AddCase adds a case for the given channel op to the select statement. The
 // new SelectCase gets returned and the scope of its body is embeded in the
 // enclosing scope of the select statement.
-func (s *SelectStmt) AddCase(op *ChanOpStmt) *SelectCase {
+func (s *SelectStmt) AddCase(op *ChanOpStmt, pos token.Pos) *SelectCase {
 	c := new(SelectCase)
 	c.op = op
 	c.body.init()
 	c.body.scope.superScope = s.superScope
+	c.pos = pos
 
 	s.cases = append(s.cases, c)
 
@@ -195,6 +204,16 @@ func (s *SelectStmt) SetHasDefault(hasDefault bool) {
 // DefaultBody returns the body of the default case of the select statement.
 func (s *SelectStmt) DefaultBody() *Body {
 	return &s.defaultBody
+}
+
+// DefaultPos returns the source code position of the default case.
+func (s *SelectStmt) DefaultPos() token.Pos {
+	return s.defaultPos
+}
+
+// SetDefaultPos sets the source code position of the default case.
+func (s *SelectStmt) SetDefaultPos(defaultPos token.Pos) {
+	s.defaultPos = defaultPos
 }
 
 func (s *SelectStmt) String() string {

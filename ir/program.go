@@ -77,6 +77,11 @@ func (p *Program) Scope() *Scope {
 	return &p.scope
 }
 
+// FileSet returns the token.FileSet from which the program was built.
+func (p *Program) FileSet() *token.FileSet {
+	return p.fset
+}
+
 func (p *Program) String() string {
 	str := "prog{\n"
 	str += "  " + strings.ReplaceAll(p.scope.String(), "\n", "\n  ") + "\n"

@@ -20,9 +20,12 @@ type State struct {
 
 	stateType StateType
 
+	comment string
+
 	// All locations are absolute. AsGUI() translates to relative coordinates.
-	location     Location
-	nameLocation Location
+	location        Location
+	nameLocation    Location
+	commentLocation Location
 }
 
 func newState(name string) *State {
@@ -31,8 +34,11 @@ func newState(name string) *State {
 
 	s.stateType = Normal
 
+	s.comment = ""
+
 	s.location = Location{}
 	s.nameLocation = Location{}
+	s.commentLocation = Location{}
 
 	return s
 }
@@ -50,6 +56,16 @@ func (s *State) Type() StateType {
 // SetType sets the type of the state.
 func (s *State) SetType(t StateType) {
 	s.stateType = t
+}
+
+// Comment returns the comment for the state.
+func (s *State) Comment() string {
+	return s.comment
+}
+
+// SetComment sets the comment for the state.
+func (s *State) SetComment(comment string) {
+	s.comment = comment
 }
 
 // Location returns the location of the state.
@@ -72,11 +88,22 @@ func (s *State) SetNameLocation(nameLocation Location) {
 	s.nameLocation = nameLocation
 }
 
-// SetLocationAndResetNameLocation sets the location of the state and sets the
+// CommentLocation returns the location of the comment label of the state.
+func (s *State) CommentLocation() Location {
+	return s.commentLocation
+}
+
+// SetCommentLocation sets the location of the comment label of the state.
+func (s *State) SetCommentLocation(commentLocation Location) {
+	s.commentLocation = commentLocation
+}
+
+// SetLocationAndResetNameAndCommentLocation sets the location of the state and sets the
 // location of the name label of the state to the default, below the state.
-func (s *State) SetLocationAndResetNameLocation(location Location) {
+func (s *State) SetLocationAndResetNameAndCommentLocation(location Location) {
 	s.location = location
 	s.nameLocation = location.Add(Location{4, 16})
+	s.commentLocation = location.Add(Location{4, 34})
 }
 
 // AsUGI returns the ugi (file format) representation of the state.

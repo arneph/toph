@@ -26,11 +26,13 @@ type IfStmt struct {
 	elseBranch Body
 
 	Node
+	ifPos   token.Pos
+	elsePos token.Pos
 }
 
 // NewIfStmt creates a new if or else branch, embedded in the given enclosing
 // scope.
-func NewIfStmt(superScope *Scope, pos, end token.Pos) *IfStmt {
+func NewIfStmt(superScope *Scope, pos, end, ifPos, elsePos token.Pos) *IfStmt {
 	s := new(IfStmt)
 	s.ifBranch.init()
 	s.ifBranch.scope.superScope = superScope
@@ -38,6 +40,8 @@ func NewIfStmt(superScope *Scope, pos, end token.Pos) *IfStmt {
 	s.elseBranch.scope.superScope = superScope
 	s.pos = pos
 	s.end = end
+	s.ifPos = ifPos
+	s.elsePos = elsePos
 
 	return s
 }
@@ -50,6 +54,16 @@ func (s *IfStmt) IfBranch() *Body {
 // ElseBranch returns the body of the else branch.
 func (s *IfStmt) ElseBranch() *Body {
 	return &s.elseBranch
+}
+
+// IfPos returns the source code position of the if branch.
+func (s *IfStmt) IfPos() token.Pos {
+	return s.ifPos
+}
+
+// ElsePos returns the source code position of the else branch.
+func (s *IfStmt) ElsePos() token.Pos {
+	return s.elsePos
 }
 
 func (s *IfStmt) String() string {

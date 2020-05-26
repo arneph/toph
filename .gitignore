@@ -1,1 +1,6 @@
 **/.DS_Store
+tests/**/*.xml
+tests/**/*.xta
+tests/**/*.ugi
+tests/**/*.q
+tests/**/*.txt

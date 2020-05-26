@@ -69,8 +69,7 @@ var z int
 
 func runTests() {
 	for test := range testsChan {
-		xta := test + ".xta"
-		q := test + ".q"
+		xml := test + ".xml"
 		outF := test + ".out.txt"
 		errF := test + ".err.txt"
 		outG, err := os.Create(outF)
@@ -86,7 +85,7 @@ func runTests() {
 		}
 		defer errG.Close()
 
-		cmd := exec.Command(uppaalPath+"verifyta", "-o0", "-s", "-q", "-t1", xta, q)
+		cmd := exec.Command(uppaalPath+"verifyta", "-o0", "-s", "-q", "-t1", xml)
 		cmd.Stdin = strings.NewReader("")
 		cmd.Stdout = outG
 		cmd.Stderr = errG
@@ -95,9 +94,9 @@ func runTests() {
 		t2 := time.Now()
 		z++
 		if err != nil {
-			fmt.Printf("%03d failed    % 12.1fs %s\n", z, t2.Sub(t1).Seconds(), xta[6:])
+			fmt.Printf("%03d failed    % 12.1fs %s\n", z, t2.Sub(t1).Seconds(), xml[6:])
 		} else {
-			fmt.Printf("%03d completed % 12.1fs %s\n", z, t2.Sub(t1).Seconds(), xta[6:])
+			fmt.Printf("%03d completed % 12.1fs %s\n", z, t2.Sub(t1).Seconds(), xml[6:])
 		}
 	}
 	wg.Done()

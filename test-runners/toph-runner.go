@@ -50,6 +50,7 @@ func main() {
 				Debug:         true,
 				Optimize:      true,
 				OutName:       test.Name(),
+				OutFormats:    map[string]bool{"xml": true},
 			}
 			result := api.Run(testPath, config)
 			perfect := result == api.RunSuccessful

@@ -157,7 +157,11 @@ func (b *builder) processIfStmt(stmt *ast.IfStmt, ctx *context) {
 
 	b.processExpr(stmt.Cond, ctx)
 
-	ifStmt := ir.NewIfStmt(ctx.body.Scope(), stmt.Pos(), stmt.End())
+	elsePos := stmt.End()
+	if stmt.Else != nil {
+		elsePos = stmt.Else.Pos()
+	}
+	ifStmt := ir.NewIfStmt(ctx.body.Scope(), stmt.Pos(), stmt.End(), stmt.Pos(), elsePos)
 	ctx.body.AddStmt(ifStmt)
 
 	b.processStmt(stmt.Body, ctx.subContextForBody(ifStmt, "", ifStmt.IfBranch()))
@@ -299,7 +303,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx *context) {
 				continue
 			}
 
-			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Send, stmt.Pos(), stmt.End()))
+			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Send, stmt.Pos(), stmt.End()), commClause.Pos())
 			selectCase.SetReachReq(reachReq)
 			body = selectCase.Body()
 
@@ -314,7 +318,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx *context) {
 				continue
 			}
 
-			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Receive, stmt.Pos(), stmt.End()))
+			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Receive, stmt.Pos(), stmt.End()), commClause.Pos())
 			selectCase.SetReachReq(reachReq)
 			body = selectCase.Body()
 
@@ -329,7 +333,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx *context) {
 				continue
 			}
 
-			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Receive, stmt.Pos(), stmt.End()))
+			selectCase := selectStmt.AddCase(ir.NewChanOpStmt(v, ir.Receive, stmt.Pos(), stmt.End()), commClause.Pos())
 			selectCase.SetReachReq(reachReq)
 			body = selectCase.Body()
 

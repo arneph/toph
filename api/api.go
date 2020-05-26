@@ -21,6 +21,8 @@ type Config struct {
 	Optimize bool
 	// OutName is the file name of all output files.
 	OutName string
+	// OutFormats lists the generated output file formats (supports xml, xta, ugi, q)
+	OutFormats map[string]bool
 }
 
 // Result indicates if the Run function was successful or how it failed.
@@ -82,35 +84,30 @@ func Run(path string, config Config) Result {
 		return RunFailedWithTranslator
 	}
 
-	// XTA file
-	sysXTAFile, err := os.Create(path + "/" + config.OutName + ".xta")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\tcould not write xta file: %v\n", err)
-		return RunFailedWritingOutputFiles
+	// Output files
+	for _, ffmt := range []string{"xml", "xta", "ugi", "q"} {
+		if !config.OutFormats[ffmt] {
+			continue
+		}
+
+		sysFile, err := os.Create(path + "/" + config.OutName + "." + ffmt)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "\tcould not write %s file: %v\n", ffmt, err)
+			return RunFailedWritingOutputFiles
+		}
+		defer sysFile.Close()
+
+		switch ffmt {
+		case "xml":
+			fmt.Fprintln(sysFile, sys.AsXML())
+		case "xta":
+			fmt.Fprintln(sysFile, sys.AsXTA())
+		case "ugi":
+			fmt.Fprintln(sysFile, sys.AsUGI())
+		case "q":
+			fmt.Fprintln(sysFile, sys.AsQ())
+		}
 	}
-	defer sysXTAFile.Close()
-
-	fmt.Fprintln(sysXTAFile, sys.AsXTA())
-
-	// UGI file
-	sysUGIFile, err := os.Create(path + "/" + config.OutName + ".ugi")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\tcould not write ugi file: %v\n", err)
-		return RunFailedWritingOutputFiles
-	}
-	defer sysUGIFile.Close()
-
-	fmt.Fprintln(sysUGIFile, sys.AsUGI())
-
-	// Q file
-	sysQFile, err := os.Create(path + "/" + config.OutName + ".q")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "\tcould not write q file: %v\n", err)
-		return RunFailedWritingOutputFiles
-	}
-	defer sysQFile.Close()
-
-	fmt.Fprintln(sysQFile, sys.AsQ())
 
 	if warnings {
 		return RunSuccessfulButWithWarnings

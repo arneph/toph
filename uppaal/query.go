@@ -37,3 +37,12 @@ func (q Query) AsQ() string {
 	str += q.query + "\n"
 	return str
 }
+
+// AsXML returns the xml (file format) representation of the query.
+func (q Query) AsXML() string {
+	str := "<query>\n"
+	str += "    <formula>" + escapeForXML(q.query) + "</formula>\n"
+	str += "    <comment>" + escapeForXML(q.comment) + "</comment>\n"
+	str += "</query>\n"
+	return str
+}

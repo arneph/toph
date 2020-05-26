@@ -2,6 +2,7 @@ package uppaal
 
 import (
 	"sort"
+	"strings"
 )
 
 // System represents a complete collection of global declarations, processes,
@@ -78,24 +79,11 @@ func (s *System) AddQuery(query Query) {
 func (s *System) AsXTA() string {
 	str := s.decls.AsXTA() + "\n\n"
 
-	sortedProcesses := make([]*Process, 0, len(s.processes))
-	for _, proc := range s.processes {
-		sortedProcesses = append(sortedProcesses, proc)
-	}
-	sort.Slice(sortedProcesses, func(i, j int) bool {
-		return sortedProcesses[i].name < sortedProcesses[j].name
-	})
-	for _, proc := range sortedProcesses {
+	for _, proc := range s.sortedProcesses() {
 		str += proc.AsXTA() + "\n\n"
 	}
 
-	sortedInstances := make([]*ProcessInstance, 0, len(s.instances))
-	for _, inst := range s.instances {
-		sortedInstances = append(sortedInstances, inst)
-	}
-	sort.Slice(sortedInstances, func(i, j int) bool {
-		return sortedInstances[i].instName < sortedInstances[j].instName
-	})
+	sortedInstances := s.sortedInstances()
 	for _, inst := range sortedInstances {
 		if inst.CanSkipDeclaration() {
 			continue
@@ -143,13 +131,7 @@ func (s *System) AsQ() string {
 		str += query.AsQ()
 	}
 
-	sortedInstances := make([]*ProcessInstance, 0, len(s.instances))
-	for _, inst := range s.instances {
-		sortedInstances = append(sortedInstances, inst)
-	}
-	sort.Slice(sortedInstances, func(i, j int) bool {
-		return sortedInstances[i].instName < sortedInstances[j].instName
-	})
+	sortedInstances := s.sortedInstances()
 	for _, inst := range sortedInstances {
 		proc := s.processes[inst.procName]
 
@@ -160,4 +142,92 @@ func (s *System) AsQ() string {
 	}
 
 	return str
+}
+
+// AsXML returns the xml (file format) representation of the system.
+func (s *System) AsXML() string {
+	var str string
+	str += "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+	str += "<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>\n"
+	str += "<nta>\n"
+
+	str += "    <declaration>"
+	str += escapeForXML(s.decls.AsXTA())
+	str += "    </declaration>\n"
+
+	for _, proc := range s.sortedProcesses() {
+		xml := proc.AsXML()
+		str += "    " + strings.ReplaceAll(xml, "\n<", "\n    <") + "\n"
+	}
+
+	str += "    <system>\n"
+	sortedInstances := s.sortedInstances()
+	for _, inst := range sortedInstances {
+		if inst.CanSkipDeclaration() {
+			continue
+		}
+		str += inst.AsXTA() + "\n"
+	}
+	if len(sortedInstances) > 0 {
+		str += "system "
+		first := true
+		for _, inst := range sortedInstances {
+			if first {
+				first = false
+			} else {
+				str += ", "
+			}
+			str += inst.instName
+		}
+		str += ";\n"
+	}
+	if len(s.progressMeasures) > 0 {
+		str += "progress{\n"
+		for _, measure := range s.progressMeasures {
+			str += "    " + measure + ";\n"
+		}
+		str += "}\n"
+	}
+	str += "</system>\n"
+
+	str += "    <queries>\n"
+	for _, query := range s.queries {
+		xml := query.AsXML()
+		str += "        " + strings.ReplaceAll(xml, "\n", "\n        ") + "\n"
+	}
+	for _, inst := range sortedInstances {
+		proc := s.processes[inst.procName]
+
+		for _, procQuery := range proc.queries {
+			instQuery := procQuery.Substitute(inst.instName)
+			xml := instQuery.AsXML()
+			str += "        " + strings.ReplaceAll(xml, "\n", "\n        ") + "\n"
+		}
+	}
+	str += "    </queries>\n"
+
+	str += "</nta>\n"
+	return str
+}
+
+func (s *System) sortedProcesses() []*Process {
+	sortedProcesses := make([]*Process, 0, len(s.processes))
+	for _, proc := range s.processes {
+		sortedProcesses = append(sortedProcesses, proc)
+	}
+	sort.Slice(sortedProcesses, func(i, j int) bool {
+		return sortedProcesses[i].name < sortedProcesses[j].name
+	})
+	return sortedProcesses
+}
+
+func (s *System) sortedInstances() []*ProcessInstance {
+	sortedInstances := make([]*ProcessInstance, 0, len(s.instances))
+	for _, inst := range s.instances {
+		sortedInstances = append(sortedInstances, inst)
+	}
+	sort.Slice(sortedInstances, func(i, j int) bool {
+		return sortedInstances[i].instName < sortedInstances[j].instName
+	})
+	return sortedInstances
 }
