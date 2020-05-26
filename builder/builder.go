@@ -3,15 +3,17 @@ package builder
 import (
 	"fmt"
 	"go/ast"
+	"go/build"
 	"go/importer"
 	"go/parser"
 	"go/token"
 	"go/types"
+	"os"
 
 	"github.com/arneph/toph/ir"
 )
 
-const mode = parser.ParseComments |
+const parserMode = parser.ParseComments |
 	parser.DeclarationErrors |
 	parser.AllErrors
 
@@ -21,33 +23,33 @@ func BuildProgram(path string, entryFuncName string) (*ir.Program, []error) {
 
 	// Parse program:
 	b.fset = token.NewFileSet()
-	pkgs, err := parser.ParseDir(b.fset, path, nil, mode)
+	filter := func(info os.FileInfo) bool {
+		ok, err := build.Default.MatchFile(path, info.Name())
+		if err != nil {
+			b.addWarning(err)
+			return false
+		}
+		return ok
+	}
+	pkgs, err := parser.ParseDir(b.fset, path, filter, parserMode)
 	if err != nil {
 		b.addWarning(fmt.Errorf("failed to parse input: %v", err))
 		return b.program, b.warnings
-	} else if len(pkgs) != 1 {
-		b.addWarning(fmt.Errorf("expected exactly one package, got: %d", len(pkgs)))
+	} else if len(pkgs) < 1 {
+		b.addWarning(fmt.Errorf("expected at least one package, got: %d", len(pkgs)))
 	}
-	b.subsFile, err = parser.ParseFile(b.fset, "substitutes.go", substitutesCode, mode)
+	subsFile, err := parser.ParseFile(b.fset, "substitutes.go", substitutesCode, parserMode)
 	if err != nil {
 		b.addWarning(fmt.Errorf("failed to parse substitutes file: %v", err))
 		return b.program, b.warnings
 	}
 
-	pkgName := "main"
-	var files []*ast.File
-	for name, pkg := range pkgs {
-		pkgName = name
-
-		for _, file := range pkg.Files {
-			files = append(files, file)
-		}
-	}
-
 	// Comment maps:
 	b.cmaps = make(map[*ast.File]ast.CommentMap)
-	for _, file := range files {
-		b.cmaps[file] = ast.NewCommentMap(b.fset, file, file.Comments)
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Files {
+			b.cmaps[file] = ast.NewCommentMap(b.fset, file, file.Comments)
+		}
 	}
 
 	// Type check:
@@ -57,15 +59,26 @@ func BuildProgram(path string, entryFuncName string) (*ir.Program, []error) {
 	b.info.Uses = make(map[*ast.Ident]types.Object)
 	b.info.Selections = make(map[*ast.SelectorExpr]*types.Selection)
 	b.info.Scopes = make(map[ast.Node]*types.Scope)
-	conf := types.Config{Importer: importer.Default()}
-	_, err = conf.Check(pkgName, b.fset, files, b.info)
-	if err != nil {
-		b.addWarning(fmt.Errorf("failed to type check input: %v", err))
-		return b.program, b.warnings
+
+	conf := types.Config{
+		Importer: importer.ForCompiler(b.fset, "source", nil),
 	}
-	_, err = conf.Check("subs", b.fset, []*ast.File{b.subsFile}, b.info)
+
+	for pkgName, pkg := range pkgs {
+		var pkgFiles []*ast.File
+		for _, file := range pkg.Files {
+			pkgFiles = append(pkgFiles, file)
+		}
+		_, err = conf.Check(pkgName, b.fset, pkgFiles, b.info)
+		if err != nil {
+			b.addWarning(fmt.Errorf("%v", err))
+			return b.program, b.warnings
+		}
+	}
+
+	_, err = conf.Check("subs", b.fset, []*ast.File{subsFile}, b.info)
 	if err != nil {
-		panic("type checker failed for substitutes file")
+		panic("type checker failed for substitutes")
 	}
 
 	// IR setup:
@@ -74,7 +87,12 @@ func BuildProgram(path string, entryFuncName string) (*ir.Program, []error) {
 	b.varTypes = make(map[*types.Var]*ir.Variable)
 
 	// File processing:
-	files = append(files, b.subsFile)
+	files := []*ast.File{subsFile}
+	for _, pkg := range pkgs {
+		for _, file := range pkg.Files {
+			files = append(files, file)
+		}
+	}
 
 	for _, file := range files {
 		b.processFuncDeclsInFile(file)
@@ -96,15 +114,13 @@ func BuildProgram(path string, entryFuncName string) (*ir.Program, []error) {
 	for _, file := range files {
 		b.processFuncDefsInFile(file)
 	}
-
 	return b.program, b.warnings
 }
 
 type builder struct {
-	fset     *token.FileSet
-	subsFile *ast.File
-	cmaps    map[*ast.File]ast.CommentMap
-	info     *types.Info
+	fset  *token.FileSet
+	cmaps map[*ast.File]ast.CommentMap
+	info  *types.Info
 
 	program   *ir.Program
 	funcTypes map[*types.Func]*ir.Func
@@ -128,6 +144,16 @@ func (b *builder) processFuncDeclsInFile(file *ast.File) {
 		sig := funcType.Type().(*types.Signature)
 		f := b.program.AddOuterFunc(name, sig, decl.Pos(), decl.End())
 		v := ir.NewVariable(name, ir.FuncType, f.FuncValue())
+		if funcDecl.Recv != nil && len(funcDecl.Recv.List) == 1 {
+			field := funcDecl.Recv.List[0]
+			fieldNameIdent := field.Names[0]
+			if t, ok := typesTypeToIrType(b.info.TypeOf(field.Type).Underlying()); ok {
+				varType := b.info.Defs[fieldNameIdent].(*types.Var)
+				v := ir.NewVariable(fieldNameIdent.Name, t, -1)
+				f.AddArg(-1, v)
+				b.varTypes[varType] = v
+			}
+		}
 		b.processFuncType(funcDecl.Type, newContext(b.cmaps[file], f))
 		b.program.Scope().AddVariable(v)
 		b.funcTypes[funcType] = f

@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"go/build"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -16,6 +17,8 @@ func ignore(info os.FileInfo) bool {
 }
 
 func main() {
+	build.Default.GOOS = "linux"
+
 	dirs, err := ioutil.ReadDir("tests/")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not read 'tests/' dir: %v", err)
@@ -41,6 +44,7 @@ func main() {
 				continue
 			}
 			testPath := dirPath + test.Name() + "/"
+			fmt.Printf("running test: %s\n", testPath)
 			config := api.Config{
 				EntryFuncName: "main",
 				Debug:         true,

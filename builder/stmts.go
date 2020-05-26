@@ -49,7 +49,7 @@ func (b *builder) getDefinedVarsInAssignStmt(stmt *ast.AssignStmt) map[int]*ir.V
 	definedVars := make(map[int]*ir.Variable)
 	for i, expr := range stmt.Lhs {
 		nameIdent, ok := expr.(*ast.Ident)
-		if !ok {
+		if !ok || nameIdent.Name == "_" {
 			continue
 		}
 		obj, ok := b.info.Defs[nameIdent]

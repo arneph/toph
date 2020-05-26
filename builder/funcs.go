@@ -13,7 +13,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 
 	argIndex := 0
 	for _, field := range funcType.Params.List {
-		t, ok := typesTypeToIrType(b.info.TypeOf(field.Type).(types.Type).Underlying())
+		t, ok := typesTypeToIrType(b.info.TypeOf(field.Type).Underlying())
 		if !ok {
 			argIndex += len(field.Names)
 			continue
@@ -101,6 +101,14 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callabl
 	case *ast.SelectorExpr:
 		switch funcType := b.info.Uses[funcExpr.Sel].(type) {
 		case *types.Func:
+			f := b.funcTypes[funcType]
+			if f != nil {
+				return f, f.Signature()
+			}
+
+			if funcType.String() == "func (error).Error() string" {
+				return nil, nil
+			}
 			switch funcType.Pkg().Name() {
 			case "md5", "errors", "flag", "fmt", "math", "rand", "sort", "strconv", "ioutil", "strings":
 				return nil, nil
@@ -112,12 +120,24 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callabl
 					return nil, nil
 				}
 			case "os":
+				if funcType.Name() == "Getenv" ||
+					funcType.Name() == "Geteuid" ||
+					funcType.Name() == "IsNotExist" ||
+					funcType.Name() == "Hostname" ||
+					funcType.Name() == "Lstat" ||
+					funcType.Name() == "Stat" {
+					return nil, nil
+				}
 				if funcType.FullName() == "(os.FileInfo).IsDir" ||
 					funcType.FullName() == "(os.FileInfo).IsRegular" ||
 					funcType.FullName() == "(os.FileInfo).Mode" ||
 					funcType.FullName() == "(os.FileInfo).Name" ||
 					funcType.FullName() == "(os.FileMode).Mode" ||
 					funcType.FullName() == "(os.FileMode).IsRegular" {
+					return nil, nil
+				}
+			case "filepath":
+				if funcType.Name() == "Join" {
 					return nil, nil
 				}
 			}
