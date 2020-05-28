@@ -9,6 +9,7 @@ import (
 	"go/token"
 	"go/types"
 	"os"
+	"strings"
 
 	"github.com/arneph/toph/ir"
 )
@@ -23,7 +24,11 @@ func BuildProgram(path string, entryFuncName string) (*ir.Program, []error) {
 
 	// Parse program:
 	b.fset = token.NewFileSet()
+	pkgs := make(map[string]*ast.Package)
 	filter := func(info os.FileInfo) bool {
+		if !strings.HasPrefix(entryFuncName, "Test") && strings.HasSuffix(info.Name(), "_test.go") {
+			return false
+		}
 		ok, err := build.Default.MatchFile(path, info.Name())
 		if err != nil {
 			b.addWarning(err)
@@ -35,7 +40,8 @@ func BuildProgram(path string, entryFuncName string) (*ir.Program, []error) {
 	if err != nil {
 		b.addWarning(fmt.Errorf("failed to parse input: %v", err))
 		return b.program, b.warnings
-	} else if len(pkgs) < 1 {
+	}
+	if len(pkgs) < 1 {
 		b.addWarning(fmt.Errorf("expected at least one package, got: %d", len(pkgs)))
 	}
 	subsFile, err := parser.ParseFile(b.fset, "substitutes.go", substitutesCode, parserMode)
@@ -160,18 +166,6 @@ func (b *builder) processFuncDeclsInFile(file *ast.File) {
 	}
 }
 
-func (b *builder) processGenDeclsInFile(file *ast.File) {
-	cmap := b.cmaps[file]
-	entryCtx := newContext(cmap, b.program.EntryFunc())
-	for _, decl := range file.Decls {
-		genDecl, ok := decl.(*ast.GenDecl)
-		if !ok {
-			continue
-		}
-		b.processGenDecl(genDecl, b.program.Scope(), entryCtx)
-	}
-}
-
 func (b *builder) processFuncDefsInFile(file *ast.File) {
 	cmap := b.cmaps[file]
 	for _, decl := range file.Decls {
@@ -184,7 +178,20 @@ func (b *builder) processFuncDefsInFile(file *ast.File) {
 			continue
 		}
 		f := b.funcTypes[funcType]
-		b.processStmt(funcDecl.Body, newContext(cmap, f))
+		ctx := newContext(cmap, f)
+		b.processFuncBody(funcDecl.Body, ctx)
+	}
+}
+
+func (b *builder) processGenDeclsInFile(file *ast.File) {
+	cmap := b.cmaps[file]
+	entryCtx := newContext(cmap, b.program.EntryFunc())
+	for _, decl := range file.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok {
+			continue
+		}
+		b.processGenDecl(genDecl, b.program.Scope(), entryCtx)
 	}
 }
 

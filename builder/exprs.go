@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
-	"strconv"
 
 	"github.com/arneph/toph/ir"
 )
@@ -72,20 +71,11 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		return nil
 	case *ast.UnaryExpr:
 		if e.Op == token.ARROW {
-			rv := b.processExpr(e.X, ctx)
-			v, ok := rv.(*ir.Variable)
-			if !ok || v == nil {
-				p := b.fset.Position(e.X.Pos())
-				b.addWarning(fmt.Errorf("%v: could not resolve channel expr: %v", p, e.X))
-				return nil
-			}
-
-			ctx.body.AddStmt(ir.NewChanOpStmt(v, ir.Receive, e.Pos(), e.End()))
+			b.processReceiveExpr(e, true, ctx)
 		} else {
 			b.processExpr(e.X, ctx)
 		}
 		return nil
-
 	case
 		*ast.ArrayType,
 		*ast.ChanType,
@@ -111,9 +101,9 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 		return nil
 	}
 
-	obj, ok := b.info.Uses[ident]
-	if !ok {
-		obj, ok = b.info.Defs[ident]
+	obj := b.info.ObjectOf(ident)
+	if obj == nil {
+		panic(fmt.Errorf("types.Object for identifier is nil"))
 	}
 	switch obj := obj.(type) {
 	case *types.Var:
@@ -146,45 +136,4 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 	default:
 		panic(fmt.Errorf("unexpected types.Object type: %T", obj))
 	}
-}
-
-func (b *builder) processMakeExpr(callExpr *ast.CallExpr, result *ir.Variable, ctx *context) {
-	_, ok := callExpr.Args[0].(*ast.ChanType)
-	if !ok {
-		return
-	}
-
-	var bufferSize int
-
-	if len(callExpr.Args) > 1 {
-		a := callExpr.Args[1]
-		l, ok := a.(*ast.BasicLit)
-		if !ok {
-			p := b.fset.Position(a.Pos())
-			b.addWarning(fmt.Errorf("%v: can not process buffer size: %s", p, a))
-
-		} else {
-			n, err := strconv.Atoi(l.Value)
-			if err != nil {
-				p := b.fset.Position(l.Pos())
-				b.addWarning(fmt.Errorf("%v: can not process buffer size: %s", p, l.Value))
-			} else {
-				bufferSize = n
-			}
-		}
-	}
-
-	makeStmt := ir.NewMakeChanStmt(result, bufferSize, callExpr.Pos(), callExpr.End())
-	ctx.body.AddStmt(makeStmt)
-}
-
-func (b *builder) processCloseExpr(callExpr *ast.CallExpr, ctx *context) {
-	rv := b.processExpr(callExpr.Args[0], ctx)
-	v, ok := rv.(*ir.Variable)
-	if !ok || v == nil {
-		return
-	}
-
-	closeStmt := ir.NewChanOpStmt(v, ir.Close, callExpr.Pos(), callExpr.End())
-	ctx.body.AddStmt(closeStmt)
 }
