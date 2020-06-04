@@ -32,8 +32,12 @@ type FuncCallGraph struct {
 
 	dynamicCallInfos []dynamicCallInfo
 
-	funcCallCounts map[*ir.Func]int
-	makeChanCount  int
+	isCallerCounts  map[*ir.Func]int
+	isCalleeCounts  map[*ir.Func]int
+	makeChanCounts  map[*ir.Func]int
+	closeChanCounts map[*ir.Func]int
+	makeChanCount   int
+	closeChanCount  int
 
 	// Strongly connected components:
 	sccsOk     bool
@@ -48,8 +52,12 @@ func newFuncCallGraph(entry *ir.Func) *FuncCallGraph {
 	fcg.callerToCallees = make(map[*ir.Func]map[*ir.Func]struct{})
 	fcg.calleeToCallers = make(map[*ir.Func]map[*ir.Func]struct{})
 	fcg.dynamicCallInfos = nil
-	fcg.funcCallCounts = make(map[*ir.Func]int)
+	fcg.isCallerCounts = make(map[*ir.Func]int)
+	fcg.isCalleeCounts = make(map[*ir.Func]int)
+	fcg.makeChanCounts = make(map[*ir.Func]int)
+	fcg.closeChanCounts = make(map[*ir.Func]int)
 	fcg.makeChanCount = 0
+	fcg.closeChanCount = 0
 	fcg.sccsOk = false
 
 	if entry != nil {
@@ -110,14 +118,34 @@ func (fcg *FuncCallGraph) DynamicCallers(signature *types.Signature) []*ir.Func 
 	return nil
 }
 
-// CallCount returns how many times a function gets called.
-func (fcg *FuncCallGraph) CallCount(callee *ir.Func) int {
-	return fcg.funcCallCounts[callee]
+// CallerCount returns how many times a function calls others.
+func (fcg *FuncCallGraph) CallerCount(callee *ir.Func) int {
+	return fcg.isCallerCounts[callee]
 }
 
-// MakeChanCount returns how many times a channel gets created.
-func (fcg *FuncCallGraph) MakeChanCount() int {
+// CalleeCount returns how many times a function gets called.
+func (fcg *FuncCallGraph) CalleeCount(callee *ir.Func) int {
+	return fcg.isCalleeCounts[callee]
+}
+
+// MakeChanCount returns how many times the caller creates a channel.
+func (fcg *FuncCallGraph) MakeChanCount(caller *ir.Func) int {
+	return fcg.makeChanCounts[caller]
+}
+
+// CloseChanCount returns how many times the caller closes a channel.
+func (fcg *FuncCallGraph) CloseChanCount(caller *ir.Func) int {
+	return fcg.closeChanCounts[caller]
+}
+
+// TotalMakeChanCount returns how many times a channel gets created.
+func (fcg *FuncCallGraph) TotalMakeChanCount() int {
 	return fcg.makeChanCount
+}
+
+// TotalCloseChanCount returns how many times a channel gets closed.
+func (fcg *FuncCallGraph) TotalCloseChanCount() int {
+	return fcg.closeChanCount
 }
 
 // SCCCount returns the number of strongly connected components in the
@@ -207,17 +235,45 @@ func (fcg *FuncCallGraph) addDynamicCall(caller *ir.Func, calleeSignature *types
 	fcg.sccsOk = false
 }
 
-func (fcg *FuncCallGraph) addCallCount(callee *ir.Func, count int) {
-	fcg.funcCallCounts[callee] += count
-	if fcg.funcCallCounts[callee] > MaxCallCounts {
-		fcg.funcCallCounts[callee] = MaxCallCounts
+func (fcg *FuncCallGraph) addCallerCount(caller *ir.Func, count int) {
+	fcg.isCallerCounts[caller] += count
+	if fcg.isCallerCounts[caller] > MaxCallCounts {
+		fcg.isCallerCounts[caller] = MaxCallCounts
 	}
 }
 
-func (fcg *FuncCallGraph) addMakeChanCallCount(count int) {
+func (fcg *FuncCallGraph) addCalleeCount(callee *ir.Func, count int) {
+	fcg.isCalleeCounts[callee] += count
+	if fcg.isCalleeCounts[callee] > MaxCallCounts {
+		fcg.isCalleeCounts[callee] = MaxCallCounts
+	}
+}
+
+func (fcg *FuncCallGraph) addMakeChanCallCount(caller *ir.Func, count int) {
+	fcg.makeChanCounts[caller] += count
+	if fcg.makeChanCounts[caller] > MaxCallCounts {
+		fcg.makeChanCounts[caller] = MaxCallCounts
+	}
+}
+
+func (fcg *FuncCallGraph) addCloseChanCallCount(caller *ir.Func, count int) {
+	fcg.closeChanCounts[caller] += count
+	if fcg.closeChanCounts[caller] > MaxCallCounts {
+		fcg.closeChanCounts[caller] = MaxCallCounts
+	}
+}
+
+func (fcg *FuncCallGraph) addTotalMakeChanCallCount(count int) {
 	fcg.makeChanCount += count
 	if fcg.makeChanCount > MaxCallCounts {
 		fcg.makeChanCount = MaxCallCounts
+	}
+}
+
+func (fcg *FuncCallGraph) addTotalCloseChanCallCount(count int) {
+	fcg.closeChanCount += count
+	if fcg.closeChanCount > MaxCallCounts {
+		fcg.closeChanCount = MaxCallCounts
 	}
 }
 

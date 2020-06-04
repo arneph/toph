@@ -2,18 +2,9 @@ package builder
 
 import (
 	"go/ast"
-	"go/types"
 
 	"github.com/arneph/toph/ir"
 )
-
-type deferredCallInfo struct {
-	deferStmt       *ast.DeferStmt
-	isChanClose     bool
-	callee          ir.Callable
-	calleeSignature *types.Signature
-	argVals         map[int]ir.RValue
-}
 
 type context struct {
 	cmap ast.CommentMap
@@ -23,8 +14,6 @@ type context struct {
 
 	enclosingStmts      []ir.Stmt
 	enclosingStmtLabels map[string]ir.Stmt
-
-	deferredCallInfos []deferredCallInfo
 }
 
 func newContext(cmap ast.CommentMap, f *ir.Func) *context {
@@ -34,7 +23,6 @@ func newContext(cmap ast.CommentMap, f *ir.Func) *context {
 	ctx.enclosingFuncs = []*ir.Func{f}
 	ctx.enclosingStmts = []ir.Stmt{}
 	ctx.enclosingStmtLabels = make(map[string]ir.Stmt)
-	ctx.deferredCallInfos = []deferredCallInfo{}
 
 	return ctx
 }
@@ -82,7 +70,6 @@ func (c *context) subContextForBody(stmt ir.Stmt, label string, containedBody *i
 	if label != "" {
 		ctx.enclosingStmtLabels[label] = stmt
 	}
-	ctx.deferredCallInfos = c.deferredCallInfos
 
 	return ctx
 }
@@ -94,7 +81,6 @@ func (c *context) subContextForFunc(containedFunc *ir.Func) *context {
 	ctx.enclosingFuncs = append(c.enclosingFuncs, containedFunc)
 	ctx.enclosingStmts = []ir.Stmt{}
 	ctx.enclosingStmtLabels = make(map[string]ir.Stmt)
-	ctx.deferredCallInfos = []deferredCallInfo{}
 
 	return ctx
 }

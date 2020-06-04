@@ -20,8 +20,10 @@ func (f *Func) callable()     {}
 type CallKind int
 
 const (
-	// Call is the CallKind of a synchronous call.
+	// Call is the CallKind of a regular synchronous call.
 	Call CallKind = 1 << iota
+	// Defer is the CallKind of a deferred synchronous call.
+	Defer
 	// Go is the CallKind of an asynchronous call (go statement).
 	Go
 )
@@ -29,6 +31,8 @@ const (
 func (k CallKind) String() string {
 	switch k {
 	case Call:
+		return "call"
+	case Defer:
 		return "call"
 	case Go:
 		return "go"
@@ -41,7 +45,7 @@ func (k CallKind) String() string {
 type CallStmt struct {
 	callee          Callable
 	calleeSignature *types.Signature
-	kind            CallKind
+	callKind        CallKind
 	args            map[int]RValue
 	results         map[int]*Variable // Variables to assign results to
 
@@ -49,7 +53,7 @@ type CallStmt struct {
 }
 
 // NewCallStmt creates a new call statement to the given callee.
-func NewCallStmt(callee Callable, calleeSignature *types.Signature, kind CallKind, pos, end token.Pos) *CallStmt {
+func NewCallStmt(callee Callable, calleeSignature *types.Signature, callKind CallKind, pos, end token.Pos) *CallStmt {
 	if callee == nil {
 		panic("tried to create CallStmt with nil callee")
 	}
@@ -57,7 +61,7 @@ func NewCallStmt(callee Callable, calleeSignature *types.Signature, kind CallKin
 	s := new(CallStmt)
 	s.callee = callee
 	s.calleeSignature = calleeSignature
-	s.kind = kind
+	s.callKind = callKind
 	s.args = make(map[int]RValue)
 	s.results = make(map[int]*Variable)
 	s.pos = pos
@@ -92,9 +96,9 @@ func (s *CallStmt) CalleeSignature() *types.Signature {
 	return s.calleeSignature
 }
 
-// Kind returns the kind of function call statement.
-func (s *CallStmt) Kind() CallKind {
-	return s.kind
+// CallKind returns the kind of function call statement.
+func (s *CallStmt) CallKind() CallKind {
+	return s.callKind
 }
 
 // Args returns all results processed by the function call.
@@ -133,9 +137,9 @@ func (s *CallStmt) String() string {
 	}
 	switch callee := s.callee.(type) {
 	case *Func:
-		str += fmt.Sprintf("%s %v", s.kind, callee.FuncValue())
+		str += fmt.Sprintf("%s %v (static)", s.callKind, callee.FuncValue())
 	case *Variable:
-		str += fmt.Sprintf("dynamic %s %v", s.kind, callee.Handle())
+		str += fmt.Sprintf("%s %v (dynamic)", s.callKind, callee.Handle())
 	default:
 		panic(fmt.Errorf("unexpected callee type: %T", callee))
 	}

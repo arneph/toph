@@ -29,6 +29,8 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 		t.translateMakeChanStmt(stmt, ctx)
 	case *ir.ChanOpStmt:
 		t.translateChanOpStmt(stmt, ctx)
+	case *ir.CloseChanStmt:
+		t.translateCloseChanStmt(stmt, ctx)
 	case *ir.SelectStmt:
 		t.translateSelectStmt(stmt, ctx)
 	default:
@@ -81,17 +83,22 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 
 		endState := ctx.proc.AddState("called_"+callee.Handle()+"_", uppaal.Renaming)
 		endState.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
-		switch stmt.Kind() {
-		case ir.Go:
-			endState.SetLocationAndResetNameAndCommentLocation(
-				ctx.currentState.Location().Add(uppaal.Location{0, 544}))
+		switch stmt.CallKind() {
 		case ir.Call:
 			endState.SetLocationAndResetNameAndCommentLocation(
 				ctx.currentState.Location().Add(uppaal.Location{0, 680}))
+		case ir.Defer:
+			endState.SetLocationAndResetNameAndCommentLocation(
+				ctx.currentState.Location().Add(uppaal.Location{0, 544}))
+		case ir.Go:
+			endState.SetLocationAndResetNameAndCommentLocation(
+				ctx.currentState.Location().Add(uppaal.Location{0, 544}))
+		default:
+			panic(fmt.Errorf("unsupported CallKind: %v", stmt.CallKind()))
 		}
 
 		calleeSig := stmt.CalleeSignature()
-		for i, calleeFunc := range t.fcg.DynamicCallees(calleeSig) {
+		for i, calleeFunc := range t.completeFCG.DynamicCallees(calleeSig) {
 			startState := ctx.proc.AddState(callee.Handle()+"_is_"+calleeFunc.Name()+"_", uppaal.Renaming)
 			startState.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 			startState.SetLocationAndResetNameAndCommentLocation(
@@ -127,11 +134,11 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 	calleeFunc := info.f
 	calleeProc := t.funcToProcess[calleeFunc]
 
-	createdInst := ctx.proc.AddState("created_"+calleeProc.Name()+"_", uppaal.Renaming)
-	createdInst.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
-	createdInst.SetLocationAndResetNameAndCommentLocation(
+	created := ctx.proc.AddState("created_"+calleeProc.Name()+"_", uppaal.Renaming)
+	created.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+	created.SetLocationAndResetNameAndCommentLocation(
 		info.startState.Location().Add(uppaal.Location{0, 136}))
-	create := ctx.proc.AddTrans(info.startState, createdInst)
+	create := ctx.proc.AddTrans(info.startState, created)
 	if calleeFunc.EnclosingFunc() != nil {
 		create.AddUpdate("p = make_" + calleeProc.Name() + "(" + info.parPid + ")")
 	} else {
@@ -150,59 +157,75 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 			fmt.Sprintf("%s = %s", calleeArgStr, callerArgStr))
 	}
 
-	startedInst := ctx.proc.AddState("started_"+calleeProc.Name()+"_", uppaal.Renaming)
-	startedInst.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
-	startedInst.SetLocationAndResetNameAndCommentLocation(
-		createdInst.Location().Add(uppaal.Location{0, 136}))
-	start := ctx.proc.AddTrans(createdInst, startedInst)
+	if stmt.CallKind() == ir.Call || stmt.CallKind() == ir.Go {
+		started := ctx.proc.AddState("started_"+calleeProc.Name()+"_", uppaal.Renaming)
+		started.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+		started.SetLocationAndResetNameAndCommentLocation(
+			created.Location().Add(uppaal.Location{0, 136}))
+		start := ctx.proc.AddTrans(created, started)
 
-	switch stmt.Kind() {
-	case ir.Go:
-		start.SetSync(fmt.Sprintf("async_%s[p]!", calleeProc.Name()))
-		start.SetSyncLocation(
-			createdInst.Location().Add(uppaal.Location{4, 60}))
+		if stmt.CallKind() == ir.Call {
+			start.SetSync(fmt.Sprintf("sync_%s[p]!", calleeProc.Name()))
+			start.SetSyncLocation(
+				created.Location().Add(uppaal.Location{4, 60}))
+
+			awaited := ctx.proc.AddState("awaited_"+calleeProc.Name()+"_", uppaal.Renaming)
+			awaited.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+			awaited.SetLocationAndResetNameAndCommentLocation(
+				started.Location().Add(uppaal.Location{0, 136}))
+			wait := ctx.proc.AddTrans(started, awaited)
+			wait.SetSync(fmt.Sprintf("sync_%s[p]?", calleeProc.Name()))
+			wait.SetSyncLocation(started.Location().Add(uppaal.Location{4, 48}))
+
+			for i := range calleeFunc.ResultTypes() {
+				calleeRes := t.translateResult(calleeFunc, i, "p")
+				callerRes := t.translateVariable(stmt.Results()[i], ctx)
+				wait.AddUpdate(
+					fmt.Sprintf("%s = %s", callerRes, calleeRes))
+			}
+			wait.SetUpdateLocation(
+				started.Location().Add(uppaal.Location{4, 64}))
+
+			if info.endState == nil {
+				ctx.currentState = awaited
+			} else {
+				ctx.proc.AddTrans(awaited, info.endState)
+			}
+			ctx.addLocation(created.Location())
+			ctx.addLocation(started.Location())
+			ctx.addLocation(awaited.Location())
+		} else if stmt.CallKind() == ir.Go {
+			start.SetSync(fmt.Sprintf("async_%s[p]!", calleeProc.Name()))
+			start.SetSyncLocation(
+				created.Location().Add(uppaal.Location{4, 60}))
+
+			if info.endState == nil {
+				ctx.currentState = started
+			} else {
+				ctx.proc.AddTrans(started, info.endState)
+			}
+			ctx.addLocation(created.Location())
+			ctx.addLocation(started.Location())
+		}
+	} else if stmt.CallKind() == ir.Defer {
+		deferred := ctx.proc.AddState("deferred_"+calleeProc.Name()+"_", uppaal.Renaming)
+		deferred.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+		deferred.SetLocationAndResetNameAndCommentLocation(
+			created.Location().Add(uppaal.Location{0, 136}))
+		xdefer := ctx.proc.AddTrans(created, deferred)
+		xdefer.AddUpdate("deferred_is_close[deferred_count] = false")
+		xdefer.AddUpdate("deferred_fid[deferred_count] = " + calleeFunc.FuncValue().String())
+		xdefer.AddUpdate("deferred_pid[deferred_count] = p")
+		xdefer.AddUpdate("deferred_count++")
+		xdefer.SetUpdateLocation(created.Location().Add(uppaal.Location{4, 60}))
 
 		if info.endState == nil {
-			ctx.currentState = startedInst
+			ctx.currentState = deferred
 		} else {
-			ctx.proc.AddTrans(startedInst, info.endState)
+			ctx.proc.AddTrans(deferred, info.endState)
 		}
-		ctx.addLocation(createdInst.Location())
-		ctx.addLocation(startedInst.Location())
-
-	case ir.Call:
-		start.SetSync(fmt.Sprintf("sync_%s[p]!", calleeProc.Name()))
-		start.SetSyncLocation(
-			createdInst.Location().Add(uppaal.Location{4, 60}))
-
-		awaitedInst := ctx.proc.AddState("awaited_"+calleeProc.Name()+"_", uppaal.Renaming)
-		awaitedInst.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
-		awaitedInst.SetLocationAndResetNameAndCommentLocation(
-			startedInst.Location().Add(uppaal.Location{0, 136}))
-		wait := ctx.proc.AddTrans(startedInst, awaitedInst)
-		wait.SetSync(fmt.Sprintf("sync_%s[p]?", calleeProc.Name()))
-		wait.SetSyncLocation(startedInst.Location().Add(uppaal.Location{4, 48}))
-
-		for i := range calleeFunc.ResultTypes() {
-			calleeRes := t.translateResult(calleeFunc, i, "p")
-			callerRes := t.translateVariable(stmt.Results()[i], ctx)
-			wait.AddUpdate(
-				fmt.Sprintf("%s = %s", callerRes, calleeRes))
-		}
-		wait.SetUpdateLocation(
-			startedInst.Location().Add(uppaal.Location{4, 64}))
-
-		if info.endState == nil {
-			ctx.currentState = awaitedInst
-		} else {
-			ctx.proc.AddTrans(awaitedInst, info.endState)
-		}
-		ctx.addLocation(createdInst.Location())
-		ctx.addLocation(startedInst.Location())
-		ctx.addLocation(awaitedInst.Location())
-
-	default:
-		panic(fmt.Errorf("unsupported CallKind: %v", stmt.Kind()))
+		ctx.addLocation(created.Location())
+		ctx.addLocation(deferred.Location())
 	}
 }
 

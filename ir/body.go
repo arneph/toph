@@ -41,7 +41,7 @@ func (b *Body) WalkStmts(visitFunc func(stmt Stmt, scope *Scope)) {
 		switch stmt := stmt.(type) {
 		case *AssignStmt,
 			*BranchStmt,
-			*MakeChanStmt, *ChanOpStmt,
+			*MakeChanStmt, *ChanOpStmt, *CloseChanStmt,
 			*CallStmt, *ReturnStmt:
 			continue
 		case *InlinedCallStmt:

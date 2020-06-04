@@ -25,32 +25,6 @@ func (t *translator) translateMakeChanStmt(stmt *ir.MakeChanStmt, ctx *context) 
 }
 
 func (t *translator) translateChanOpStmt(stmt *ir.ChanOpStmt, ctx *context) {
-	switch stmt.Op() {
-	case ir.Send, ir.Receive:
-		t.translateChanCommStmt(stmt, ctx)
-	case ir.Close:
-		t.translateCloseChanStmt(stmt, ctx)
-	default:
-		t.addWarning(fmt.Errorf("unsupported ChanOp: %v", stmt.Op()))
-	}
-}
-
-func (t *translator) translateCloseChanStmt(stmt *ir.ChanOpStmt, ctx *context) {
-	handle := t.translateVariable(stmt.Channel(), ctx)
-	name := stmt.Channel().Name()
-
-	closed := ctx.proc.AddState("closed_"+name+"_", uppaal.Renaming)
-	closed.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
-	closed.SetLocationAndResetNameAndCommentLocation(
-		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-	close := ctx.proc.AddTrans(ctx.currentState, closed)
-	close.SetSync("close[" + handle + "]!")
-	close.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 60}))
-	ctx.currentState = closed
-	ctx.addLocation(closed.Location())
-}
-
-func (t *translator) translateChanCommStmt(stmt *ir.ChanOpStmt, ctx *context) {
 	handle := t.translateVariable(stmt.Channel(), ctx)
 	name := stmt.Channel().Name()
 	var pendingName, confirmedName, triggerChan, confirmChan, counterOp string
@@ -100,6 +74,35 @@ func (t *translator) translateChanCommStmt(stmt *ir.ChanOpStmt, ctx *context) {
 	ctx.currentState = confirmed
 	ctx.addLocation(pending.Location())
 	ctx.addLocation(confirmed.Location())
+}
+
+func (t *translator) translateCloseChanStmt(stmt *ir.CloseChanStmt, ctx *context) {
+	handle := t.translateVariable(stmt.Channel(), ctx)
+	name := stmt.Channel().Name()
+
+	if stmt.CallKind() == ir.Call {
+		closed := ctx.proc.AddState("closed_"+name+"_", uppaal.Renaming)
+		closed.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+		closed.SetLocationAndResetNameAndCommentLocation(
+			ctx.currentState.Location().Add(uppaal.Location{0, 136}))
+		close := ctx.proc.AddTrans(ctx.currentState, closed)
+		close.SetSync("close[" + handle + "]!")
+		close.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 60}))
+		ctx.currentState = closed
+		ctx.addLocation(closed.Location())
+	} else if stmt.CallKind() == ir.Defer {
+		deferred := ctx.proc.AddState("deferred_close_"+name+"_", uppaal.Renaming)
+		deferred.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+		deferred.SetLocationAndResetNameAndCommentLocation(
+			ctx.currentState.Location().Add(uppaal.Location{0, 136}))
+		xdefer := ctx.proc.AddTrans(ctx.currentState, deferred)
+		xdefer.AddUpdate("deferred_is_close[deferred_count] = true")
+		xdefer.AddUpdate("deferred_cid[deferred_count] = " + handle)
+		xdefer.AddUpdate("deferred_count++")
+		xdefer.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 60}))
+		ctx.currentState = deferred
+		ctx.addLocation(deferred.Location())
+	}
 }
 
 type selectCaseInfo struct {

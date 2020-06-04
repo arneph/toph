@@ -65,13 +65,6 @@ func (b *builder) processFuncLit(funcLit *ast.FuncLit, ctx *context) *ir.Func {
 
 func (b *builder) processFuncBody(body *ast.BlockStmt, ctx *context) {
 	b.processBlockStmt(body, ctx)
-	if len(body.List) < 1 {
-		return
-	}
-	lastStmt := body.List[len(body.List)-1]
-	if _, ok := lastStmt.(*ast.ReturnStmt); !ok {
-		b.processDeferredCalls(ctx)
-	}
 }
 
 func (b *builder) canIgnoreCall(funcExpr ast.Expr, ctx *context) bool {

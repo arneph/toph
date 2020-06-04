@@ -75,13 +75,13 @@ func (b *builder) processSendStmt(stmt *ast.SendStmt, addToCtx bool, ctx *contex
 	return sendStmt
 }
 
-func (b *builder) processCloseExpr(callExpr *ast.CallExpr, ctx *context) {
+func (b *builder) processCloseExpr(callExpr *ast.CallExpr, callKind ir.CallKind, ctx *context) {
 	chanVar := b.findChannel(callExpr.Args[0], ctx)
 	if chanVar == nil {
 		return
 	}
 
-	closeStmt := ir.NewChanOpStmt(chanVar, ir.Close, callExpr.Pos(), callExpr.End())
+	closeStmt := ir.NewCloseChanStmt(chanVar, callKind, callExpr.Pos(), callExpr.End())
 	ctx.body.AddStmt(closeStmt)
 }
 

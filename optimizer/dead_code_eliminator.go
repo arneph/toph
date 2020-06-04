@@ -14,7 +14,7 @@ func EliminateDeadCode(program *ir.Program) {
 	if entryFunc == nil {
 		return
 	}
-	fcg := analyzer.BuildFuncCallGraph(program, ir.Call|ir.Go)
+	fcg := analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
 	emptyFuncs := make(map[*ir.Func]bool)
 	for i := 1; i < fcg.SCCCount(); i++ {
 		scc := analyzer.SCC(i)

@@ -19,6 +19,7 @@ func (s *AssignStmt) stmt()      {}
 func (s *BranchStmt) stmt()      {}
 func (s *CallStmt) stmt()        {}
 func (s *ChanOpStmt) stmt()      {}
+func (s *CloseChanStmt) stmt()   {}
 func (s *ForStmt) stmt()         {}
 func (s *IfStmt) stmt()          {}
 func (s *InlinedCallStmt) stmt() {}

@@ -41,7 +41,7 @@ func (s *MakeChanStmt) String() string {
 }
 
 // ChanOp represents an operation performed on a channel. This can either be a
-// stand alone statement or a case in a select statement (excecpt for Close).
+// stand alone statement or a case in a select statement.
 type ChanOp int
 
 const (
@@ -49,8 +49,6 @@ const (
 	Send ChanOp = iota
 	// Receive represents a receive operation on a channel.
 	Receive
-	// Close represents a close operation on a channel.
-	Close
 )
 
 func (o ChanOp) String() string {
@@ -59,8 +57,6 @@ func (o ChanOp) String() string {
 		return "send"
 	case Receive:
 		return "receive"
-	case Close:
-		return "close"
 	default:
 		panic(fmt.Sprintf("unknown ChanOp: %d", o))
 	}
@@ -98,6 +94,44 @@ func (s *ChanOpStmt) Op() ChanOp {
 
 func (s *ChanOpStmt) String() string {
 	return fmt.Sprintf("%v %s", s.op, s.channel.Handle())
+}
+
+// CloseChanStmt represents a channel close statement.
+type CloseChanStmt struct {
+	channel  *Variable
+	callKind CallKind // Call or Defer
+
+	Node
+}
+
+// NewCloseChanStmt creates a new channel close statement for the given
+// channel.
+func NewCloseChanStmt(channel *Variable, callKind CallKind, pos, end token.Pos) *CloseChanStmt {
+	if callKind == Go {
+		panic("attempted to create CloseChanStmt with Go CallKind")
+	}
+
+	s := new(CloseChanStmt)
+	s.channel = channel
+	s.callKind = callKind
+	s.pos = pos
+	s.end = end
+
+	return s
+}
+
+// Channel returns the variable holding the channel to be closed.
+func (s *CloseChanStmt) Channel() *Variable {
+	return s.channel
+}
+
+// CallKind returns the call kind (regular or deferred) of the close function.
+func (s *CloseChanStmt) CallKind() CallKind {
+	return s.callKind
+}
+
+func (s *CloseChanStmt) String() string {
+	return fmt.Sprintf("%s close %s", s.callKind, s.channel.Handle())
 }
 
 // SelectCase represents a single case in a select statement.

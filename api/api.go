@@ -118,8 +118,7 @@ func Run(path string, config Config) Result {
 // outputProgram generates debug output files showing the IR at a certain
 // point during the process.
 func outputProgram(program *ir.Program, path, name string, index int) {
-	callFCG := analyzer.BuildFuncCallGraph(program, ir.Call)
-	goFCG := analyzer.BuildFuncCallGraph(program, ir.Go)
+	fcg := analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
 
 	// IR file
 	programPath := fmt.Sprintf("%s/%s.%d.ir.txt", path, name, index)
@@ -133,23 +132,13 @@ func outputProgram(program *ir.Program, path, name string, index int) {
 	fmt.Fprintln(programFile, program.String())
 
 	// FCG files
-	callFCGPath := fmt.Sprintf("%s/%s.%d.call_fcg.txt", path, name, index)
-	callFCGFile, err := os.Create(callFCGPath)
+	fcgPath := fmt.Sprintf("%s/%s.%d.fcg.txt", path, name, index)
+	fcgFile, err := os.Create(fcgPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not write call_fcg.txt file: %v\n", err)
 		return
 	}
-	defer callFCGFile.Close()
+	defer fcgFile.Close()
 
-	fmt.Fprintln(callFCGFile, callFCG.String())
-
-	goFCGPath := fmt.Sprintf("%s/%s.%d.go_fcg.txt", path, name, index)
-	goFCGFile, err := os.Create(goFCGPath)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not write go_fcg.txt file: %v\n", err)
-		return
-	}
-	defer goFCGFile.Close()
-
-	fmt.Fprintln(goFCGFile, goFCG.String())
+	fmt.Fprintln(fcgFile, fcg.String())
 }

@@ -14,7 +14,7 @@ func (t *translator) addChannels() {
 }
 
 func (t *translator) channelCount() int {
-	channelCount := t.fcg.MakeChanCount()
+	channelCount := t.completeFCG.TotalMakeChanCount()
 	if channelCount < 1 {
 		channelCount = 1
 	} else if channelCount > maxChannelCount {
