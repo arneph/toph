@@ -68,6 +68,7 @@ func Run(path string, config Config) Result {
 	if config.Optimize {
 		// Dead Code Eliminator
 		optimizer.EliminateDeadCode(program)
+		optimizer.EliminateUnusedFunctions(program)
 
 		if config.Debug {
 			outputProgram(program, path, config.OutName, 2)

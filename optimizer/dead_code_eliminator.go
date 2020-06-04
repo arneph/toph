@@ -30,6 +30,19 @@ func EliminateDeadCode(program *ir.Program) {
 	}
 }
 
+// EliminateUnusedFunctions removes functions that are never called.
+func EliminateUnusedFunctions(program *ir.Program) {
+	fcg := analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
+	oldFuncs := make(map[*ir.Func]bool)
+	for _, f := range program.Funcs() {
+		if fcg.CalleeCount(f) > 0 {
+			continue
+		}
+		oldFuncs[f] = true
+	}
+	program.RemoveFuncs(oldFuncs)
+}
+
 func eliminateDeadCodeInBody(body *ir.Body) {
 	stmts := make([]ir.Stmt, 0, len(body.Stmts()))
 

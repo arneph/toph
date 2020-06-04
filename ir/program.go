@@ -66,10 +66,21 @@ func (p *Program) AddInnerFunc(signature *types.Signature, enclosingFunc *Func, 
 	return f
 }
 
-// RemoveFuncs removes all functions from the program.
-func (p *Program) RemoveFuncs() {
-	p.funcs = nil
-	p.entryFunc = nil
+// RemoveFuncs removes the given (old) functions from the program.
+func (p *Program) RemoveFuncs(oldFuncs map[*Func]bool) {
+	c := 0
+	for i := 0; i < len(p.funcs); i++ {
+		if oldFuncs[p.funcs[i]] {
+			continue
+		}
+		p.funcs[c] = p.funcs[i]
+		c++
+	}
+	p.funcs = p.funcs[:c]
+
+	if oldFuncs[p.entryFunc] {
+		p.entryFunc = nil
+	}
 }
 
 // Scope returns the global scope of the program.
