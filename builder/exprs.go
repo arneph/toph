@@ -36,7 +36,10 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		}
 		return nil
 	case *ast.CompositeLit:
-		b.processExprs(append([]ast.Expr{e.Type}, e.Elts...), ctx)
+		if e.Type != nil {
+			b.processExpr(e.Type, ctx)
+		}
+		b.processExprs(e.Elts, ctx)
 		return nil
 	case *ast.Ellipsis:
 		b.processExpr(e.Elt, ctx)
@@ -61,7 +64,16 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		b.processExpr(e.X, ctx)
 		return nil
 	case *ast.SliceExpr:
-		b.processExprs([]ast.Expr{e.X, e.Low, e.High, e.Max}, ctx)
+		b.processExpr(e.X, ctx)
+		if e.Low != nil {
+			b.processExpr(e.Low, ctx)
+		}
+		if e.High != nil {
+			b.processExpr(e.High, ctx)
+		}
+		if e.Max != nil {
+			b.processExpr(e.Max, ctx)
+		}
 		return nil
 	case *ast.StarExpr:
 		b.processExpr(e.X, ctx)
@@ -85,6 +97,9 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		*ast.StructType:
 		return nil
 	default:
+		if e == nil {
+			panic("found nil expression in AST")
+		}
 		p := b.fset.Position(e.Pos())
 		b.addWarning(fmt.Errorf("%v: ignoring %T expression", p, e))
 		return nil
@@ -103,7 +118,8 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 
 	obj := b.info.ObjectOf(ident)
 	if obj == nil {
-		panic(fmt.Errorf("types.Object for identifier is nil"))
+		p := b.fset.Position(ident.Pos())
+		panic(fmt.Errorf("%v: types.Object for identifier is nil: %s", p, ident.Name))
 	}
 	switch obj := obj.(type) {
 	case *types.Var:
@@ -133,7 +149,10 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 			return nil
 		}
 		return v
+	case *types.Const, *types.PkgName, *types.TypeName:
+		return nil
 	default:
-		panic(fmt.Errorf("unexpected types.Object type: %T", obj))
+		p := b.fset.Position(ident.Pos())
+		panic(fmt.Errorf("%v: unexpected types.Object type: %T", p, obj))
 	}
 }

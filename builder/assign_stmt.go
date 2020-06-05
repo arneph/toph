@@ -42,12 +42,12 @@ func (b *builder) getAssignedVarsInAssignStmt(stmt *ast.AssignStmt, definedVars 
 			continue
 		}
 
-		ident, ok := expr.(*ast.Ident)
-		if !ok {
+		nameIdent, ok := expr.(*ast.Ident)
+		if !ok || nameIdent.Name == "_" {
 			continue
 		}
 
-		v := b.processIdent(ident, ctx)
+		v := b.processIdent(nameIdent, ctx)
 		if v == nil {
 			continue
 		}
@@ -73,7 +73,9 @@ func (b *builder) processAssignStmt(stmt *ast.AssignStmt, ctx *context) {
 			if _, ok := lhs[i]; ok {
 				continue
 			}
-
+			if nameIdent, ok := expr.(*ast.Ident); ok && nameIdent.Name == "_" {
+				continue
+			}
 			b.processExpr(expr, ctx)
 		}
 	}()
