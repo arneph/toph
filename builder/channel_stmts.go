@@ -87,7 +87,6 @@ func (b *builder) processCloseExpr(callExpr *ast.CallExpr, callKind ir.CallKind,
 
 func (b *builder) processSelectStmt(stmt *ast.SelectStmt, label string, ctx *context) {
 	selectStmt := ir.NewSelectStmt(ctx.body.Scope(), stmt.Pos(), stmt.End())
-	ctx.body.AddStmt(selectStmt)
 
 	for _, stmt := range stmt.Body.List {
 		commClause := stmt.(*ast.CommClause)
@@ -165,4 +164,6 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, label string, ctx *con
 			b.processStmt(stmt, subCtx)
 		}
 	}
+
+	ctx.body.AddStmt(selectStmt)
 }
