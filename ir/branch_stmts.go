@@ -68,9 +68,148 @@ func (s *IfStmt) ElsePos() token.Pos {
 
 func (s *IfStmt) String() string {
 	str := "if{\n"
-	str += "  " + strings.ReplaceAll(s.ifBranch.String(), "\n", "\n  ") + "\n"
+	str += "\t" + strings.ReplaceAll(s.ifBranch.String(), "\n", "\n\t") + "\n"
 	str += "}else{\n"
-	str += "  " + strings.ReplaceAll(s.elseBranch.String(), "\n", "\n  ") + "\n"
+	str += "\t" + strings.ReplaceAll(s.elseBranch.String(), "\n", "\n\t") + "\n"
+	str += "}"
+	return str
+}
+
+// SwitchCase represents a single case in a select statement.
+type SwitchCase struct {
+	conds          []Body
+	body           Body
+	isDefault      bool
+	hasFallthrough bool
+
+	pos     token.Pos
+	condPos []token.Pos
+	condEnd []token.Pos
+}
+
+// Conds returns the condition bodies of the switch case.
+func (c *SwitchCase) Conds() []*Body {
+	conds := make([]*Body, len(c.conds))
+	for i := range conds {
+		conds[i] = &c.conds[i]
+	}
+	return conds
+}
+
+// CondPos returns the source code position of the condition at the given
+// index.
+func (c *SwitchCase) CondPos(index int) token.Pos {
+	return c.condPos[index]
+}
+
+// CondEnd returns the source code position of the end of the condition at the
+// given index.
+func (c *SwitchCase) CondEnd(index int) token.Pos {
+	return c.condEnd[index]
+}
+
+// AddCond adds a condition body to the switch case.
+func (c *SwitchCase) AddCond(pos, end token.Pos) *Body {
+	var cond Body
+	cond.init()
+	cond.scope.superScope = c.body.scope.superScope
+
+	i := len(c.conds)
+	c.conds = append(c.conds, cond)
+	c.condPos = append(c.condPos, pos)
+	c.condEnd = append(c.condEnd, end)
+
+	return &c.conds[i]
+}
+
+// Body returns the body of the switch case.
+func (c *SwitchCase) Body() *Body {
+	return &c.body
+}
+
+// IsDefault returns if the switch case is the default case.
+func (c *SwitchCase) IsDefault() bool {
+	return c.isDefault
+}
+
+// SetIsDefault sets if the switch case is the default case.
+func (c *SwitchCase) SetIsDefault(isDefault bool) {
+	c.isDefault = isDefault
+}
+
+// HasFallthrough returns if the switch case has a fallthrough statement at the
+// end of its body, leading into the next switch case.
+func (c *SwitchCase) HasFallthrough() bool {
+	return c.hasFallthrough
+}
+
+// SetHasFallthrough sets if the switch case has a fallthrough statement at the
+// end of its body, leading into the next switch case.
+func (c *SwitchCase) SetHasFallthrough(hasFallthrough bool) {
+	c.hasFallthrough = hasFallthrough
+}
+
+// Pos returns the source code position of the switch case.
+func (c *SwitchCase) Pos() token.Pos {
+	return c.pos
+}
+
+func (c *SwitchCase) String() string {
+	str := "case{\n"
+	str += "\tconds{\n"
+	str += "\t}\n"
+	str += "\tbody{\n"
+	str += "\t\t" + strings.ReplaceAll(c.body.String(), "\n", "\n\t\t") + "\n"
+	str += "\t}\n"
+	str += "}"
+	return str
+}
+
+// SwitchStmt represents a switch statement.
+type SwitchStmt struct {
+	cases []*SwitchCase
+
+	superScope *Scope
+
+	Node
+}
+
+// NewSwitchStmt creates a new switch statement embedded in the given
+// enclosing scope.
+func NewSwitchStmt(superScope *Scope, pos, end token.Pos) *SwitchStmt {
+	s := new(SwitchStmt)
+	s.cases = nil
+	s.superScope = superScope
+	s.pos = pos
+	s.end = end
+
+	return s
+}
+
+// Cases returns all cases of the switch statement.
+func (s *SwitchStmt) Cases() []*SwitchCase {
+	return s.cases
+}
+
+// AddCase adds a case to the switch statement. The new case gets returned and
+// the scope of its body (and conditions added later) is embedded in the
+// enclosing scope of the select statement.
+func (s *SwitchStmt) AddCase(pos token.Pos) *SwitchCase {
+	c := new(SwitchCase)
+	c.body.init()
+	c.body.scope.superScope = s.superScope
+	c.pos = pos
+
+	s.cases = append(s.cases, c)
+
+	return c
+}
+
+func (s *SwitchStmt) String() string {
+	str := "switch{\n"
+	for _, c := range s.cases {
+		str += "\t" + strings.ReplaceAll(c.String(), "\n", "\n\t") + "\n"
+	}
 	str += "}"
 	return str
 }
@@ -161,12 +300,12 @@ func (s *ForStmt) SetMaxIterations(maxIterations int) {
 
 func (s *ForStmt) String() string {
 	str := "for{\n"
-	str += "  cond{\n"
-	str += "    " + strings.ReplaceAll(s.cond.String(), "\n", "\n    ") + "\n"
-	str += "  }\n"
-	str += "  body{\n"
-	str += "    " + strings.ReplaceAll(s.body.String(), "\n", "\n    ") + "\n"
-	str += "  }\n"
+	str += "\tcond{\n"
+	str += "\t\t" + strings.ReplaceAll(s.cond.String(), "\n", "\n\t\t") + "\n"
+	str += "\t}\n"
+	str += "\tbody{\n"
+	str += "\t\t" + strings.ReplaceAll(s.body.String(), "\n", "\n\t\t") + "\n"
+	str += "\t}\n"
 	str += "}"
 	return str
 }
@@ -204,16 +343,9 @@ func (s *RangeStmt) Body() *Body {
 
 func (s *RangeStmt) String() string {
 	str := fmt.Sprintf("range %s {\n", s.channel.Handle())
-	str += "  " + strings.ReplaceAll(s.body.String(), "\n", "\n  ") + "\n"
+	str += "\t" + strings.ReplaceAll(s.body.String(), "\n", "\n\t") + "\n"
 	str += "}"
 	return str
-}
-
-// Loop is the common interface for ForStmt and RangeStmt loops
-type Loop interface {
-	Stmt
-
-	Body() *Body
 }
 
 // BranchKind represents a continue or break, undertaken in a BranchStmt.
@@ -235,22 +367,22 @@ func (k BranchKind) String() string {
 	case Break:
 		return "break"
 	default:
-		panic(fmt.Errorf("unknown branch kind: %v", k))
+		panic(fmt.Errorf("unknown branch kind"))
 	}
 }
 
 // BranchStmt represents a continue or break statement in a loop.
 type BranchStmt struct {
-	loop Loop
-	kind BranchKind
+	targetStmt Stmt
+	kind       BranchKind
 
 	Node
 }
 
 // NewBranchStmt creates a new continue or break statement in a loop.
-func NewBranchStmt(loop Loop, kind BranchKind, pos, end token.Pos) *BranchStmt {
+func NewBranchStmt(targetStmt Stmt, kind BranchKind, pos, end token.Pos) *BranchStmt {
 	b := new(BranchStmt)
-	b.loop = loop
+	b.targetStmt = targetStmt
 	b.kind = kind
 	b.pos = pos
 	b.end = end
@@ -258,9 +390,9 @@ func NewBranchStmt(loop Loop, kind BranchKind, pos, end token.Pos) *BranchStmt {
 	return b
 }
 
-// Loop returns the loop that gets continued or exited by the branch statement.
-func (b *BranchStmt) Loop() Loop {
-	return b.loop
+// TargetStmt returns the statement that gets continued or exited by the branch statement.
+func (b *BranchStmt) TargetStmt() Stmt {
+	return b.targetStmt
 }
 
 // Kind returns what kind of operation (continue or break) the branch statement

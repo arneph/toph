@@ -54,6 +54,13 @@ func (b *Body) WalkStmts(visitFunc func(stmt Stmt, scope *Scope)) {
 		case *IfStmt:
 			stmt.IfBranch().WalkStmts(visitFunc)
 			stmt.ElseBranch().WalkStmts(visitFunc)
+		case *SwitchStmt:
+			for _, switchCase := range stmt.Cases() {
+				for _, cond := range switchCase.Conds() {
+					cond.WalkStmts(visitFunc)
+				}
+				switchCase.Body().WalkStmts(visitFunc)
+			}
 		case *ForStmt:
 			stmt.Cond().WalkStmts(visitFunc)
 			stmt.Body().WalkStmts(visitFunc)
@@ -84,7 +91,7 @@ func (b *Body) String() string {
 	s := b.scope.String() + "\n"
 	s += "stmts{\n"
 	for _, stmt := range b.stmts {
-		s += "  " + strings.ReplaceAll(stmt.String(), "\n", "\n  ") + "\n"
+		s += "\t" + strings.ReplaceAll(stmt.String(), "\n", "\n\t") + "\n"
 	}
 	s += "}"
 	return s

@@ -158,7 +158,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		defaultEnter.SetLocationAndResetNameAndCommentLocation(
 			ctx.currentState.Location().Add(uppaal.Location{0, 408}))
 
-		bodySubCtx := ctx.subContextForBody(stmt.DefaultBody(), defaultEnter, exitSelect)
+		bodySubCtx := ctx.subContextForStmt(stmt, stmt.DefaultBody(), defaultEnter, exitSelect, nil, exitSelect)
 		t.translateBody(stmt.DefaultBody(), bodySubCtx)
 
 		if len(stmt.Cases()) > 0 {
@@ -211,7 +211,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 				"check unreachable: "+ctx.proc.Name()+"."+caseEnter.Name()))
 		}
 
-		bodySubCtx := ctx.subContextForBody(c.Body(), caseEnter, exitSelect)
+		bodySubCtx := ctx.subContextForStmt(stmt, c.Body(), caseEnter, exitSelect, nil, exitSelect)
 		t.translateBody(c.Body(), bodySubCtx)
 
 		if i < len(stmt.Cases())-1 {

@@ -246,7 +246,7 @@ func (s *InlinedCallStmt) Body() *Body {
 
 func (s *InlinedCallStmt) String() string {
 	str := fmt.Sprintf("inlined call %v {\n", s.calleeName)
-	str += "  " + strings.ReplaceAll(s.body.String(), "\n", "\n  ") + "\n"
+	str += "\t" + strings.ReplaceAll(s.body.String(), "\n", "\n  ") + "\n"
 	str += "}"
 	return str
 }

@@ -32,29 +32,50 @@ func (c *context) currentFunc() *ir.Func {
 	return c.enclosingFuncs[n-1]
 }
 
-func (c *context) currentLoop() ir.Loop {
+func (c *context) findBreakable(label string) ir.Stmt {
+	if label != "" {
+		stmt := c.enclosingStmtLabels[label]
+		switch stmt.(type) {
+		case *ir.ForStmt, *ir.RangeStmt, *ir.SwitchStmt:
+			return stmt
+		default:
+			return nil
+		}
+	}
 	if len(c.enclosingStmts) == 0 {
 		return nil
 	}
 	for i := len(c.enclosingStmts) - 1; i >= 0; i-- {
-		loop, ok := c.enclosingStmts[i].(ir.Loop)
-		if ok {
-			return loop
+		stmt := c.enclosingStmts[i]
+		switch stmt.(type) {
+		case *ir.ForStmt, *ir.RangeStmt, *ir.SwitchStmt:
+			return stmt
 		}
 	}
 	return nil
 }
 
-func (c *context) currentLabeledLoop(label string) ir.Loop {
-	stmt, ok := c.enclosingStmtLabels[label]
-	if !ok {
+func (c *context) findContinuable(label string) ir.Stmt {
+	if label != "" {
+		stmt := c.enclosingStmtLabels[label]
+		switch stmt.(type) {
+		case *ir.ForStmt, *ir.RangeStmt:
+			return stmt
+		default:
+			return nil
+		}
+	}
+	if len(c.enclosingStmts) == 0 {
 		return nil
 	}
-	loop, ok := stmt.(ir.Loop)
-	if !ok {
-		return nil
+	for i := len(c.enclosingStmts) - 1; i >= 0; i-- {
+		stmt := c.enclosingStmts[i]
+		switch stmt.(type) {
+		case *ir.ForStmt, *ir.RangeStmt:
+			return stmt
+		}
 	}
-	return loop
+	return nil
 }
 
 func (c *context) subContextForBody(stmt ir.Stmt, label string, containedBody *ir.Body) *context {

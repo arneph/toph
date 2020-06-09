@@ -29,6 +29,41 @@ func (b *builder) processIfStmt(stmt *ast.IfStmt, ctx *context) {
 	}
 }
 
+func (b *builder) processSwitchStmt(stmt *ast.SwitchStmt, label string, ctx *context) {
+	if stmt.Init != nil {
+		b.processStmt(stmt.Init, ctx)
+	}
+	if stmt.Tag != nil {
+		b.processExpr(stmt.Tag, ctx)
+	}
+
+	switchStmt := ir.NewSwitchStmt(ctx.body.Scope(), stmt.Pos(), stmt.End())
+	ctx.body.AddStmt(switchStmt)
+
+	for _, s := range stmt.Body.List {
+		caseClause := s.(*ast.CaseClause)
+		switchCase := switchStmt.AddCase(caseClause.Case)
+
+		if caseClause.List == nil {
+			switchCase.SetIsDefault(true)
+		}
+		for _, condExpr := range caseClause.List {
+			condBody := switchCase.AddCond(condExpr.Pos(), condExpr.End()+1)
+			condCtx := ctx.subContextForBody(switchStmt, label, condBody)
+			b.processExpr(condExpr, condCtx)
+		}
+
+		subCtx := ctx.subContextForBody(switchStmt, label, switchCase.Body())
+		for _, s := range caseClause.Body {
+			if branchStmt, ok := s.(*ast.BranchStmt); ok && branchStmt.Tok == token.FALLTHROUGH {
+				switchCase.SetHasFallthrough(true)
+				break
+			}
+			b.processStmt(s, subCtx)
+		}
+	}
+}
+
 func (b *builder) processLabeledStmt(labeledStmt *ast.LabeledStmt, ctx *context) {
 	label := labeledStmt.Label.Name
 	switch stmt := labeledStmt.Stmt.(type) {
@@ -36,6 +71,10 @@ func (b *builder) processLabeledStmt(labeledStmt *ast.LabeledStmt, ctx *context)
 		b.processForStmt(stmt, label, ctx)
 	case *ast.RangeStmt:
 		b.processRangeStmt(stmt, label, ctx)
+	case *ast.SelectStmt:
+		b.processSelectStmt(stmt, label, ctx)
+	case *ast.SwitchStmt:
+		b.processSwitchStmt(stmt, label, ctx)
 	default:
 		p := b.fset.Position(labeledStmt.Pos())
 		b.addWarning(
@@ -113,29 +152,26 @@ func (b *builder) processRangeStmt(stmt *ast.RangeStmt, label string, ctx *conte
 	b.processStmt(stmt.Body, ctx.subContextForBody(forStmt, label, forStmt.Body()))
 }
 
-func (b *builder) processBranchStmt(branchStmt *ast.BranchStmt, ctx *context) {
-	switch branchStmt.Tok {
-	case token.BREAK, token.CONTINUE:
-		var kind ir.BranchKind
-		var loop ir.Loop
-		if branchStmt.Tok == token.CONTINUE {
-			kind = ir.Continue
-		} else {
-			kind = ir.Break
-		}
-		if branchStmt.Label == nil {
-			loop = ctx.currentLoop()
-		} else {
-			loop = ctx.currentLabeledLoop(branchStmt.Label.Name)
-		}
-
-		branchStmt := ir.NewBranchStmt(loop, kind, branchStmt.Pos(), branchStmt.End())
-		ctx.body.AddStmt(branchStmt)
-
+func (b *builder) processBranchStmt(stmt *ast.BranchStmt, ctx *context) {
+	label := ""
+	if stmt.Label != nil {
+		label = stmt.Label.Name
+	}
+	var kind ir.BranchKind
+	var targetStmt ir.Stmt
+	switch stmt.Tok {
+	case token.BREAK:
+		kind = ir.Break
+		targetStmt = ctx.findBreakable(label)
+	case token.CONTINUE:
+		kind = ir.Continue
+		targetStmt = ctx.findContinuable(label)
 	default:
-		p := b.fset.Position(branchStmt.Pos())
+		p := b.fset.Position(stmt.Pos())
 		b.addWarning(
-			fmt.Errorf("%v: unsuported branch statement: %s", p, branchStmt.Tok))
+			fmt.Errorf("%v: unsuported branch statement: %s", p, stmt.Tok))
 		return
 	}
+	branchStmt := ir.NewBranchStmt(targetStmt, kind, stmt.Pos(), stmt.End())
+	ctx.body.AddStmt(branchStmt)
 }

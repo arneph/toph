@@ -95,12 +95,12 @@ func (p *Program) FileSet() *token.FileSet {
 
 func (p *Program) String() string {
 	str := "prog{\n"
-	str += "  " + strings.ReplaceAll(p.scope.String(), "\n", "\n  ") + "\n"
-	str += "  funcs{\n"
+	str += "\t" + strings.ReplaceAll(p.scope.String(), "\n", "\n\t") + "\n"
+	str += "\tfuncs{\n"
 	for _, f := range p.funcs {
-		str += "    " + strings.ReplaceAll(f.String(), "\n", "\n    ") + "\n"
+		str += "\t\t" + strings.ReplaceAll(f.String(), "\n", "\n\t\t") + "\n"
 	}
-	str += "  }\n"
+	str += "\t}\n"
 	str += "}"
 	return str
 }

@@ -367,6 +367,6 @@ func (t *translator) translateBody(b *ir.Body, ctx *context) {
 	}
 
 	if !ctx.isInSpecialControlFlowState() {
-		ctx.proc.AddTrans(ctx.currentState, ctx.exitState)
+		ctx.proc.AddTrans(ctx.currentState, ctx.exitBodyState)
 	}
 }

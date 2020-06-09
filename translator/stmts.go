@@ -19,6 +19,8 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 		t.translateReturnStmt(stmt, ctx)
 	case *ir.IfStmt:
 		t.translateIfStmt(stmt, ctx)
+	case *ir.SwitchStmt:
+		t.translateSwitchStmt(stmt, ctx)
 	case *ir.ForStmt:
 		t.translateForStmt(stmt, ctx)
 	case *ir.RangeStmt:
@@ -284,7 +286,7 @@ func (t *translator) translateIfStmt(stmt *ir.IfStmt, ctx *context) {
 	ifExit := ctx.proc.AddState("exit_if_", uppaal.Renaming)
 	ifExit.SetComment(t.program.FileSet().Position(stmt.End()).String())
 
-	ifSubCtx := ctx.subContextForBody(ifBody, ifEnter, ifExit)
+	ifSubCtx := ctx.subContextForStmt(stmt, ifBody, ifEnter, nil, nil, ifExit)
 	t.translateBody(ifBody, ifSubCtx)
 
 	elseEnter := ctx.proc.AddState("enter_else_", uppaal.Renaming)
@@ -292,7 +294,7 @@ func (t *translator) translateIfStmt(stmt *ir.IfStmt, ctx *context) {
 	elseEnter.SetLocationAndResetNameAndCommentLocation(
 		uppaal.Location{ifSubCtx.maxLoc[0] + 136, ctx.currentState.Location()[1] + 136})
 
-	elseSubCtx := ctx.subContextForBody(elseBody, elseEnter, ifExit)
+	elseSubCtx := ctx.subContextForStmt(stmt, elseBody, elseEnter, nil, nil, ifExit)
 	t.translateBody(elseBody, elseSubCtx)
 
 	var maxY int
@@ -316,34 +318,144 @@ func (t *translator) translateIfStmt(stmt *ir.IfStmt, ctx *context) {
 	ctx.addLocationsFromSubContext(elseSubCtx)
 }
 
+func (t *translator) translateSwitchStmt(stmt *ir.SwitchStmt, ctx *context) {
+	exitSwitch := ctx.proc.AddState("switch_end_", uppaal.Renaming)
+	exitSwitch.SetComment(t.program.FileSet().Position(stmt.End()).String())
+
+	caseCondStarts := make([][]*uppaal.State, len(stmt.Cases()))
+	caseCondEnds := make([][]*uppaal.State, len(stmt.Cases()))
+	caseBodyStarts := make([]*uppaal.State, len(stmt.Cases()))
+	caseBodyEnds := make([]*uppaal.State, len(stmt.Cases()))
+	y := ctx.currentState.Location()[1] + 136
+
+	for i, switchCase := range stmt.Cases() {
+		caseCondStarts[i] = make([]*uppaal.State, len(switchCase.Conds()))
+		caseCondEnds[i] = make([]*uppaal.State, len(switchCase.Conds()))
+		for j, cond := range switchCase.Conds() {
+			condStart := ctx.proc.AddState(fmt.Sprintf("switch_case_%d_cond_%d_enter_", i+1, j+1), uppaal.Renaming)
+			condStart.SetComment(t.program.FileSet().Position(switchCase.CondPos(j)).String())
+			condStart.SetLocationAndResetNameAndCommentLocation(uppaal.Location{ctx.currentState.Location()[0] + 136, y})
+			condEnd := ctx.proc.AddState(fmt.Sprintf("switch_case_%d_cond_%d_exit_", i+1, j+1), uppaal.Renaming)
+			condEnd.SetComment(t.program.FileSet().Position(switchCase.CondEnd(j)).String())
+
+			subCtx := ctx.subContextForStmt(stmt, cond, condStart, nil, nil, condEnd)
+			t.translateBody(cond, subCtx)
+
+			y = subCtx.maxLoc[1] + 136
+			condEnd.SetLocationAndResetNameAndCommentLocation(uppaal.Location{ctx.currentState.Location()[0] + 136, y})
+			y += 136
+
+			caseCondStarts[i][j] = condStart
+			caseCondEnds[i][j] = condEnd
+
+			ctx.addLocation(condStart.Location())
+			ctx.addLocation(condEnd.Location())
+		}
+
+		body := switchCase.Body()
+		bodyStart := ctx.proc.AddState(fmt.Sprintf("switch_case_%d_body_enter_", i+1), uppaal.Renaming)
+		bodyStart.SetComment(t.program.FileSet().Position(switchCase.Pos()).String())
+		bodyStart.SetLocationAndResetNameAndCommentLocation(uppaal.Location{ctx.currentState.Location()[0] + 136, y})
+		bodyEnd := ctx.proc.AddState(fmt.Sprintf("switch_case_%d_body_exit_", i+1), uppaal.Renaming)
+		if i < len(stmt.Cases())-1 {
+			bodyEnd.SetComment(t.program.FileSet().Position(stmt.Cases()[i+1].Pos()).String())
+		} else {
+			bodyEnd.SetComment(t.program.FileSet().Position(stmt.End()).String())
+		}
+
+		subCtx := ctx.subContextForStmt(stmt, body, bodyStart, exitSwitch, nil, bodyEnd)
+		t.translateBody(body, subCtx)
+
+		y = subCtx.maxLoc[1] + 136
+		bodyEnd.SetLocationAndResetNameAndCommentLocation(uppaal.Location{ctx.currentState.Location()[0] + 136, y})
+		y += 136
+
+		caseBodyStarts[i] = bodyStart
+		caseBodyEnds[i] = bodyEnd
+
+		ctx.addLocation(bodyStart.Location())
+		ctx.addLocation(bodyEnd.Location())
+	}
+
+	exitSwitch.SetLocationAndResetNameAndCommentLocation(uppaal.Location{ctx.currentState.Location()[0], y})
+
+	lastCondState := ctx.currentState
+	defaultCaseIndex := -1
+	for i, switchCase := range stmt.Cases() {
+		if !switchCase.HasFallthrough() {
+			trans := ctx.proc.AddTrans(caseBodyEnds[i], exitSwitch)
+			trans.AddNail(caseBodyEnds[i].Location().Add(uppaal.Location{-136, 0}))
+		} else {
+			trans := ctx.proc.AddTrans(caseBodyEnds[i], caseBodyStarts[i+1])
+			trans.AddNail(caseBodyEnds[i].Location().Add(uppaal.Location{-34, 0}))
+			trans.AddNail(caseBodyStarts[i+1].Location().Add(uppaal.Location{-34, 0}))
+		}
+		if switchCase.IsDefault() {
+			defaultCaseIndex = i
+			continue
+		}
+
+		for j := range switchCase.Conds() {
+			trans1 := ctx.proc.AddTrans(lastCondState, caseCondStarts[i][j])
+			if i > 0 && j == 0 {
+				trans1.AddNail(lastCondState.Location().Add(uppaal.Location{-102, 0}))
+				trans1.AddNail(caseCondStarts[i][j].Location().Add(uppaal.Location{-102, 0}))
+			}
+			trans2 := ctx.proc.AddTrans(caseCondEnds[i][j], caseBodyStarts[i])
+			trans2.AddNail(caseCondEnds[i][j].Location().Add(uppaal.Location{-68, 0}))
+			trans2.AddNail(caseBodyStarts[i].Location().Add(uppaal.Location{-68, 0}))
+			lastCondState = caseCondEnds[i][j]
+		}
+	}
+	if defaultCaseIndex != -1 {
+		trans := ctx.proc.AddTrans(lastCondState, caseBodyStarts[defaultCaseIndex])
+		if lastCondState != ctx.currentState {
+			x := 68
+			if defaultCaseIndex < len(stmt.Cases())-1 {
+				x += 17
+			}
+			trans.AddNail(lastCondState.Location().Add(uppaal.Location{-x, 0}))
+			trans.AddNail(caseBodyStarts[defaultCaseIndex].Location().Add(uppaal.Location{-x, 0}))
+		}
+	} else {
+		trans := ctx.proc.AddTrans(lastCondState, exitSwitch)
+		if lastCondState != ctx.currentState {
+			trans.AddNail(lastCondState.Location().Add(uppaal.Location{-136, 0}))
+		}
+	}
+
+	ctx.currentState = exitSwitch
+	ctx.addLocation(exitSwitch.Location())
+}
+
 func (t *translator) translateForStmt(stmt *ir.ForStmt, ctx *context) {
 	cond := stmt.Cond()
 	body := stmt.Body()
 
-	condEnter := ctx.proc.AddState("enter_loop_cond_", uppaal.Renaming)
+	condEnter := ctx.proc.AddState("loop_cond_enter_", uppaal.Renaming)
 	condEnter.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	condEnter.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{136, 136}))
-	condExit := ctx.proc.AddState("exit_loop_cond_", uppaal.Renaming)
+	condExit := ctx.proc.AddState("loop_cond_exit_", uppaal.Renaming)
 	condExit.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 
-	condSubCtx := ctx.subContextForBody(cond, condEnter, condExit)
+	condSubCtx := ctx.subContextForStmt(stmt, cond, condEnter, nil, nil, condExit)
 	t.translateBody(cond, condSubCtx)
 
 	condExitY := condSubCtx.maxLoc[1] + 136
 	condExit.SetLocationAndResetNameAndCommentLocation(
 		uppaal.Location{condEnter.Location()[0], condExitY})
 
-	bodyEnter := ctx.proc.AddState("enter_loop_body_", uppaal.Renaming)
+	bodyEnter := ctx.proc.AddState("loop_body_enter_", uppaal.Renaming)
 	bodyEnter.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	bodyEnter.SetLocationAndResetNameAndCommentLocation(
 		condExit.Location().Add(uppaal.Location{0, 136}))
-	bodyExit := ctx.proc.AddState("exit_loop_body_", uppaal.Renaming)
+	bodyExit := ctx.proc.AddState("loop_body_exit_", uppaal.Renaming)
 	bodyExit.SetComment(t.program.FileSet().Position(stmt.End()).String())
-	loopExit := ctx.proc.AddState("exit_loop_", uppaal.Renaming)
+	loopExit := ctx.proc.AddState("loop_exit_", uppaal.Renaming)
 	loopExit.SetComment(t.program.FileSet().Position(stmt.End()).String())
 
-	bodySubCtx := ctx.subContextForLoopBody(stmt, bodyEnter, bodyExit, loopExit)
+	bodySubCtx := ctx.subContextForStmt(stmt, body, bodyEnter, loopExit, bodyExit, bodyExit)
 	t.translateBody(body, bodySubCtx)
 
 	bodyExitY := bodySubCtx.maxLoc[1] + 136
@@ -354,7 +466,7 @@ func (t *translator) translateForStmt(stmt *ir.ForStmt, ctx *context) {
 
 	var counterVar string
 	if stmt.HasMinIterations() || stmt.HasMaxIterations() {
-		loopCount := len(ctx.continueLoopStates)
+		loopCount := len(ctx.continueStates)
 		counterVar = fmt.Sprintf("i%d", loopCount)
 		ctx.proc.Declarations().AddVariable(counterVar, "int", "0")
 	}
@@ -432,16 +544,16 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 		"A[] (not out_of_resources) imply (not (deadlock and $."+receiving.Name()+"))",
 		"check deadlock with pending channel operation unreachable"))
 
-	bodyEnter := ctx.proc.AddState("enter_loop_body_", uppaal.Renaming)
+	bodyEnter := ctx.proc.AddState("loop_body_enter_", uppaal.Renaming)
 	bodyEnter.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	bodyEnter.SetLocationAndResetNameAndCommentLocation(
 		received.Location().Add(uppaal.Location{0, 136}))
-	bodyExit := ctx.proc.AddState("exit_loop_body_", uppaal.Renaming)
+	bodyExit := ctx.proc.AddState("loop_body_exit_", uppaal.Renaming)
 	bodyExit.SetComment(t.program.FileSet().Position(stmt.End()).String())
-	loopExit := ctx.proc.AddState("exit_loop_", uppaal.Renaming)
+	loopExit := ctx.proc.AddState("loop_exit_", uppaal.Renaming)
 	loopExit.SetComment(t.program.FileSet().Position(stmt.End()).String())
 
-	bodySubCtx := ctx.subContextForLoopBody(stmt, bodyEnter, bodyExit, loopExit)
+	bodySubCtx := ctx.subContextForStmt(stmt, body, bodyEnter, loopExit, bodyExit, bodyExit)
 	t.translateBody(body, bodySubCtx)
 
 	bodyExitY := bodySubCtx.maxLoc[1] + 136
@@ -476,20 +588,20 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 }
 
 func (t *translator) translateBranchStmt(stmt *ir.BranchStmt, ctx *context) {
-	var next *uppaal.State
+	var target *uppaal.State
 	var ok bool
 	switch stmt.Kind() {
 	case ir.Continue:
-		next, ok = ctx.continueLoopStates[stmt.Loop()]
+		target, ok = ctx.continueStates[stmt.TargetStmt()]
 	case ir.Break:
-		next, ok = ctx.breakLoopStates[stmt.Loop()]
+		target, ok = ctx.breakStates[stmt.TargetStmt()]
 	default:
 		panic(fmt.Errorf("unexpected ir.BranchKind: %v", stmt.Kind()))
 	}
-	if !ok || next == nil {
-		panic(fmt.Errorf("did not find next state for branch stmt: %v", stmt))
+	if !ok || target == nil {
+		panic(fmt.Errorf("did not find target state for branch stmt: %v", stmt))
 	}
 
-	ctx.proc.AddTrans(ctx.currentState, next)
-	ctx.currentState = next
+	ctx.proc.AddTrans(ctx.currentState, target)
+	ctx.currentState = target
 }

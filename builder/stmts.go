@@ -34,9 +34,11 @@ func (b *builder) processStmt(stmt ast.Stmt, ctx *context) {
 	case *ast.ReturnStmt:
 		b.processReturnStmt(s, ctx)
 	case *ast.SelectStmt:
-		b.processSelectStmt(s, ctx)
+		b.processSelectStmt(s, "", ctx)
 	case *ast.SendStmt:
 		b.processSendStmt(s, true, ctx)
+	case *ast.SwitchStmt:
+		b.processSwitchStmt(s, "", ctx)
 	default:
 		p := b.fset.Position(stmt.Pos())
 		b.addWarning(fmt.Errorf("%v: ignoring %T statement", p, s))

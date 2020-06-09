@@ -27,3 +27,4 @@ func (s *MakeChanStmt) stmt()    {}
 func (s *RangeStmt) stmt()       {}
 func (s *ReturnStmt) stmt()      {}
 func (s *SelectStmt) stmt()      {}
+func (s *SwitchStmt) stmt()      {}

@@ -171,7 +171,7 @@ func (c *SelectCase) Pos() token.Pos {
 
 func (c *SelectCase) String() string {
 	str := "case " + c.op.String() + " {\n"
-	str += "  " + strings.ReplaceAll(c.body.String(), "\n", "\n  ") + "\n"
+	str += "\t" + strings.ReplaceAll(c.body.String(), "\n", "\n\t") + "\n"
 	str += "}"
 	return str
 }
@@ -253,12 +253,12 @@ func (s *SelectStmt) SetDefaultPos(defaultPos token.Pos) {
 func (s *SelectStmt) String() string {
 	str := "select{\n"
 	for _, c := range s.cases {
-		str += "  " + strings.ReplaceAll(c.String(), "\n", "\n  ") + "\n"
+		str += "\t" + strings.ReplaceAll(c.String(), "\n", "\n\t") + "\n"
 	}
 	if s.hasDefault {
-		str += "default {\n"
-		str += "  " + strings.ReplaceAll(s.defaultBody.String(), "\n", "\n  ") + "\n"
-		str += "}\n"
+		str += "\tdefault {\n"
+		str += "\t\t" + strings.ReplaceAll(s.defaultBody.String(), "\n", "\n\t\t") + "\n"
+		str += "\t}\n"
 	}
 	str += "}"
 	return str

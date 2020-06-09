@@ -10,28 +10,29 @@ type context struct {
 	body *ir.Body
 	proc *uppaal.Process
 
-	currentState *uppaal.State
-	exitState    *uppaal.State
-
-	exitFuncState      *uppaal.State
-	continueLoopStates map[ir.Loop]*uppaal.State
-	breakLoopStates    map[ir.Loop]*uppaal.State
+	currentState   *uppaal.State
+	exitBodyState  *uppaal.State
+	exitFuncState  *uppaal.State
+	breakStates    map[ir.Stmt]*uppaal.State
+	continueStates map[ir.Stmt]*uppaal.State
 
 	minLoc, maxLoc uppaal.Location
 }
 
-func newContext(f *ir.Func, p *uppaal.Process, current, exit *uppaal.State) *context {
+func newContext(f *ir.Func, p *uppaal.Process, currentState, exitFuncState *uppaal.State) *context {
 	ctx := new(context)
 	ctx.f = f
 	ctx.body = f.Body()
 	ctx.proc = p
 
-	ctx.currentState = current
-	ctx.exitState = exit
-	ctx.exitFuncState = exit
+	ctx.currentState = currentState
+	ctx.exitBodyState = exitFuncState
+	ctx.exitFuncState = exitFuncState
+	ctx.breakStates = make(map[ir.Stmt]*uppaal.State)
+	ctx.continueStates = make(map[ir.Stmt]*uppaal.State)
 
-	ctx.minLoc = current.Location()
-	ctx.maxLoc = current.Location()
+	ctx.minLoc = currentState.Location()
+	ctx.maxLoc = currentState.Location()
 
 	return ctx
 }
@@ -40,12 +41,12 @@ func (c *context) isInSpecialControlFlowState() bool {
 	if c.currentState == c.exitFuncState {
 		return true
 	}
-	for _, s := range c.continueLoopStates {
+	for _, s := range c.breakStates {
 		if c.currentState == s {
 			return true
 		}
 	}
-	for _, s := range c.breakLoopStates {
+	for _, s := range c.continueStates {
 		if c.currentState == s {
 			return true
 		}
@@ -53,69 +54,47 @@ func (c *context) isInSpecialControlFlowState() bool {
 	return false
 }
 
-func (c *context) subContextForBody(body *ir.Body, current, exit *uppaal.State) *context {
+func (c *context) subContextForStmt(stmt ir.Stmt, body *ir.Body, currentState, breakState, continueState, exitBodyState *uppaal.State) *context {
+	ctx := new(context)
+	ctx.f = c.f
+	ctx.body = body
+	ctx.proc = c.proc
+
+	ctx.currentState = currentState
+	ctx.exitBodyState = exitBodyState
+	ctx.exitFuncState = c.exitFuncState
+	ctx.continueStates = make(map[ir.Stmt]*uppaal.State)
+	for l, s := range c.continueStates {
+		ctx.continueStates[l] = s
+	}
+	ctx.continueStates[stmt] = continueState
+	ctx.breakStates = make(map[ir.Stmt]*uppaal.State)
+	for l, s := range c.breakStates {
+		ctx.breakStates[l] = s
+	}
+	ctx.breakStates[stmt] = breakState
+
+	ctx.minLoc = currentState.Location()
+	ctx.maxLoc = currentState.Location()
+
+	return ctx
+}
+
+func (c *context) subContextForInlinedCallBody(body *ir.Body, currentState, exitState *uppaal.State) *context {
 	ctx := new(context)
 
 	ctx.f = c.f
 	ctx.body = body
 	ctx.proc = c.proc
 
-	ctx.currentState = current
-	ctx.exitState = exit
+	ctx.currentState = currentState
+	ctx.exitBodyState = exitState
+	ctx.exitFuncState = exitState
+	ctx.continueStates = c.continueStates
+	ctx.breakStates = c.breakStates
 
-	ctx.exitFuncState = c.exitFuncState
-	ctx.continueLoopStates = c.continueLoopStates
-	ctx.breakLoopStates = c.breakLoopStates
-
-	ctx.minLoc = current.Location()
-	ctx.maxLoc = current.Location()
-
-	return ctx
-}
-
-func (c *context) subContextForInlinedCallBody(body *ir.Body, current, exit *uppaal.State) *context {
-	ctx := new(context)
-
-	ctx.f = c.f
-	ctx.body = body
-	ctx.proc = c.proc
-
-	ctx.currentState = current
-	ctx.exitState = exit
-
-	ctx.exitFuncState = exit
-	ctx.continueLoopStates = c.continueLoopStates
-	ctx.breakLoopStates = c.breakLoopStates
-
-	ctx.minLoc = current.Location()
-	ctx.maxLoc = current.Location()
-
-	return ctx
-}
-
-func (c *context) subContextForLoopBody(loop ir.Loop, current, continueLoop, breakLoop *uppaal.State) *context {
-	ctx := new(context)
-	ctx.f = c.f
-	ctx.body = loop.Body()
-	ctx.proc = c.proc
-
-	ctx.currentState = current
-	ctx.exitState = continueLoop
-
-	ctx.exitFuncState = c.exitFuncState
-	ctx.continueLoopStates = make(map[ir.Loop]*uppaal.State)
-	for l, s := range c.continueLoopStates {
-		ctx.continueLoopStates[l] = s
-	}
-	ctx.continueLoopStates[loop] = continueLoop
-	ctx.breakLoopStates = make(map[ir.Loop]*uppaal.State)
-	for l, s := range c.breakLoopStates {
-		ctx.breakLoopStates[l] = s
-	}
-	ctx.breakLoopStates[loop] = breakLoop
-
-	ctx.minLoc = current.Location()
-	ctx.maxLoc = current.Location()
+	ctx.minLoc = currentState.Location()
+	ctx.maxLoc = currentState.Location()
 
 	return ctx
 }

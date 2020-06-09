@@ -99,6 +99,13 @@ type callsInfo struct {
 	closeChanCount int
 }
 
+func (info *callsInfo) init() {
+	info.callerCount = 0
+	info.calleeCounts = make(map[*ir.Func]int)
+	info.makeChanCount = 0
+	info.closeChanCount = 0
+}
+
 func (info *callsInfo) addCallerCount(count int) {
 	info.callerCount += count
 	if info.callerCount > MaxCallCounts {
@@ -175,10 +182,7 @@ func (info *callsInfo) mergeFromCalleesInfo(other callsInfo) {
 }
 
 func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
-	res.callerCount = 0
-	res.calleeCounts = make(map[*ir.Func]int)
-	res.makeChanCount = 0
-	res.closeChanCount = 0
+	res.init()
 
 	for _, stmt := range body.Stmts() {
 		switch stmt := stmt.(type) {
@@ -207,6 +211,8 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 			res.addCloseChanCallCount(1)
 		case *ir.IfStmt:
 			res.addCalleesInfo(findCalleesInfoForIfStmt(stmt, callKinds, fcg))
+		case *ir.SwitchStmt:
+			res.addCalleesInfo(findCalleesInfoForSwitchStmt(stmt, callKinds, fcg))
 		case *ir.SelectStmt:
 			res.addCalleesInfo(findCalleesInfoForSelectStmt(stmt, callKinds, fcg))
 		case *ir.ForStmt:
@@ -226,22 +232,73 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 }
 
 func findCalleesInfoForIfStmt(ifStmt *ir.IfStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
-	res.callerCount = 0
-	res.calleeCounts = make(map[*ir.Func]int)
-	res.makeChanCount = 0
-	res.closeChanCount = 0
+	res.init()
 	res.mergeFromCalleesInfo(findCalleesInfoForBody(ifStmt.IfBranch(), callKinds, fcg))
 	res.mergeFromCalleesInfo(findCalleesInfoForBody(ifStmt.ElseBranch(), callKinds, fcg))
 	return
 }
 
+func findCalleesInfoForSwitchStmt(switchStmt *ir.SwitchStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
+	res.init()
+
+	bodyInfos := make([]callsInfo, len(switchStmt.Cases()))
+	for i, switchCase := range switchStmt.Cases() {
+		bodyInfos[i] = findCalleesInfoForBody(switchCase.Body(), callKinds, fcg)
+	}
+
+	var condInfo callsInfo
+	condInfo.init()
+
+	var defaultCase *ir.SwitchCase
+	var defaultCaseIndex int
+
+	for i, switchCase := range switchStmt.Cases() {
+		if switchCase.IsDefault() {
+			defaultCase = switchCase
+			defaultCaseIndex = i
+			continue
+		}
+
+		for _, cond := range switchCase.Conds() {
+			condInfo.addCalleesInfo(findCalleesInfoForBody(cond, callKinds, fcg))
+		}
+
+		var executeCaseInfo callsInfo
+		executeCaseInfo.init()
+		executeCaseInfo.addCalleesInfo(condInfo)
+		executeCaseInfo.addCalleesInfo(bodyInfos[i])
+
+		j := i
+		for switchStmt.Cases()[j].HasFallthrough() {
+			j++
+			executeCaseInfo.addCalleesInfo(bodyInfos[j])
+		}
+
+		res.mergeFromCalleesInfo(executeCaseInfo)
+	}
+
+	if defaultCase != nil {
+		var executeDefaultInfo callsInfo
+		executeDefaultInfo.init()
+		executeDefaultInfo.addCalleesInfo(condInfo)
+		executeDefaultInfo.addCalleesInfo(bodyInfos[defaultCaseIndex])
+
+		j := defaultCaseIndex
+		for switchStmt.Cases()[j].HasFallthrough() {
+			j++
+			executeDefaultInfo.addCalleesInfo(bodyInfos[j])
+		}
+
+		res.mergeFromCalleesInfo(executeDefaultInfo)
+	}
+
+	return
+}
+
 func findCalleesInfoForSelectStmt(selectStmt *ir.SelectStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
-	res.callerCount = 0
-	res.calleeCounts = make(map[*ir.Func]int)
-	res.makeChanCount = 0
-	res.closeChanCount = 0
-	for _, c := range selectStmt.Cases() {
-		res.mergeFromCalleesInfo(findCalleesInfoForBody(c.Body(), callKinds, fcg))
+	res.init()
+	for _, selectCase := range selectStmt.Cases() {
+		res.mergeFromCalleesInfo(findCalleesInfoForBody(selectCase.Body(), callKinds, fcg))
 	}
 	if selectStmt.HasDefault() {
 		res.mergeFromCalleesInfo(findCalleesInfoForBody(selectStmt.DefaultBody(), callKinds, fcg))
@@ -250,10 +307,7 @@ func findCalleesInfoForSelectStmt(selectStmt *ir.SelectStmt, callKinds ir.CallKi
 }
 
 func findCalleesInfoForForStmt(forStmt *ir.ForStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
-	res.callerCount = 0
-	res.calleeCounts = make(map[*ir.Func]int)
-	res.makeChanCount = 0
-	res.closeChanCount = 0
+	res.init()
 	f := MaxCallCounts
 	if forStmt.HasMaxIterations() {
 		f = forStmt.MaxIterations()

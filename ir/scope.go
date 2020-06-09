@@ -61,9 +61,7 @@ func (s *Scope) AddVariable(v *Variable) {
 func (s *Scope) String() string {
 	str := "scope{\n"
 	for _, v := range s.variables {
-		str += "  "
-		str += strings.ReplaceAll(v.String(), "\n", "\n  ")
-		str += "\n"
+		str += "\t" + strings.ReplaceAll(v.String(), "\n", "\n\t") + "\n"
 	}
 	str += "}"
 	return str

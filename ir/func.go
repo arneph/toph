@@ -151,9 +151,9 @@ func (f *Func) Body() *Body {
 
 func (f *Func) String() string {
 	s := "func{\n"
-	s += fmt.Sprintf("  index: %d\n", f.index)
-	s += "  name: " + f.Name() + "\n"
-	s += "  args: "
+	s += fmt.Sprintf("\tindex: %d\n", f.index)
+	s += "\tname: " + f.Name() + "\n"
+	s += "\targs: "
 	firstArg := true
 	for _, arg := range f.args {
 		if firstArg {
@@ -164,7 +164,7 @@ func (f *Func) String() string {
 		s += arg.Handle()
 	}
 	s += "\n"
-	s += "  results: "
+	s += "\tresults: "
 	firstResult := true
 	for i, resultType := range f.resultTypes {
 		result, ok := f.results[i]
@@ -181,9 +181,9 @@ func (f *Func) String() string {
 	}
 	s += "\n"
 	if f.enclosingFunc != nil {
-		s += fmt.Sprintf("  enclosing func index: %d\n", f.enclosingFunc.index)
+		s += fmt.Sprintf("\tenclosing func index: %d\n", f.enclosingFunc.index)
 	}
-	s += "  " + strings.ReplaceAll(f.body.String(), "\n", "\n  ") + "\n"
+	s += "\t" + strings.ReplaceAll(f.body.String(), "\n", "\n\t") + "\n"
 	s += "}"
 	return s
 }

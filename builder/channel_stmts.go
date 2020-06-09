@@ -85,7 +85,7 @@ func (b *builder) processCloseExpr(callExpr *ast.CallExpr, callKind ir.CallKind,
 	ctx.body.AddStmt(closeStmt)
 }
 
-func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx *context) {
+func (b *builder) processSelectStmt(stmt *ast.SelectStmt, label string, ctx *context) {
 	selectStmt := ir.NewSelectStmt(ctx.body.Scope(), stmt.Pos(), stmt.End())
 	ctx.body.AddStmt(selectStmt)
 
@@ -160,8 +160,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, ctx *context) {
 			body = selectStmt.DefaultBody()
 		}
 
-		subCtx := ctx.subContextForBody(selectStmt, "", body)
-
+		subCtx := ctx.subContextForBody(selectStmt, label, body)
 		for _, stmt := range commClause.Body {
 			b.processStmt(stmt, subCtx)
 		}

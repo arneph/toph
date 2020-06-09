@@ -49,19 +49,19 @@ func eliminateDeadCodeInBody(body *ir.Body) {
 stmtsLoop:
 	for _, stmt := range body.Stmts() {
 		switch stmt := stmt.(type) {
+		case *ir.IfStmt:
+			eliminateDeadCodeInBody(stmt.IfBranch())
+			eliminateDeadCodeInBody(stmt.ElseBranch())
+
+			if isBodyEmpty(stmt.IfBranch()) && isBodyEmpty(stmt.ElseBranch()) {
+				continue stmtsLoop
+			}
 		case *ir.ForStmt:
 			eliminateDeadCodeInBody(stmt.Cond())
 			eliminateDeadCodeInBody(stmt.Body())
 
 			if !stmt.IsInfinite() &&
 				isBodyEmpty(stmt.Cond()) && isBodyEmpty(stmt.Body()) {
-				continue stmtsLoop
-			}
-		case *ir.IfStmt:
-			eliminateDeadCodeInBody(stmt.IfBranch())
-			eliminateDeadCodeInBody(stmt.ElseBranch())
-
-			if isBodyEmpty(stmt.IfBranch()) && isBodyEmpty(stmt.ElseBranch()) {
 				continue stmtsLoop
 			}
 		}
