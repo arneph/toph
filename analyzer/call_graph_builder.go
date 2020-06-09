@@ -219,8 +219,6 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 			res.addCalleesInfo(findCalleesInfoForForStmt(stmt, callKinds, fcg))
 		case *ir.RangeStmt:
 			res.addCalleesInfo(findCalleesInfoForRangeStmt(stmt, callKinds, fcg))
-		case *ir.InlinedCallStmt:
-			res.addCalleesInfo(findCalleesInfoForBody(stmt.Body(), callKinds, fcg))
 		case *ir.AssignStmt, *ir.BranchStmt, *ir.ChanOpStmt, *ir.ReturnStmt:
 			continue
 		default:

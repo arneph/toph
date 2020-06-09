@@ -13,8 +13,6 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 		t.translateAssignStmt(stmt, ctx)
 	case *ir.CallStmt:
 		t.translateCallStmt(stmt, ctx)
-	case *ir.InlinedCallStmt:
-		t.translateInlinedCallStmt(stmt, ctx)
 	case *ir.ReturnStmt:
 		t.translateReturnStmt(stmt, ctx)
 	case *ir.IfStmt:
@@ -229,28 +227,6 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 		ctx.addLocation(created.Location())
 		ctx.addLocation(deferred.Location())
 	}
-}
-
-func (t *translator) translateInlinedCallStmt(stmt *ir.InlinedCallStmt, ctx *context) {
-	inlinedEnter := ctx.proc.AddState("enter_inlined_"+stmt.CalleeName()+"_", uppaal.Renaming)
-	inlinedEnter.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
-	inlinedEnter.SetLocationAndResetNameAndCommentLocation(
-		ctx.currentState.Location().Add(uppaal.Location{136, 136}))
-
-	inlinedExit := ctx.proc.AddState("exit_inlined_"+stmt.CalleeName()+"_", uppaal.Renaming)
-	inlinedExit.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
-
-	inlinedSubCtx := ctx.subContextForInlinedCallBody(stmt.Body(), inlinedEnter, inlinedExit)
-	t.translateBody(stmt.Body(), inlinedSubCtx)
-
-	inlinedExit.SetLocationAndResetNameAndCommentLocation(
-		uppaal.Location{ctx.currentState.Location()[0], inlinedSubCtx.maxLoc[1] + 136})
-
-	ctx.proc.AddTrans(ctx.currentState, inlinedEnter)
-	ctx.currentState = inlinedExit
-	ctx.addLocation(inlinedEnter.Location())
-	ctx.addLocation(inlinedExit.Location())
-	ctx.addLocationsFromSubContext(inlinedSubCtx)
 }
 
 func (t *translator) translateReturnStmt(stmt *ir.ReturnStmt, ctx *context) {

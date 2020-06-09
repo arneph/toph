@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"go/token"
 	"go/types"
-	"strings"
 )
 
 // Callable is the common interface for receivers of function and go calls.
@@ -210,43 +209,5 @@ func (s *ReturnStmt) String() string {
 			panic(fmt.Errorf("unexpected %T rvalue type", result))
 		}
 	}
-	return str
-}
-
-// InlinedCallStmt represents an inlined function call.
-type InlinedCallStmt struct {
-	calleeName string
-	body       Body
-
-	Node
-}
-
-// NewInlinedCallStmt returns a new inlined call to the given function,
-// embedded in the given enclosing scope.
-func NewInlinedCallStmt(calleeName string, superScope *Scope, pos, end token.Pos) *InlinedCallStmt {
-	s := new(InlinedCallStmt)
-	s.calleeName = calleeName
-	s.body.init()
-	s.body.scope.superScope = superScope
-	s.pos = pos
-	s.end = end
-
-	return s
-}
-
-// CalleeName returns the name of the inlined function of the inlined call.
-func (s *InlinedCallStmt) CalleeName() string {
-	return s.calleeName
-}
-
-// Body returns the body of the inlined function call.
-func (s *InlinedCallStmt) Body() *Body {
-	return &s.body
-}
-
-func (s *InlinedCallStmt) String() string {
-	str := fmt.Sprintf("inlined call %v {\n", s.calleeName)
-	str += "\t" + strings.ReplaceAll(s.body.String(), "\n", "\n  ") + "\n"
-	str += "}"
 	return str
 }

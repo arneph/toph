@@ -44,8 +44,6 @@ func (b *Body) WalkStmts(visitFunc func(stmt Stmt, scope *Scope)) {
 			*MakeChanStmt, *ChanOpStmt, *CloseChanStmt,
 			*CallStmt, *ReturnStmt:
 			continue
-		case *InlinedCallStmt:
-			stmt.Body().WalkStmts(visitFunc)
 		case *SelectStmt:
 			for _, c := range stmt.Cases() {
 				c.Body().WalkStmts(visitFunc)
