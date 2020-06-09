@@ -12,7 +12,8 @@ type Program struct {
 	entryFunc *Func
 	funcCount int
 
-	scope Scope
+	scope         Scope
+	variableCount int
 
 	fset *token.FileSet
 }
@@ -86,6 +87,15 @@ func (p *Program) RemoveFuncs(oldFuncs map[*Func]bool) {
 // Scope returns the global scope of the program.
 func (p *Program) Scope() *Scope {
 	return &p.scope
+}
+
+// NewVariable creates a new variable with the given arguments. The new
+// variable is not part of any scope.
+func (p *Program) NewVariable(name string, t Type, initialValue Value) *Variable {
+	v := newVariable(VariableIndex(p.variableCount), name, t, initialValue)
+	p.variableCount++
+
+	return v
 }
 
 // FileSet returns the token.FileSet from which the program was built.

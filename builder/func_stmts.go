@@ -64,7 +64,7 @@ func (b *builder) processCallResultVars(calleeSignature *types.Signature, result
 		}
 		v, ok := results[i]
 		if !ok {
-			v = ir.NewVariable("", t, -1)
+			v = b.program.NewVariable("", t, -1)
 			ctx.body.Scope().AddVariable(v)
 			results[i] = v
 		}
@@ -80,7 +80,7 @@ func (b *builder) processCallExprWithResultVars(callExpr *ast.CallExpr, callKind
 		if fIdent.Name == "make" {
 			v, ok := resVars[0]
 			if !ok {
-				v = ir.NewVariable("", ir.ChanType, -1)
+				v = b.program.NewVariable("", ir.ChanType, -1)
 				ctx.body.Scope().AddVariable(v)
 				resVars[0] = v
 			}

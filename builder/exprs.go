@@ -46,7 +46,7 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		return nil
 	case *ast.FuncLit:
 		f := b.processFuncLit(e, ctx)
-		v := ir.NewVariable("", ir.FuncType, f.FuncValue())
+		v := b.program.NewVariable("", ir.FuncType, f.FuncValue())
 		ctx.body.Scope().AddVariable(v)
 		return v
 	case *ast.Ident:

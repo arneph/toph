@@ -20,7 +20,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 		}
 		for _, fieldNameIdent := range field.Names {
 			varType := b.info.Defs[fieldNameIdent].(*types.Var)
-			v := ir.NewVariable(fieldNameIdent.Name, t, -1)
+			v := b.program.NewVariable(fieldNameIdent.Name, t, -1)
 			f.AddArg(argIndex, v)
 			b.varTypes[varType] = v
 			argIndex++
@@ -45,7 +45,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 		} else {
 			for _, fieldNameIdent := range field.Names {
 				varType := b.info.Defs[fieldNameIdent].(*types.Var)
-				v := ir.NewVariable(fieldNameIdent.Name, t, -1)
+				v := b.program.NewVariable(fieldNameIdent.Name, t, -1)
 				f.AddResult(resultIndex, v)
 				b.varTypes[varType] = v
 				resultIndex++

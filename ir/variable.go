@@ -45,8 +45,6 @@ func (v Value) String() string {
 // VariableIndex represents the index of a variable.
 type VariableIndex int
 
-var variableCount int
-
 // Variable represents a variable or constant in Go source code.
 type Variable struct {
 	index        VariableIndex
@@ -56,16 +54,13 @@ type Variable struct {
 	captured     bool
 }
 
-// NewVariable creates a new variable with the given arguments.
-func NewVariable(name string, t Type, initialValue Value) *Variable {
+func newVariable(index VariableIndex, name string, t Type, initialValue Value) *Variable {
 	v := new(Variable)
-	v.index = VariableIndex(variableCount)
+	v.index = index
 	v.name = name
 	v.t = t
 	v.initialValue = initialValue
 	v.captured = false
-
-	variableCount++
 
 	return v
 }

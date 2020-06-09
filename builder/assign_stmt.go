@@ -26,7 +26,7 @@ func (b *builder) getDefinedVarsInAssignStmt(stmt *ast.AssignStmt) map[int]*ir.V
 			continue
 		}
 
-		v := ir.NewVariable(nameIdent.Name, t, -1)
+		v := b.program.NewVariable(nameIdent.Name, t, -1)
 		definedVars[i] = v
 		b.varTypes[varType] = v
 	}

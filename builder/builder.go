@@ -149,17 +149,17 @@ func (b *builder) processFuncDeclsInFile(file *ast.File) {
 		funcType := b.info.Defs[funcDecl.Name].(*types.Func)
 		sig := funcType.Type().(*types.Signature)
 		f := b.program.AddOuterFunc(name, sig, decl.Pos(), decl.End())
-		v := ir.NewVariable(name, ir.FuncType, f.FuncValue())
+		v := b.program.NewVariable(name, ir.FuncType, f.FuncValue())
 		if funcDecl.Recv != nil && len(funcDecl.Recv.List) == 1 {
 			field := funcDecl.Recv.List[0]
 			fieldNameIdent := field.Names[0]
 			if t, ok := typesTypeToIrType(b.info.TypeOf(field.Type).Underlying()); ok {
 				varType := b.info.Defs[fieldNameIdent].(*types.Var)
-				v := ir.NewVariable(fieldNameIdent.Name, t, -1)
-				f.AddArg(-1, v)
-				b.varTypes[varType] = v
+					v := b.program.NewVariable(fieldNameIdent.Name, t, -1)
+					f.AddArg(-1, v)
+					b.varTypes[varType] = v
+				}
 			}
-		}
 		b.processFuncType(funcDecl.Type, newContext(b.cmaps[file], f))
 		b.program.Scope().AddVariable(v)
 		b.funcTypes[funcType] = f
@@ -210,7 +210,7 @@ func (b *builder) processGenDecl(genDecl *ast.GenDecl, scope *ir.Scope, ctx *con
 			}
 
 			varType := b.info.Defs[nameIdent].(*types.Var)
-			v := ir.NewVariable(nameIdent.Name, t, -1)
+			v := b.program.NewVariable(nameIdent.Name, t, -1)
 			lhs[i] = v
 			scope.AddVariable(v)
 			b.varTypes[varType] = v
