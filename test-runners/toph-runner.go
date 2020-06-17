@@ -17,7 +17,13 @@ func ignore(info os.FileInfo) bool {
 }
 
 func main() {
-	build.Default.GOOS = "linux"
+	var requiredSubString string
+	if len(os.Args) > 1 {
+		requiredSubString = os.Args[1]
+	}
+
+	buildContext := build.Default
+	buildContext.GOOS = "linux"
 
 	dirs, err := ioutil.ReadDir("tests/")
 	if err != nil {
@@ -44,6 +50,9 @@ func main() {
 				continue
 			}
 			testPath := dirPath + test.Name() + "/"
+			if !strings.Contains(testPath, requiredSubString) {
+				continue
+			}
 			fmt.Printf("running test: %s\n", testPath)
 			config := api.Config{
 				EntryFuncName: "main",

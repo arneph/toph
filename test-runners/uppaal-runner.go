@@ -20,9 +20,17 @@ func ignore(info os.FileInfo) bool {
 }
 
 var testsChan chan string = make(chan string, 10)
+var testIndex int
+var runningTests map[string]struct{} = make(map[string]struct{})
 var wg sync.WaitGroup
+var mu sync.RWMutex
 
 func main() {
+	var requiredSubString string
+	if len(os.Args) > 1 {
+		requiredSubString = os.Args[1]
+	}
+
 	dirs, err := ioutil.ReadDir("tests/")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not read 'tests/' dir: %v", err)
@@ -56,19 +64,26 @@ func main() {
 			}
 
 			testPath := dirPath + test.Name() + "/"
+			if !strings.Contains(testPath, requiredSubString) {
+				continue
+			}
 			testsChan <- testPath + test.Name()
 		}
 	}
 	close(testsChan)
 	wg.Wait()
 
-	fmt.Println("done")
+	fmt.Println("\rdone")
 }
 
 var z int
 
 func runTests() {
 	for test := range testsChan {
+		mu.Lock()
+		runningTests[test[strings.LastIndex(test, "/")+1:]] = struct{}{}
+		mu.Unlock()
+		printRunning()
 		xml := test + ".xml"
 		outF := test + ".out.txt"
 		errF := test + ".err.txt"
@@ -92,12 +107,32 @@ func runTests() {
 		t1 := time.Now()
 		err = cmd.Run()
 		t2 := time.Now()
-		z++
+		testIndex++
 		if err != nil {
-			fmt.Printf("%03d failed    % 12.1fs %s\n", z, t2.Sub(t1).Seconds(), xml[6:])
+			fmt.Printf("\r%03d failed    % 12.1fs %s\n", testIndex, t2.Sub(t1).Seconds(), xml[6:])
 		} else {
-			fmt.Printf("%03d completed % 12.1fs %s\n", z, t2.Sub(t1).Seconds(), xml[6:])
+			fmt.Printf("\r%03d completed % 12.1fs %s\n", testIndex, t2.Sub(t1).Seconds(), xml[6:])
 		}
+		mu.Lock()
+		delete(runningTests, test[strings.LastIndex(test, "/")+1:])
+		mu.Unlock()
 	}
+	printRunning()
 	wg.Done()
+}
+
+func printRunning() {
+	s := "\rrunning: "
+	first := true
+	mu.RLock()
+	for test := range runningTests {
+		if !first {
+			s += ", "
+		} else {
+			first = false
+		}
+		s += test
+	}
+	mu.RUnlock()
+	fmt.Print(s)
 }
