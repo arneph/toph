@@ -28,7 +28,7 @@ func (b *builder) processMakeExpr(callExpr *ast.CallExpr, result *ir.Variable, c
 	if len(callExpr.Args) > 1 {
 		a := callExpr.Args[1]
 
-		res, ok := b.evalIntExpr(a, ctx)
+		res, ok := b.staticIntEval(a, ctx)
 		if !ok {
 			p := b.fset.Position(a.Pos())
 			b.addWarning(fmt.Errorf("%v: can not process buffer size: %s", p, a))

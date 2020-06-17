@@ -68,7 +68,7 @@ func (b *builder) processWaitGroupOpExpr(callExpr *ast.CallExpr, callKind ir.Cal
 	case "Add":
 		waitGroupOp = ir.Add
 		a := callExpr.Args[0]
-		res, ok := b.evalIntExpr(a, ctx)
+		res, ok := b.staticIntEval(a, ctx)
 		if !ok {
 			p := b.fset.Position(a.Pos())
 			b.addWarning(fmt.Errorf("%v: can not process sync.WaitGroup.Add argument: %s", p, a))

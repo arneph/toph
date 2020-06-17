@@ -98,7 +98,7 @@ func (b *builder) processForStmt(stmt *ast.ForStmt, label string, ctx *context) 
 	forStmt.SetIsInfinite(stmt.Cond == nil)
 
 	minAnn, maxAnn := b.findIterationBoundsFromAnnotation(stmt, ctx)
-	iters := b.findIterationBoundThroughAnalysis(stmt, ctx)
+	iters := b.staticForLoopBoundsEval(stmt, ctx)
 	if minAnn != -1 || maxAnn != -1 {
 		if iters != -1 {
 			p := b.fset.Position(stmt.Pos())
