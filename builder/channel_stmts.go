@@ -12,7 +12,8 @@ func (b *builder) findChannel(chanExpr ast.Expr, ctx *context) *ir.Variable {
 	v, ok := rv.(*ir.Variable)
 	if !ok || v == nil {
 		p := b.fset.Position(chanExpr.Pos())
-		b.addWarning(fmt.Errorf("%v: could not resolve channel expr: %v", p, chanExpr))
+		chanExprStr := b.nodeToString(chanExpr)
+		b.addWarning(fmt.Errorf("%v: could not resolve channel expr: %s", p, chanExprStr))
 		return nil
 	}
 	return v
@@ -31,7 +32,8 @@ func (b *builder) processMakeExpr(callExpr *ast.CallExpr, result *ir.Variable, c
 		res, ok := b.staticIntEval(a, ctx)
 		if !ok {
 			p := b.fset.Position(a.Pos())
-			b.addWarning(fmt.Errorf("%v: can not process buffer size: %s", p, a))
+			aStr := b.nodeToString(a)
+			b.addWarning(fmt.Errorf("%v: can not process buffer size: %s", p, aStr))
 		} else {
 			bufferSize = res
 		}

@@ -71,7 +71,8 @@ func (b *builder) processWaitGroupOpExpr(callExpr *ast.CallExpr, callKind ir.Cal
 		res, ok := b.staticIntEval(a, ctx)
 		if !ok {
 			p := b.fset.Position(a.Pos())
-			b.addWarning(fmt.Errorf("%v: can not process sync.WaitGroup.Add argument: %s", p, a))
+			aStr := b.nodeToString(a)
+			b.addWarning(fmt.Errorf("%v: can not process sync.WaitGroup.Add argument: %s", p, aStr))
 		} else {
 			delta = res
 		}

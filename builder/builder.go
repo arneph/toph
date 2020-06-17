@@ -139,7 +139,13 @@ func (b *builder) addWarning(err error) {
 	b.warnings = append(b.warnings, err)
 }
 
-func (b *builder) processFuncDeclsInFile(file *ast.File) {
+func (b *builder) nodeToString(node ast.Node) string {
+	var bob strings.Builder
+	format.Node(&bob, b.fset, node)
+	return bob.String()
+}
+
+func (b *builder) processFuncDeclsInFile(pkg string, file *ast.File) {
 	for _, decl := range file.Decls {
 		funcDecl, ok := decl.(*ast.FuncDecl)
 		if !ok {
