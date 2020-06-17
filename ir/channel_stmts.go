@@ -6,6 +6,28 @@ import (
 	"strings"
 )
 
+// ChanOp represents an operation performed on a channel.
+// This can either be a make or close channel statement.
+type ChanOp int
+
+const (
+	// MakeChan represents a make channel operation.
+	MakeChan ChanOp = iota
+	// Close represents a close channel operation.
+	Close
+)
+
+func (o ChanOp) String() string {
+	switch o {
+	case MakeChan:
+		return "make"
+	case Close:
+		return "close"
+	default:
+		panic(fmt.Sprintf("unknown ChanOp: %d", o))
+	}
+}
+
 // MakeChanStmt represents a make(chan ...) call.
 type MakeChanStmt struct {
 	channel    *Variable
@@ -36,44 +58,54 @@ func (s *MakeChanStmt) BufferSize() int {
 	return s.bufferSize
 }
 
+// SpecialOp returns the performed operation (always MakeChan).
+func (s *MakeChanStmt) SpecialOp() SpecialOp {
+	return MakeChan
+}
+
+// CallKind returns the call kind (always Call) of the make function.
+func (s *MakeChanStmt) CallKind() CallKind {
+	return Call
+}
+
 func (s *MakeChanStmt) String() string {
 	return fmt.Sprintf("%s <- make(chan, %d)", s.channel.Handle(), s.bufferSize)
 }
 
-// ChanOp represents an operation performed on a channel. This can either be a
-// stand alone statement or a case in a select statement.
-type ChanOp int
+// ChanCommOp represents an communication operation performed on a channel.
+// This can either be a stand alone statement or a case in a select statement.
+type ChanCommOp int
 
 const (
 	// Send represents a send operation on a channel.
-	Send ChanOp = iota
+	Send ChanCommOp = iota
 	// Receive represents a receive operation on a channel.
 	Receive
 )
 
-func (o ChanOp) String() string {
+func (o ChanCommOp) String() string {
 	switch o {
 	case Send:
 		return "send"
 	case Receive:
 		return "receive"
 	default:
-		panic(fmt.Sprintf("unknown ChanOp: %d", o))
+		panic(fmt.Sprintf("unknown ChanCommOp: %d", o))
 	}
 }
 
-// ChanOpStmt represents a channel operation statement.
-type ChanOpStmt struct {
+// ChanCommOpStmt represents a channel operation statement.
+type ChanCommOpStmt struct {
 	channel *Variable
-	op      ChanOp
+	op      ChanCommOp
 
 	Node
 }
 
-// NewChanOpStmt creates a new channel operation statement for the given
+// NewChanCommOpStmt creates a new channel operation statement for the given
 // channel and with the given channel operation.
-func NewChanOpStmt(channel *Variable, op ChanOp, pos, end token.Pos) *ChanOpStmt {
-	s := new(ChanOpStmt)
+func NewChanCommOpStmt(channel *Variable, op ChanCommOp, pos, end token.Pos) *ChanCommOpStmt {
+	s := new(ChanCommOpStmt)
 	s.channel = channel
 	s.op = op
 	s.pos = pos
@@ -83,16 +115,16 @@ func NewChanOpStmt(channel *Variable, op ChanOp, pos, end token.Pos) *ChanOpStmt
 }
 
 // Channel returns the variable holding the channel that is operated on.
-func (s *ChanOpStmt) Channel() *Variable {
+func (s *ChanCommOpStmt) Channel() *Variable {
 	return s.channel
 }
 
 // Op returns the operation performed on the channel.
-func (s *ChanOpStmt) Op() ChanOp {
+func (s *ChanCommOpStmt) Op() ChanCommOp {
 	return s.op
 }
 
-func (s *ChanOpStmt) String() string {
+func (s *ChanCommOpStmt) String() string {
 	return fmt.Sprintf("%v %s", s.op, s.channel.Handle())
 }
 
@@ -125,7 +157,12 @@ func (s *CloseChanStmt) Channel() *Variable {
 	return s.channel
 }
 
-// CallKind returns the call kind (regular or deferred) of the close function.
+// SpecialOp returns the performed operation (always Close).
+func (s *CloseChanStmt) SpecialOp() SpecialOp {
+	return Close
+}
+
+// CallKind returns the call kind (Call or Defer) of the close function.
 func (s *CloseChanStmt) CallKind() CallKind {
 	return s.callKind
 }
@@ -136,8 +173,8 @@ func (s *CloseChanStmt) String() string {
 
 // SelectCase represents a single case in a select statement.
 type SelectCase struct {
-	op   *ChanOpStmt
-	body Body
+	opStmt *ChanCommOpStmt
+	body   Body
 
 	reachReq ReachabilityRequirement
 
@@ -145,8 +182,8 @@ type SelectCase struct {
 }
 
 // OpStmt returns the operation of the select case.
-func (c *SelectCase) OpStmt() *ChanOpStmt {
-	return c.op
+func (c *SelectCase) OpStmt() *ChanCommOpStmt {
+	return c.opStmt
 }
 
 // Body returns the body of the select case.
@@ -170,7 +207,7 @@ func (c *SelectCase) Pos() token.Pos {
 }
 
 func (c *SelectCase) String() string {
-	str := "case " + c.op.String() + " {\n"
+	str := "case " + c.opStmt.String() + " {\n"
 	str += "\t" + strings.ReplaceAll(c.body.String(), "\n", "\n\t") + "\n"
 	str += "}"
 	return str
@@ -213,9 +250,9 @@ func (s *SelectStmt) Cases() []*SelectCase {
 // AddCase adds a case for the given channel op to the select statement. The
 // new SelectCase gets returned and the scope of its body is embeded in the
 // enclosing scope of the select statement.
-func (s *SelectStmt) AddCase(op *ChanOpStmt, pos token.Pos) *SelectCase {
+func (s *SelectStmt) AddCase(op *ChanCommOpStmt, pos token.Pos) *SelectCase {
 	c := new(SelectCase)
-	c.op = op
+	c.opStmt = op
 	c.body.init()
 	c.body.scope.superScope = s.superScope
 	c.pos = pos

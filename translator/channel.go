@@ -4,61 +4,26 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/arneph/toph/ir"
 	"github.com/arneph/toph/uppaal"
 )
 
-func (t *translator) addChannels() {
-	t.addChannelProcess()
-	t.addChannelDeclarations()
-	t.addChannelProcessInstances()
-}
-
 func (t *translator) channelCount() int {
-	channelCount := t.completeFCG.TotalMakeChanCount()
-	if channelCount < 1 {
-		channelCount = 1
-	} else if channelCount > maxChannelCount {
+	channelCount := t.completeFCG.TotalSpecialOpCount(ir.MakeChan)
+	if channelCount > maxChannelCount {
 		channelCount = maxChannelCount
 	}
 	return channelCount
 }
 
-func (t *translator) addChannelDeclarations() {
-	t.system.Declarations().AddVariable("chan_count", "int", "0")
-	t.system.Declarations().AddArray("chan_counter", t.channelCount(), "int")
-	t.system.Declarations().AddArray("chan_buffer", t.channelCount(), "int")
-	t.system.Declarations().AddArray("sender_trigger", t.channelCount(), "chan")
-	t.system.Declarations().AddArray("sender_confirm", t.channelCount(), "chan")
-	t.system.Declarations().AddArray("receiver_trigger", t.channelCount(), "chan")
-	t.system.Declarations().AddArray("receiver_confirm", t.channelCount(), "chan")
-	t.system.Declarations().AddArray("close", t.channelCount(), "chan")
-	t.system.Declarations().AddFunc(fmt.Sprintf(
-		`int make_chan(int buffer) {
-	int cid;
-	if (chan_count == %d) {
-		out_of_resources = true;
-		return 0;
+func (t *translator) addChannels() {
+	if t.channelCount() == 0 {
+		return
 	}
-	cid = chan_count;
-	chan_count++;
-	chan_counter[cid] = 0;
-	chan_buffer[cid] = buffer;
-	return cid;
-}`, maxChannelCount))
-	t.system.Declarations().AddSpace()
-}
 
-func (t *translator) addChannelProcessInstances() {
-	c := t.channelCount()
-	if c > 1 {
-		c--
-	}
-	d := fmt.Sprintf("%d", int(math.Log10(float64(c))+1))
-	for i := 0; i < t.channelCount(); i++ {
-		instName := fmt.Sprintf("%s%0"+d+"d", t.channelProcess.Name(), i)
-		inst := t.system.AddProcessInstance(t.channelProcess.Name(), instName)
-		inst.AddParameter(fmt.Sprintf("%d", i))
-	}
+	t.addChannelProcess()
+	t.addChannelDeclarations()
+	t.addChannelProcessInstances()
 }
 
 func (t *translator) addChannelProcess() {
@@ -232,4 +197,42 @@ func (t *translator) addChannelProcess() {
 	trans18.SetSync("close[i]?")
 	trans18.AddNail(uppaal.Location{238, -102})
 	trans18.SetSyncLocation(uppaal.Location{129, -118})
+}
+
+func (t *translator) addChannelDeclarations() {
+	t.system.Declarations().AddVariable("chan_count", "int", "0")
+	t.system.Declarations().AddArray("chan_counter", t.channelCount(), "int")
+	t.system.Declarations().AddArray("chan_buffer", t.channelCount(), "int")
+	t.system.Declarations().AddArray("sender_trigger", t.channelCount(), "chan")
+	t.system.Declarations().AddArray("sender_confirm", t.channelCount(), "chan")
+	t.system.Declarations().AddArray("receiver_trigger", t.channelCount(), "chan")
+	t.system.Declarations().AddArray("receiver_confirm", t.channelCount(), "chan")
+	t.system.Declarations().AddArray("close", t.channelCount(), "chan")
+	t.system.Declarations().AddFunc(fmt.Sprintf(
+		`int make_chan(int buffer) {
+	int cid;
+	if (chan_count == %d) {
+		out_of_resources = true;
+		return 0;
+	}
+	cid = chan_count;
+	chan_count++;
+	chan_counter[cid] = 0;
+	chan_buffer[cid] = buffer;
+	return cid;
+}`, t.channelCount()))
+	t.system.Declarations().AddSpace()
+}
+
+func (t *translator) addChannelProcessInstances() {
+	c := t.channelCount()
+	if c > 1 {
+		c--
+	}
+	d := fmt.Sprintf("%d", int(math.Log10(float64(c))+1))
+	for i := 0; i < t.channelCount(); i++ {
+		instName := fmt.Sprintf("%s%0"+d+"d", t.channelProcess.Name(), i)
+		inst := t.system.AddProcessInstance(t.channelProcess.Name(), instName)
+		inst.AddParameter(fmt.Sprintf("%d", i))
+	}
 }

@@ -13,16 +13,16 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 
 	argIndex := 0
 	for _, field := range funcType.Params.List {
-		t, ok := typesTypeToIrType(b.info.TypeOf(field.Type).Underlying())
+		t, initialValue, ok := typesTypeToIrType(b.pkgTypesInfos[ctx.pkg].TypeOf(field.Type).Underlying())
 		if !ok {
 			argIndex += len(field.Names)
 			continue
 		}
 		for _, fieldNameIdent := range field.Names {
-			varType := b.info.Defs[fieldNameIdent].(*types.Var)
-			v := b.program.NewVariable(fieldNameIdent.Name, t, -1)
+			varType := b.pkgTypesInfos[ctx.pkg].Defs[fieldNameIdent].(*types.Var)
+			v := b.program.NewVariable(fieldNameIdent.Name, t, initialValue)
 			f.AddArg(argIndex, v)
-			b.varTypes[varType] = v
+			b.pkgVarTypes[ctx.pkg][varType] = v
 			argIndex++
 		}
 	}
@@ -32,7 +32,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 	}
 	resultIndex := 0
 	for _, field := range funcType.Results.List {
-		t, ok := typesTypeToIrType(b.info.TypeOf(field.Type).(types.Type).Underlying())
+		t, initialValue, ok := typesTypeToIrType(b.pkgTypesInfos[ctx.pkg].TypeOf(field.Type).(types.Type).Underlying())
 		if !ok {
 			resultIndex += len(field.Names)
 			continue
@@ -44,10 +44,10 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 
 		} else {
 			for _, fieldNameIdent := range field.Names {
-				varType := b.info.Defs[fieldNameIdent].(*types.Var)
-				v := b.program.NewVariable(fieldNameIdent.Name, t, -1)
+				varType := b.pkgTypesInfos[ctx.pkg].Defs[fieldNameIdent].(*types.Var)
+				v := b.program.NewVariable(fieldNameIdent.Name, t, initialValue)
 				f.AddResult(resultIndex, v)
-				b.varTypes[varType] = v
+				b.pkgVarTypes[ctx.pkg][varType] = v
 				resultIndex++
 			}
 		}
@@ -55,7 +55,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 }
 
 func (b *builder) processFuncLit(funcLit *ast.FuncLit, ctx *context) *ir.Func {
-	sig := b.info.Types[funcLit].Type.(*types.Signature)
+	sig := b.pkgTypesInfos[ctx.pkg].Types[funcLit].Type.(*types.Signature)
 	f := b.program.AddInnerFunc(sig, ctx.currentFunc(), ctx.body.Scope(), funcLit.Pos(), funcLit.End())
 	subCtx := ctx.subContextForFunc(f)
 	b.processFuncType(funcLit.Type, subCtx)
@@ -70,24 +70,29 @@ func (b *builder) processFuncBody(body *ast.BlockStmt, ctx *context) {
 func (b *builder) canIgnoreCall(funcExpr ast.Expr, ctx *context) bool {
 	switch funcExpr := funcExpr.(type) {
 	case *ast.Ident:
-		if funcExpr.Name == "append" ||
-			funcExpr.Name == "cap" ||
-			funcExpr.Name == "complex" ||
-			funcExpr.Name == "copy" ||
-			funcExpr.Name == "delete" ||
-			funcExpr.Name == "imag" ||
-			funcExpr.Name == "len" ||
-			funcExpr.Name == "new" ||
-			funcExpr.Name == "print" ||
-			funcExpr.Name == "println" ||
-			funcExpr.Name == "real" {
-			return true
-		}
-		if _, ok := b.info.Uses[funcExpr].(*types.TypeName); ok {
-			return true
+		if used, ok := b.pkgTypesInfos[ctx.pkg].Uses[funcExpr]; ok {
+			switch used := used.(type) {
+			case *types.Builtin:
+				switch used.Name() {
+				case "append",
+					"cap",
+					"complex",
+					"copy",
+					"delete",
+					"imag",
+					"len",
+					"new",
+					"print",
+					"println",
+					"real":
+					return true
+				}
+			case *types.TypeName:
+				return true
+			}
 		}
 	case *ast.SelectorExpr:
-		switch funcType := b.info.Uses[funcExpr.Sel].(type) {
+		switch funcType := b.pkgTypesInfos[ctx.pkg].Uses[funcExpr.Sel].(type) {
 		case *types.Func:
 			if funcType.String() == "func (error).Error() string" {
 				return true
@@ -124,11 +129,8 @@ func (b *builder) canIgnoreCall(funcExpr ast.Expr, ctx *context) bool {
 					return true
 				}
 			}
-		case types.Object:
-			if funcType.Pkg().Name() == "time" &&
-				funcType.Name() == "Duration" {
-				return true
-			}
+		case *types.TypeName:
+			return true
 		}
 	}
 	return false
@@ -140,10 +142,14 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callabl
 	}
 
 	switch funcExpr := funcExpr.(type) {
+	case *ast.FuncLit:
+		f := b.processFuncLit(funcExpr, ctx)
+		return f, f.Signature()
+
 	case *ast.Ident:
-		switch used := b.info.Uses[funcExpr].(type) {
+		switch used := b.pkgTypesInfos[ctx.pkg].Uses[funcExpr].(type) {
 		case *types.Func:
-			f := b.funcTypes[used]
+			f := b.pkgFuncTypes[ctx.pkg][used]
 			if f == nil {
 				p := b.fset.Position(funcExpr.Pos())
 				b.addWarning(fmt.Errorf("%v: could not resolve callee: %q", p, funcExpr.Name))
@@ -152,7 +158,7 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callabl
 			return f, f.Signature()
 
 		case *types.Var:
-			v := b.varTypes[used]
+			v := b.pkgVarTypes[ctx.pkg][used]
 			if v == nil {
 				p := b.fset.Position(funcExpr.Pos())
 				b.addWarning(fmt.Errorf("%v: could not resolve callee: %q", p, funcExpr.Name))
@@ -166,14 +172,25 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callabl
 			return nil, nil
 		}
 
-	case *ast.FuncLit:
-		f := b.processFuncLit(funcExpr, ctx)
-		return f, f.Signature()
-
 	case *ast.SelectorExpr:
-		switch funcType := b.info.Uses[funcExpr.Sel].(type) {
+		pkg := ctx.pkg
+		funcType := b.pkgTypesInfos[pkg].Uses[funcExpr.Sel]
+
+		if ident, ok := funcExpr.X.(*ast.Ident); ok {
+			if typesPkg, ok := b.pkgTypesInfos[ctx.pkg].Uses[ident].(*types.PkgName); ok {
+				_, ok := b.pkgAstFiles[typesPkg.Imported().Path()]
+				if ok {
+					pkg = typesPkg.Imported().Path()
+					typesPkg := b.pkgTypesPackages[pkg]
+					typesPkgScope := typesPkg.Scope()
+					funcType = typesPkgScope.Lookup(funcExpr.Sel.Name)
+				}
+			}
+		}
+
+		switch funcType := funcType.(type) {
 		case *types.Func:
-			f := b.funcTypes[funcType]
+			f := b.pkgFuncTypes[pkg][funcType]
 			if f != nil {
 				return f, f.Signature()
 			}
@@ -188,6 +205,15 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callabl
 			p := b.fset.Position(funcExpr.Pos())
 			b.addWarning(fmt.Errorf("%v: could not resolve callee: %v", p, funcType))
 			return nil, nil
+
+		case *types.Var:
+			v := b.pkgVarTypes[pkg][funcType]
+			if v == nil {
+				p := b.fset.Position(funcExpr.Pos())
+				b.addWarning(fmt.Errorf("%v: could not resolve callee: %q", p, funcType))
+				return nil, nil
+			}
+			return v, funcType.Type().Underlying().(*types.Signature)
 
 		default:
 			b.processExpr(funcExpr.X, ctx)

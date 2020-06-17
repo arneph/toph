@@ -213,7 +213,15 @@ func (b *builder) processGenDecl(genDecl *ast.GenDecl, scope *ir.Scope, ctx *con
 			v := b.program.NewVariable(nameIdent.Name, t, -1)
 			lhs[i] = v
 			scope.AddVariable(v)
-			b.varTypes[varType] = v
+			b.pkgVarTypes[ctx.pkg][varType] = v
+
+			if t == ir.MutexType {
+				makeMutexStmt := ir.NewMakeMutexStmt(v, nameIdent.Pos(), nameIdent.End())
+				ctx.body.AddStmt(makeMutexStmt)
+			} else if t == ir.WaitGroupType {
+				makeWaitGroupStmt := ir.NewMakeWaitGroupStmt(v, nameIdent.Pos(), nameIdent.End())
+				ctx.body.AddStmt(makeWaitGroupStmt)
+			}
 		}
 
 		if len(valueSpec.Values) == 0 {

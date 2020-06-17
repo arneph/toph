@@ -10,6 +10,10 @@ const (
 	FuncType Type = iota
 	// ChanType is the type of a channel variable.
 	ChanType
+	// MutexType is the type of a (rw)mutex variable.
+	MutexType
+	// WaitGroupType is the type of a wait group variable.
+	WaitGroupType
 )
 
 // VariablePrefix returns the variable prefix for the given type.
@@ -19,6 +23,10 @@ func (t Type) VariablePrefix() string {
 		return "fid"
 	case ChanType:
 		return "cid"
+	case MutexType:
+		return "mid"
+	case WaitGroupType:
+		return "wid"
 	default:
 		panic(fmt.Errorf("unknown Type: %d", t))
 	}
@@ -30,6 +38,10 @@ func (t Type) String() string {
 		return "Func"
 	case ChanType:
 		return "Chan"
+	case MutexType:
+		return "Mutex"
+	case WaitGroupType:
+		return "WaitGroup"
 	default:
 		panic(fmt.Errorf("unknown Type: %d", t))
 	}

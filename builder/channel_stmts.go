@@ -3,7 +3,6 @@ package builder
 import (
 	"fmt"
 	"go/ast"
-	"strconv"
 
 	"github.com/arneph/toph/ir"
 )
@@ -25,21 +24,16 @@ func (b *builder) processMakeExpr(callExpr *ast.CallExpr, result *ir.Variable, c
 		return
 	}
 
-	var bufferSize int
+	bufferSize := 0
 	if len(callExpr.Args) > 1 {
 		a := callExpr.Args[1]
-		l, ok := a.(*ast.BasicLit)
+
+		res, ok := b.evalIntExpr(a, ctx)
 		if !ok {
 			p := b.fset.Position(a.Pos())
 			b.addWarning(fmt.Errorf("%v: can not process buffer size: %s", p, a))
 		} else {
-			n, err := strconv.Atoi(l.Value)
-			if err != nil {
-				p := b.fset.Position(l.Pos())
-				b.addWarning(fmt.Errorf("%v: can not process buffer size: %s", p, l.Value))
-			} else {
-				bufferSize = n
-			}
+			bufferSize = res
 		}
 	}
 
@@ -47,20 +41,20 @@ func (b *builder) processMakeExpr(callExpr *ast.CallExpr, result *ir.Variable, c
 	ctx.body.AddStmt(makeStmt)
 }
 
-func (b *builder) processReceiveExpr(expr *ast.UnaryExpr, addToCtx bool, ctx *context) *ir.ChanOpStmt {
+func (b *builder) processReceiveExpr(expr *ast.UnaryExpr, addToCtx bool, ctx *context) *ir.ChanCommOpStmt {
 	chanVar := b.findChannel(expr.X, ctx)
 	if chanVar == nil {
 		return nil
 	}
 
-	receiveStmt := ir.NewChanOpStmt(chanVar, ir.Receive, expr.Pos(), expr.End())
+	receiveStmt := ir.NewChanCommOpStmt(chanVar, ir.Receive, expr.Pos(), expr.End())
 	if addToCtx {
 		ctx.body.AddStmt(receiveStmt)
 	}
 	return receiveStmt
 }
 
-func (b *builder) processSendStmt(stmt *ast.SendStmt, addToCtx bool, ctx *context) *ir.ChanOpStmt {
+func (b *builder) processSendStmt(stmt *ast.SendStmt, addToCtx bool, ctx *context) *ir.ChanCommOpStmt {
 	b.processExpr(stmt.Value, ctx)
 
 	chanVar := b.findChannel(stmt.Chan, ctx)
@@ -68,7 +62,7 @@ func (b *builder) processSendStmt(stmt *ast.SendStmt, addToCtx bool, ctx *contex
 		return nil
 	}
 
-	sendStmt := ir.NewChanOpStmt(chanVar, ir.Send, stmt.Pos(), stmt.End())
+	sendStmt := ir.NewChanCommOpStmt(chanVar, ir.Send, stmt.Pos(), stmt.End())
 	if addToCtx {
 		ctx.body.AddStmt(sendStmt)
 	}
@@ -126,7 +120,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, label string, ctx *con
 			subCtx := ctx.subContextForBody(selectStmt, "", body)
 
 			// Create newly defined variables:
-			definedVars := b.getDefinedVarsInAssignStmt(stmt)
+			definedVars := b.getDefinedVarsInAssignStmt(stmt, ctx)
 
 			// Resolve all assigned variables:
 			lhs := b.getAssignedVarsInAssignStmt(stmt, definedVars, subCtx)

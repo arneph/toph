@@ -82,102 +82,99 @@ func addCallCountsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fc
 					sccCallCounts[calleeSCC] = MaxCallCounts
 				}
 			}
-			fcg.addCallerCount(caller, info.callerCount)
+			fcg.addCallerCount(caller, info.callCount)
 			fcg.addCalleeCount(caller, sccCallCounts[currentSCC])
-			fcg.addMakeChanCallCount(caller, info.makeChanCount)
-			fcg.addCloseChanCallCount(caller, info.closeChanCount)
-			fcg.addTotalMakeChanCallCount(sccCallCounts[currentSCC] * info.makeChanCount)
-			fcg.addTotalCloseChanCallCount(sccCallCounts[currentSCC] * info.closeChanCount)
+			for op, count := range info.specialOpCounts {
+				fcg.addSpecialOpCount(caller, op, count)
+			}
 		}
 	}
 }
 
 type callsInfo struct {
-	callerCount    int
-	calleeCounts   map[*ir.Func]int
-	makeChanCount  int
-	closeChanCount int
+	callCount       int
+	calleeCounts    map[*ir.Func]int
+	specialOpCounts map[ir.SpecialOp]int
 }
 
 func (info *callsInfo) init() {
-	info.callerCount = 0
+	info.callCount = 0
 	info.calleeCounts = make(map[*ir.Func]int)
-	info.makeChanCount = 0
-	info.closeChanCount = 0
+	info.specialOpCounts = make(map[ir.SpecialOp]int)
 }
 
-func (info *callsInfo) addCallerCount(count int) {
-	info.callerCount += count
-	if info.callerCount > MaxCallCounts {
-		info.callerCount = MaxCallCounts
+func (info *callsInfo) enforceMaxCallCounts() {
+	if info.callCount > MaxCallCounts {
+		info.callCount = MaxCallCounts
 	}
-}
-
-func (info *callsInfo) addCalleeCount(f *ir.Func, count int) {
-	info.calleeCounts[f] += count
-	if info.calleeCounts[f] > MaxCallCounts {
-		info.calleeCounts[f] = MaxCallCounts
-	}
-}
-
-func (info *callsInfo) addMakeChanCallCount(count int) {
-	info.makeChanCount += count
-	if info.makeChanCount > MaxCallCounts {
-		info.makeChanCount = MaxCallCounts
-	}
-}
-
-func (info *callsInfo) addCloseChanCallCount(count int) {
-	info.closeChanCount += count
-	if info.closeChanCount > MaxCallCounts {
-		info.closeChanCount = MaxCallCounts
-	}
-}
-
-func (info *callsInfo) multiplyAllByFactor(factor int) {
-	info.callerCount *= factor
-	if info.callerCount > MaxCallCounts {
-		info.callerCount = MaxCallCounts
-	}
-	for f := range info.calleeCounts {
-		info.calleeCounts[f] *= factor
-		if info.calleeCounts[f] > MaxCallCounts {
-			info.calleeCounts[f] = MaxCallCounts
+	for callee := range info.calleeCounts {
+		if info.calleeCounts[callee] > MaxCallCounts {
+			info.calleeCounts[callee] = MaxCallCounts
 		}
 	}
-	info.makeChanCount *= factor
-	if info.makeChanCount > MaxCallCounts {
-		info.makeChanCount = MaxCallCounts
-	}
-	info.closeChanCount *= factor
-	if info.closeChanCount > MaxCallCounts {
-		info.closeChanCount = MaxCallCounts
-	}
-}
-
-func (info *callsInfo) addCalleesInfo(other callsInfo) {
-	info.addCallerCount(other.callerCount)
-	for f, c := range other.calleeCounts {
-		info.addCalleeCount(f, c)
-	}
-	info.addMakeChanCallCount(other.makeChanCount)
-	info.addCloseChanCallCount(other.closeChanCount)
-}
-
-func (info *callsInfo) mergeFromCalleesInfo(other callsInfo) {
-	if info.callerCount < other.callerCount {
-		info.callerCount = other.callerCount
-	}
-	for f, c := range other.calleeCounts {
-		if info.calleeCounts[f] < c {
-			info.calleeCounts[f] = c
+	for op := range info.specialOpCounts {
+		if info.specialOpCounts[op] > MaxCallCounts {
+			info.specialOpCounts[op] = MaxCallCounts
 		}
 	}
-	if info.makeChanCount < other.makeChanCount {
-		info.makeChanCount = other.makeChanCount
+}
+
+func (info *callsInfo) addCallCount(count int) {
+	info.callCount += count
+	if info.callCount > MaxCallCounts {
+		info.callCount = MaxCallCounts
 	}
-	if info.closeChanCount < other.closeChanCount {
-		info.closeChanCount = other.closeChanCount
+}
+
+func (info *callsInfo) addCalleeCount(callee *ir.Func, count int) {
+	info.calleeCounts[callee] += count
+	if info.calleeCounts[callee] > MaxCallCounts {
+		info.calleeCounts[callee] = MaxCallCounts
+	}
+}
+
+func (info *callsInfo) addSpecialOpCount(op ir.SpecialOp, count int) {
+	info.specialOpCounts[op] += count
+	if info.specialOpCounts[op] > MaxCallCounts {
+		info.specialOpCounts[op] = MaxCallCounts
+	}
+}
+
+func (info *callsInfo) multiply(factor int) {
+	info.callCount *= factor
+	for callee := range info.calleeCounts {
+		info.calleeCounts[callee] *= factor
+	}
+	for op := range info.specialOpCounts {
+		info.specialOpCounts[op] *= factor
+	}
+	info.enforceMaxCallCounts()
+}
+
+func (info *callsInfo) add(other callsInfo) {
+	info.callCount += other.callCount
+	for callee, count := range other.calleeCounts {
+		info.calleeCounts[callee] += count
+	}
+	for op, count := range other.specialOpCounts {
+		info.specialOpCounts[op] += count
+	}
+	info.enforceMaxCallCounts()
+}
+
+func (info *callsInfo) mergeFrom(other callsInfo) {
+	if info.callCount < other.callCount {
+		info.callCount = other.callCount
+	}
+	for f, count := range other.calleeCounts {
+		if info.calleeCounts[f] < count {
+			info.calleeCounts[f] = count
+		}
+	}
+	for op, count := range other.specialOpCounts {
+		if info.specialOpCounts[op] < count {
+			info.specialOpCounts[op] = count
+		}
 	}
 }
 
@@ -190,7 +187,7 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 			if stmt.CallKind()&callKinds == 0 {
 				continue
 			}
-			res.addCallerCount(1)
+			res.addCallCount(1)
 			switch callee := stmt.Callee().(type) {
 			case *ir.Func:
 				res.addCalleeCount(callee, 1)
@@ -202,24 +199,19 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 			default:
 				panic(fmt.Errorf("unexpected callee type: %T", callee))
 			}
-		case *ir.MakeChanStmt:
-			res.addMakeChanCallCount(1)
-		case *ir.CloseChanStmt:
-			if stmt.CallKind()&callKinds == 0 {
-				continue
-			}
-			res.addCloseChanCallCount(1)
+		case ir.SpecialOpStmt:
+			res.addSpecialOpCount(stmt.SpecialOp(), 1)
 		case *ir.IfStmt:
-			res.addCalleesInfo(findCalleesInfoForIfStmt(stmt, callKinds, fcg))
+			res.add(findCalleesInfoForIfStmt(stmt, callKinds, fcg))
 		case *ir.SwitchStmt:
-			res.addCalleesInfo(findCalleesInfoForSwitchStmt(stmt, callKinds, fcg))
+			res.add(findCalleesInfoForSwitchStmt(stmt, callKinds, fcg))
 		case *ir.SelectStmt:
-			res.addCalleesInfo(findCalleesInfoForSelectStmt(stmt, callKinds, fcg))
+			res.add(findCalleesInfoForSelectStmt(stmt, callKinds, fcg))
 		case *ir.ForStmt:
-			res.addCalleesInfo(findCalleesInfoForForStmt(stmt, callKinds, fcg))
+			res.add(findCalleesInfoForForStmt(stmt, callKinds, fcg))
 		case *ir.RangeStmt:
-			res.addCalleesInfo(findCalleesInfoForRangeStmt(stmt, callKinds, fcg))
-		case *ir.AssignStmt, *ir.BranchStmt, *ir.ChanOpStmt, *ir.ReturnStmt:
+			res.add(findCalleesInfoForRangeStmt(stmt, callKinds, fcg))
+		case *ir.AssignStmt, *ir.BranchStmt, *ir.ChanCommOpStmt, *ir.ReturnStmt:
 			continue
 		default:
 			panic(fmt.Errorf("unexpected ir.Stmt type: %T", stmt))
@@ -231,8 +223,8 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 
 func findCalleesInfoForIfStmt(ifStmt *ir.IfStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
 	res.init()
-	res.mergeFromCalleesInfo(findCalleesInfoForBody(ifStmt.IfBranch(), callKinds, fcg))
-	res.mergeFromCalleesInfo(findCalleesInfoForBody(ifStmt.ElseBranch(), callKinds, fcg))
+	res.mergeFrom(findCalleesInfoForBody(ifStmt.IfBranch(), callKinds, fcg))
+	res.mergeFrom(findCalleesInfoForBody(ifStmt.ElseBranch(), callKinds, fcg))
 	return
 }
 
@@ -258,36 +250,36 @@ func findCalleesInfoForSwitchStmt(switchStmt *ir.SwitchStmt, callKinds ir.CallKi
 		}
 
 		for _, cond := range switchCase.Conds() {
-			condInfo.addCalleesInfo(findCalleesInfoForBody(cond, callKinds, fcg))
+			condInfo.add(findCalleesInfoForBody(cond, callKinds, fcg))
 		}
 
 		var executeCaseInfo callsInfo
 		executeCaseInfo.init()
-		executeCaseInfo.addCalleesInfo(condInfo)
-		executeCaseInfo.addCalleesInfo(bodyInfos[i])
+		executeCaseInfo.add(condInfo)
+		executeCaseInfo.add(bodyInfos[i])
 
 		j := i
 		for switchStmt.Cases()[j].HasFallthrough() {
 			j++
-			executeCaseInfo.addCalleesInfo(bodyInfos[j])
+			executeCaseInfo.add(bodyInfos[j])
 		}
 
-		res.mergeFromCalleesInfo(executeCaseInfo)
+		res.mergeFrom(executeCaseInfo)
 	}
 
 	if defaultCase != nil {
 		var executeDefaultInfo callsInfo
 		executeDefaultInfo.init()
-		executeDefaultInfo.addCalleesInfo(condInfo)
-		executeDefaultInfo.addCalleesInfo(bodyInfos[defaultCaseIndex])
+		executeDefaultInfo.add(condInfo)
+		executeDefaultInfo.add(bodyInfos[defaultCaseIndex])
 
 		j := defaultCaseIndex
 		for switchStmt.Cases()[j].HasFallthrough() {
 			j++
-			executeDefaultInfo.addCalleesInfo(bodyInfos[j])
+			executeDefaultInfo.add(bodyInfos[j])
 		}
 
-		res.mergeFromCalleesInfo(executeDefaultInfo)
+		res.mergeFrom(executeDefaultInfo)
 	}
 
 	return
@@ -296,10 +288,10 @@ func findCalleesInfoForSwitchStmt(switchStmt *ir.SwitchStmt, callKinds ir.CallKi
 func findCalleesInfoForSelectStmt(selectStmt *ir.SelectStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
 	res.init()
 	for _, selectCase := range selectStmt.Cases() {
-		res.mergeFromCalleesInfo(findCalleesInfoForBody(selectCase.Body(), callKinds, fcg))
+		res.mergeFrom(findCalleesInfoForBody(selectCase.Body(), callKinds, fcg))
 	}
 	if selectStmt.HasDefault() {
-		res.mergeFromCalleesInfo(findCalleesInfoForBody(selectStmt.DefaultBody(), callKinds, fcg))
+		res.mergeFrom(findCalleesInfoForBody(selectStmt.DefaultBody(), callKinds, fcg))
 	}
 	return
 }
@@ -311,16 +303,16 @@ func findCalleesInfoForForStmt(forStmt *ir.ForStmt, callKinds ir.CallKind, fcg *
 		f = forStmt.MaxIterations()
 	}
 	condRes := findCalleesInfoForBody(forStmt.Cond(), callKinds, fcg)
-	condRes.multiplyAllByFactor(f + 1)
+	condRes.multiply(f + 1)
 	bodyRes := findCalleesInfoForBody(forStmt.Body(), callKinds, fcg)
-	bodyRes.multiplyAllByFactor(f)
-	res.addCalleesInfo(condRes)
-	res.addCalleesInfo(bodyRes)
+	bodyRes.multiply(f)
+	res.add(condRes)
+	res.add(bodyRes)
 	return
 }
 
 func findCalleesInfoForRangeStmt(rangeStmt *ir.RangeStmt, callKinds ir.CallKind, fcg *FuncCallGraph) callsInfo {
 	res := findCalleesInfoForBody(rangeStmt.Body(), callKinds, fcg)
-	res.multiplyAllByFactor(MaxCallCounts)
+	res.multiply(MaxCallCounts)
 	return res
 }

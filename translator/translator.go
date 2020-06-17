@@ -12,6 +12,8 @@ import (
 const maxProcessCount = 100
 const maxDeferCount = 100
 const maxChannelCount = 100
+const maxMutexCount = 100
+const maxWaitGroupCount = 100
 
 // TranslateProg translates an ir.Prog to a uppaal.System.
 func TranslateProg(program *ir.Program) (*uppaal.System, []error) {
@@ -37,8 +39,10 @@ type translator struct {
 	program       *ir.Program
 	funcToProcess map[*ir.Func]*uppaal.Process
 
-	system         *uppaal.System
-	channelProcess *uppaal.Process
+	system           *uppaal.System
+	channelProcess   *uppaal.Process
+	mutexProcess     *uppaal.Process
+	waitGroupProcess *uppaal.Process
 
 	completeFCG *analyzer.FuncCallGraph
 	deferFCG    *analyzer.FuncCallGraph
@@ -60,6 +64,7 @@ fid make_fid(int id, int par_pid) {
 	fid t = {id, par_pid};
 	return t;
 }`)
+	t.system.Declarations().AddSpace()
 	t.system.Declarations().AddVariable("out_of_resources", "bool", "false")
 	t.system.AddProgressMeasure("out_of_resources")
 	t.system.AddQuery(uppaal.MakeQuery(
@@ -79,6 +84,8 @@ fid make_fid(int id, int par_pid) {
 	}
 
 	t.addChannels()
+	t.addMutexes()
+	t.addWaitGroups()
 }
 
 func (t translator) callCount(f *ir.Func) int {
@@ -93,7 +100,9 @@ func (t translator) callCount(f *ir.Func) int {
 
 func (t translator) deferCount(f *ir.Func) int {
 	deferCount := t.deferFCG.CallerCount(f)
-	deferCount += t.deferFCG.CloseChanCount(f)
+	for _, op := range ir.SpecialOps() {
+		deferCount += t.deferFCG.SpecialOpCount(f, op)
+	}
 	if deferCount > maxDeferCount {
 		deferCount = maxDeferCount
 	}
@@ -200,8 +209,6 @@ func (t *translator) translateFunc(f *ir.Func) {
 	proc.Declarations().AddVariable("is_sync", "bool", "false")
 	if deferCount > 0 {
 		proc.Declarations().AddVariable("deferred_count", "int", "0")
-		proc.Declarations().AddArray("deferred_is_close", deferCount, "bool")
-		proc.Declarations().AddArray("deferred_cid", deferCount, "int")
 		proc.Declarations().AddArray("deferred_fid", deferCount, "int")
 		proc.Declarations().AddArray("deferred_pid", deferCount, "int")
 	}
@@ -261,41 +268,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 		reachEnd.SetGuard("deferred_count == 0")
 		reachEnd.SetGuardLocation(deferred.Location().Add(uppaal.Location{4, 226}))
 
-		closed := proc.AddState("closed_", uppaal.Renaming)
-		closed.SetLocationAndResetNameAndCommentLocation(
-			deferred.Location().Add(uppaal.Location{136, 136}))
-		close := proc.AddTrans(deferred, closed)
-		close.SetGuard("deferred_count > 0 && deferred_is_close[deferred_count-1]")
-		close.SetGuardLocation(deferred.Location().Add(uppaal.Location{44, 48}))
-		close.SetSync("close[deferred_cid[deferred_count-1]]!")
-		close.SetSyncLocation(deferred.Location().Add(uppaal.Location{44, 64}))
-		next := proc.AddTrans(closed, deferred)
-		next.AddUpdate("deferred_count--")
-		next.SetUpdateLocation(deferred.Location().Add(uppaal.Location{44, 182}))
-		next.AddNail(closed.Location().Add(uppaal.Location{0, 68}))
-		next.AddNail(deferred.Location().Add(uppaal.Location{68, 204}))
-
-		for i, calleeFunc := range t.deferFCG.AllCallees(f) {
-			calleeProc := t.funcToProcess[calleeFunc]
-
-			started := proc.AddState("started_"+calleeProc.Name()+"_", uppaal.Renaming)
-			started.SetLocationAndResetNameAndCommentLocation(
-				deferred.Location().Add(uppaal.Location{136 * (i + 2), 136}))
-			start := proc.AddTrans(deferred, started)
-			start.SetGuard("deferred_count > 0 && !deferred_is_close[deferred_count-1] && deferred_fid[deferred_count-1] == " + calleeFunc.FuncValue().String())
-			start.SetGuardLocation(
-				deferred.Location().Add(uppaal.Location{180 * (i + 1), 48 + 32*(i+1)}))
-			start.SetSync(fmt.Sprintf("sync_%s[deferred_pid[deferred_count-1]]!", calleeProc.Name()))
-			start.SetSyncLocation(
-				deferred.Location().Add(uppaal.Location{180 * (i + 1), 64 + 32*(i+1)}))
-			wait := proc.AddTrans(started, deferred)
-			wait.SetSync(fmt.Sprintf("sync_%s[deferred_pid[deferred_count-1]]?", calleeProc.Name()))
-			wait.SetSyncLocation(started.Location().Add(uppaal.Location{4, 32 + 16*i}))
-			wait.AddUpdate("deferred_count--")
-			wait.SetUpdateLocation(deferred.Location().Add(uppaal.Location{44, 182}))
-			wait.AddNail(started.Location().Add(uppaal.Location{0, 68}))
-			wait.AddNail(deferred.Location().Add(uppaal.Location{68, 204}))
-		}
+		t.translateDeferredCalls(proc, deferred, f)
 	}
 
 	if f == t.program.EntryFunc() {

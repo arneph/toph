@@ -41,7 +41,7 @@ func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *ty
 	argVals = b.processExprs(callExpr.Args, ctx)
 	for i := 0; i < calleeSignature.Params().Len(); i++ {
 		param := calleeSignature.Params().At(i)
-		if _, ok := typesTypeToIrType(param.Type()); !ok {
+		if _, _, ok := typesTypeToIrType(param.Type()); !ok {
 			continue
 		}
 		if _, ok := argVals[i]; !ok {
@@ -57,14 +57,14 @@ func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *ty
 func (b *builder) processCallResultVars(calleeSignature *types.Signature, results map[int]*ir.Variable, ctx *context) {
 	for i := 0; i < calleeSignature.Results().Len(); i++ {
 		res := calleeSignature.Results().At(i)
-		t, ok := typesTypeToIrType(res.Type())
+		t, initialValue, ok := typesTypeToIrType(res.Type())
 		if !ok {
 			delete(results, i)
 			continue
 		}
 		v, ok := results[i]
 		if !ok {
-			v = b.program.NewVariable("", t, -1)
+			v = b.program.NewVariable("", t, initialValue)
 			ctx.body.Scope().AddVariable(v)
 			results[i] = v
 		}
@@ -76,8 +76,15 @@ func (b *builder) processCallExprWithResultVars(callExpr *ast.CallExpr, callKind
 		b.processExprs(callExpr.Args, ctx)
 		return
 	}
-	if fIdent, ok := callExpr.Fun.(*ast.Ident); ok {
-		if fIdent.Name == "make" {
+
+	switch funcExpr := callExpr.Fun.(type) {
+	case *ast.Ident:
+		builtin, ok := b.pkgTypesInfos[ctx.pkg].Uses[funcExpr].(*types.Builtin)
+		if !ok {
+			break
+		}
+		switch builtin.Name() {
+		case "make":
 			v, ok := resVars[0]
 			if !ok {
 				v = b.program.NewVariable("", ir.ChanType, -1)
@@ -86,9 +93,28 @@ func (b *builder) processCallExprWithResultVars(callExpr *ast.CallExpr, callKind
 			}
 			b.processMakeExpr(callExpr, v, ctx)
 			return
-
-		} else if fIdent.Name == "close" {
+		case "close":
 			b.processCloseExpr(callExpr, callKind, ctx)
+			return
+		}
+	case *ast.SelectorExpr:
+		used, ok := b.pkgTypesInfos[ctx.pkg].Uses[funcExpr.Sel]
+		if !ok {
+			break
+		}
+		switch used.String() {
+		case "func (*sync.Mutex).Lock()",
+			"func (*sync.Mutex).Unlock()",
+			"func (*sync.RWMutex).Lock()",
+			"func (*sync.RWMutex).RLock()",
+			"func (*sync.RWMutex).RUnlock()",
+			"func (*sync.RWMutex).Unlock()":
+			b.processMutexOpExpr(callExpr, callKind, ctx)
+			return
+		case "func (*sync.WaitGroup).Add(delta int)",
+			"func (*sync.WaitGroup).Done()",
+			"func (*sync.WaitGroup).Wait()":
+			b.processWaitGroupOpExpr(callExpr, callKind, ctx)
 			return
 		}
 	}
@@ -108,10 +134,13 @@ func (b *builder) processCallExprWithResultVars(callExpr *ast.CallExpr, callKind
 	for i, v := range argVals {
 		callStmt.AddArg(i, v)
 	}
-	if callKind == ir.Call {
-		b.processCallResultVars(calleeSignature, resVars, ctx)
-		for i, v := range resVars {
-			callStmt.AddResult(i, v)
-		}
+
+	if callKind != ir.Call {
+		return
+	}
+
+	b.processCallResultVars(calleeSignature, resVars, ctx)
+	for i, v := range resVars {
+		callStmt.AddResult(i, v)
 	}
 }

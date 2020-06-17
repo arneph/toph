@@ -32,12 +32,11 @@ type FuncCallGraph struct {
 
 	dynamicCallInfos []dynamicCallInfo
 
-	isCallerCounts  map[*ir.Func]int
-	isCalleeCounts  map[*ir.Func]int
-	makeChanCounts  map[*ir.Func]int
-	closeChanCounts map[*ir.Func]int
-	makeChanCount   int
-	closeChanCount  int
+	isCallerCounts map[*ir.Func]int
+	isCalleeCounts map[*ir.Func]int
+
+	callerToSpecialOpCounts map[*ir.Func]map[ir.SpecialOp]int
+	totalSpecialOpCounts    map[ir.SpecialOp]int
 
 	// Strongly connected components:
 	sccsOk     bool
@@ -54,10 +53,8 @@ func newFuncCallGraph(entry *ir.Func) *FuncCallGraph {
 	fcg.dynamicCallInfos = nil
 	fcg.isCallerCounts = make(map[*ir.Func]int)
 	fcg.isCalleeCounts = make(map[*ir.Func]int)
-	fcg.makeChanCounts = make(map[*ir.Func]int)
-	fcg.closeChanCounts = make(map[*ir.Func]int)
-	fcg.makeChanCount = 0
-	fcg.closeChanCount = 0
+	fcg.callerToSpecialOpCounts = make(map[*ir.Func]map[ir.SpecialOp]int)
+	fcg.totalSpecialOpCounts = make(map[ir.SpecialOp]int)
 	fcg.sccsOk = false
 
 	if entry != nil {
@@ -128,24 +125,16 @@ func (fcg *FuncCallGraph) CalleeCount(callee *ir.Func) int {
 	return fcg.isCalleeCounts[callee]
 }
 
-// MakeChanCount returns how many times the caller creates a channel.
-func (fcg *FuncCallGraph) MakeChanCount(caller *ir.Func) int {
-	return fcg.makeChanCounts[caller]
+// SpecialOpCount returns how many times the caller calls an ir.SpecialOpStmt
+// with the given ir.SpecialOp
+func (fcg *FuncCallGraph) SpecialOpCount(caller *ir.Func, op ir.SpecialOp) int {
+	return fcg.callerToSpecialOpCounts[caller][op]
 }
 
-// CloseChanCount returns how many times the caller closes a channel.
-func (fcg *FuncCallGraph) CloseChanCount(caller *ir.Func) int {
-	return fcg.closeChanCounts[caller]
-}
-
-// TotalMakeChanCount returns how many times a channel gets created.
-func (fcg *FuncCallGraph) TotalMakeChanCount() int {
-	return fcg.makeChanCount
-}
-
-// TotalCloseChanCount returns how many times a channel gets closed.
-func (fcg *FuncCallGraph) TotalCloseChanCount() int {
-	return fcg.closeChanCount
+// TotalSpecialOpCount returns how many times a ir.SpecialOpStmt with the given
+// ir.SpecialOp gets called.
+func (fcg *FuncCallGraph) TotalSpecialOpCount(op ir.SpecialOp) int {
+	return fcg.totalSpecialOpCounts[op]
 }
 
 // SCCCount returns the number of strongly connected components in the
@@ -199,6 +188,8 @@ func (fcg *FuncCallGraph) addFunc(f *ir.Func) {
 		}
 	}
 
+	fcg.callerToSpecialOpCounts[f] = make(map[ir.SpecialOp]int)
+
 	fcg.sccsOk = false
 }
 
@@ -249,31 +240,14 @@ func (fcg *FuncCallGraph) addCalleeCount(callee *ir.Func, count int) {
 	}
 }
 
-func (fcg *FuncCallGraph) addMakeChanCallCount(caller *ir.Func, count int) {
-	fcg.makeChanCounts[caller] += count
-	if fcg.makeChanCounts[caller] > MaxCallCounts {
-		fcg.makeChanCounts[caller] = MaxCallCounts
+func (fcg *FuncCallGraph) addSpecialOpCount(caller *ir.Func, op ir.SpecialOp, count int) {
+	fcg.callerToSpecialOpCounts[caller][op] += count
+	if fcg.callerToSpecialOpCounts[caller][op] > MaxCallCounts {
+		fcg.callerToSpecialOpCounts[caller][op] = MaxCallCounts
 	}
-}
-
-func (fcg *FuncCallGraph) addCloseChanCallCount(caller *ir.Func, count int) {
-	fcg.closeChanCounts[caller] += count
-	if fcg.closeChanCounts[caller] > MaxCallCounts {
-		fcg.closeChanCounts[caller] = MaxCallCounts
-	}
-}
-
-func (fcg *FuncCallGraph) addTotalMakeChanCallCount(count int) {
-	fcg.makeChanCount += count
-	if fcg.makeChanCount > MaxCallCounts {
-		fcg.makeChanCount = MaxCallCounts
-	}
-}
-
-func (fcg *FuncCallGraph) addTotalCloseChanCallCount(count int) {
-	fcg.closeChanCount += count
-	if fcg.closeChanCount > MaxCallCounts {
-		fcg.closeChanCount = MaxCallCounts
+	fcg.totalSpecialOpCounts[op] += count
+	if fcg.totalSpecialOpCounts[op] > MaxCallCounts {
+		fcg.totalSpecialOpCounts[op] = MaxCallCounts
 	}
 }
 
@@ -349,12 +323,33 @@ func (fcg *FuncCallGraph) updateSCCs() {
 
 func (fcg *FuncCallGraph) String() string {
 	fcg.updateSCCs()
-	str := ""
+
+	str := "Graph with SCCs:\n"
 	for caller, callees := range fcg.callerToCallees {
-		str += caller.Name()
-		str += fmt.Sprintf(" (%d) -> ", fcg.funcToSCCs[caller])
-		firstCallee := true
+		str += fmt.Sprintf("%s (%d)\n", caller.Name(), fcg.funcToSCCs[caller])
 		for callee := range callees {
+			str += "\t-> " + callee.Name() + "\n"
+		}
+	}
+	str += "\n"
+
+	str += "Dynamic Call Info:\n"
+	for _, info := range fcg.dynamicCallInfos {
+		str += info.signature.String() + "\n"
+		str += "\tcallers: "
+		firstCaller := true
+		for caller := range info.callers {
+			if firstCaller {
+				firstCaller = false
+			} else {
+				str += ", "
+			}
+			str += caller.Name()
+		}
+		str += "\n"
+		str += "\tcallees: "
+		firstCallee := true
+		for callee := range info.callees {
 			if firstCallee {
 				firstCallee = false
 			} else {
@@ -364,5 +359,22 @@ func (fcg *FuncCallGraph) String() string {
 		}
 		str += "\n"
 	}
+	str += "\n"
+
+	str += "Call Counts:\n"
+	for f := range fcg.callerToCallees {
+		str += f.Name() + "\n"
+		str += fmt.Sprintf("\tcaller: %d\n", fcg.isCallerCounts[f])
+		str += fmt.Sprintf("\tcallee: %d\n", fcg.isCalleeCounts[f])
+		str += fmt.Sprintf("\tspecial ops:\n")
+		for op, count := range fcg.callerToSpecialOpCounts[f] {
+			if count == 0 {
+				continue
+			}
+			str += fmt.Sprintf("\t\t%s: %d\n", op, count)
+		}
+	}
+	str += "\n"
+
 	return str
 }

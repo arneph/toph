@@ -119,14 +119,14 @@ func (b *builder) processForStmt(stmt *ast.ForStmt, label string, ctx *context) 
 }
 
 func (b *builder) processRangeStmt(stmt *ast.RangeStmt, label string, ctx *context) {
-	typeAndValue, ok := b.info.Types[stmt.X]
+	typeAndValue, ok := b.pkgTypesInfos[ctx.pkg].Types[stmt.X]
 	if !ok {
 		p := b.fset.Position(stmt.X.Pos())
 		b.addWarning(
 			fmt.Errorf("%v: could not determine type of value to range over", p))
 	}
 
-	t, ok := typesTypeToIrType(typeAndValue.Type)
+	t, _, ok := typesTypeToIrType(typeAndValue.Type)
 	if ok && t == ir.ChanType {
 		chanVar := b.findChannel(stmt.X, ctx)
 		if chanVar != nil {
