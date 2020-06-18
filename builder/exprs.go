@@ -30,11 +30,11 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		b.processExprs([]ast.Expr{e.X, e.Y}, ctx)
 		return nil
 	case *ast.CallExpr:
-		v := b.processCallExpr(e, ctx)
-		if v != nil {
-			return ir.RValue(v)
+		result := b.processCallExpr(e, ctx)[0]
+		if result == nil {
+			return ir.RValue(nil)
 		}
-		return nil
+		return result
 	case *ast.CompositeLit:
 		if e.Type != nil {
 			b.processExpr(e.Type, ctx)
@@ -45,10 +45,7 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		b.processExpr(e.Elt, ctx)
 		return nil
 	case *ast.FuncLit:
-		f := b.processFuncLit(e, ctx)
-		v := b.program.NewVariable("", ir.FuncType, f.FuncValue())
-		ctx.body.Scope().AddVariable(v)
-		return v
+		return b.processFuncLit(e, ctx).FuncValue()
 	case *ast.Ident:
 		return b.processIdent(e, ctx)
 	case *ast.IndexExpr:
@@ -61,8 +58,8 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		b.processExpr(e.X, ctx)
 		return nil
 	case *ast.SelectorExpr:
-		b.processExpr(e.X, ctx)
-		return nil
+		_, sel := b.processSelectorExpr(e, ctx)
+		return sel
 	case *ast.SliceExpr:
 		b.processExpr(e.X, ctx)
 		if e.Low != nil {
@@ -107,52 +104,95 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 }
 
 func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
-	if ident.Name == "nil" {
+	if ident.Name == "_" {
+		return nil
+	} else if ident.Name == "nil" {
 		return ir.Value(-1)
 	}
 
-	v, s := ctx.body.Scope().GetVariable(ident.Name)
-	if v == nil {
+	usedTypesObj := b.pkgTypesInfos[ctx.pkg].ObjectOf(ident)
+	if usedTypesObj == nil {
+		p := b.fset.Position(ident.Pos())
+		b.addWarning(fmt.Errorf("%v: types.Object for identifier is nil: %s", p, ident.Name))
+		return nil
+	}
+	typesType := usedTypesObj.Type()
+	if typesType == nil {
+		p := b.fset.Position(ident.Pos())
+		b.addWarning(fmt.Errorf("%v: types.Type for identifier is nil: %s", p, ident.Name))
+		return nil
+	}
+	_, _, ok := typesTypeToIrType(typesType)
+	if !ok {
 		return nil
 	}
 
-	obj := b.info.ObjectOf(ident)
-	if obj == nil {
-		p := b.fset.Position(ident.Pos())
-		panic(fmt.Errorf("%v: types.Object for identifier is nil: %s", p, ident.Name))
+	substitute := b.getSubstitute(usedTypesObj)
+	if substitute != nil {
+		return substitute
 	}
-	switch obj := obj.(type) {
-	case *types.Var:
-		u := b.varTypes[obj]
-		if u == nil {
+
+	var definingPkgPath string
+	var definedTypesObj types.Object
+	if usedTypesObj.Pkg() == b.pkgTypesPackages[ctx.pkg] {
+		definingPkgPath = ctx.pkg
+		definedTypesObj = usedTypesObj
+	} else {
+		definingPkgPath = usedTypesObj.Pkg().Path()
+		definingTypesPkg, ok := b.pkgTypesPackages[definingPkgPath]
+		if !ok {
 			return nil
-		} else if u != v {
-			p := b.fset.Position(ident.Pos())
-			b.addWarning(
-				fmt.Errorf("%v: identifier does not refer to known variable with name: %s",
-					p, ident.Name))
+		}
+		definedTypesObj = definingTypesPkg.Scope().Lookup(ident.Name)
+		if definedTypesObj == nil {
+			return nil
+		}
+	}
+
+	switch definedTypesObj := definedTypesObj.(type) {
+	case *types.Var:
+		v := b.pkgVarTypes[definingPkgPath][definedTypesObj]
+		if v == nil {
 			return nil
 		}
 
+		s := v.Scope()
 		if s != b.program.Scope() && s.IsSuperScopeOf(ctx.currentFunc().Scope()) {
 			v.SetCaptured(true)
 		}
+
 		return v
 
 	case *types.Func:
-		f := b.funcTypes[obj]
-		if f.FuncValue() != v.InitialValue() {
-			p := b.fset.Position(ident.Pos())
-			b.addWarning(
-				fmt.Errorf("%v: identifier does not refer to known variable with name: %s",
-					p, ident.Name))
+		f := b.pkgFuncTypes[definingPkgPath][definedTypesObj]
+		if f == nil {
 			return nil
 		}
-		return v
-	case *types.Const, *types.PkgName, *types.TypeName:
+		return f.FuncValue()
+
+	case *types.Const, *types.TypeName:
 		return nil
 	default:
 		p := b.fset.Position(ident.Pos())
-		panic(fmt.Errorf("%v: unexpected types.Object type: %T", p, obj))
+		b.addWarning(fmt.Errorf("%v: unexpected types.Object type: %T", p, definedTypesObj))
+		return nil
 	}
+}
+
+func (b *builder) processSelectorExpr(selExpr *ast.SelectorExpr, ctx *context) (x ir.RValue, sel ir.RValue) {
+	xIdent, ok := selExpr.X.(*ast.Ident)
+	if !ok {
+		xVal := b.processExpr(selExpr.X, ctx)
+		selVal := b.processExpr(selExpr.Sel, ctx)
+		return xVal, selVal
+	}
+
+	xTypesObj := b.pkgTypesInfos[ctx.pkg].ObjectOf(xIdent)
+	if _, ok := xTypesObj.(*types.PkgName); !ok {
+		xVal := b.processExpr(selExpr.X, ctx)
+		selVal := b.processExpr(selExpr.Sel, ctx)
+		return xVal, selVal
+	}
+
+	return nil, b.processIdent(selExpr.Sel, ctx)
 }

@@ -8,23 +8,60 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
-func (b *builder) processCallExpr(callExpr *ast.CallExpr, ctx *context) *ir.Variable {
-	results := make(map[int]*ir.Variable)
-	b.processCallExprWithResultVars(callExpr, ir.Call, results, ctx)
-	if len(results) == 0 {
-		return nil
-	} else if _, ok := results[0]; len(results) > 1 || !ok {
-		panic("attempted to use call expr as single expr")
+func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callable, calleeSignature *types.Signature, receiver ir.RValue) {
+	if b.canIgnoreCall(funcExpr, ctx) {
+		return nil, nil, nil
 	}
-	return results[0]
+
+	var calleeValue ir.RValue
+	var calleeTypesType types.Type
+	if selExpr, ok := funcExpr.(*ast.SelectorExpr); ok {
+		receiver, calleeValue = b.processSelectorExpr(selExpr, ctx)
+		calleeTypesType = b.pkgTypesInfos[ctx.pkg].TypeOf(selExpr.Sel)
+	} else {
+		calleeValue = b.processExpr(funcExpr, ctx)
+		calleeTypesType = b.pkgTypesInfos[ctx.pkg].TypeOf(funcExpr)
+		receiver = nil
+	}
+	if calleeValue == nil {
+		p := b.fset.Position(funcExpr.Pos())
+		funcExprStr := b.nodeToString(funcExpr)
+		b.addWarning(fmt.Errorf("%v: could not resolve func expr: %v", p, funcExprStr))
+		return nil, nil, nil
+	}
+
+	switch calleeValue := calleeValue.(type) {
+	case *ir.Variable:
+		callee = calleeValue
+	case ir.Value:
+		callee = b.program.Func(ir.FuncIndex(calleeValue))
+		if callee == nil {
+			p := b.fset.Position(funcExpr.Pos())
+			funcExprStr := b.nodeToString(funcExpr)
+			b.addWarning(fmt.Errorf("%v: could not resolve func index in ir.Program: %v", p, funcExprStr))
+			return nil, nil, nil
+		}
+	}
+
+	calleeSignature = calleeTypesType.Underlying().(*types.Signature)
+	receiverTypesVar := calleeSignature.Recv()
+	if receiverTypesVar == nil {
+		receiver = nil
+	}
+
+	return callee, calleeSignature, receiver
+}
+
+func (b *builder) processCallExpr(callExpr *ast.CallExpr, ctx *context) map[int]*ir.Variable {
+	return b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
 }
 
 func (b *builder) processDeferStmt(stmt *ast.DeferStmt, ctx *context) {
-	b.processCallExprWithResultVars(stmt.Call, ir.Defer, nil, ctx)
+	b.processCallExprWithCallKind(stmt.Call, ir.Defer, ctx)
 }
 
 func (b *builder) processGoStmt(stmt *ast.GoStmt, ctx *context) {
-	b.processCallExprWithResultVars(stmt.Call, ir.Go, nil, ctx)
+	b.processCallExprWithCallKind(stmt.Call, ir.Go, ctx)
 }
 
 func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
@@ -54,27 +91,25 @@ func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *ty
 	return argVals, true
 }
 
-func (b *builder) processCallResultVars(calleeSignature *types.Signature, results map[int]*ir.Variable, ctx *context) {
+func (b *builder) processCallResultVars(calleeSignature *types.Signature, ctx *context) map[int]*ir.Variable {
+	resultVars := make(map[int]*ir.Variable)
 	for i := 0; i < calleeSignature.Results().Len(); i++ {
 		res := calleeSignature.Results().At(i)
-		t, initialValue, ok := typesTypeToIrType(res.Type())
+		irType, initialValue, ok := typesTypeToIrType(res.Type())
 		if !ok {
-			delete(results, i)
 			continue
 		}
-		v, ok := results[i]
-		if !ok {
-			v = b.program.NewVariable("", t, initialValue)
-			ctx.body.Scope().AddVariable(v)
-			results[i] = v
-		}
+		irVar := b.program.NewVariable("", irType, initialValue)
+		ctx.body.Scope().AddVariable(irVar)
+		resultVars[i] = irVar
 	}
+	return resultVars
 }
 
-func (b *builder) processCallExprWithResultVars(callExpr *ast.CallExpr, callKind ir.CallKind, resVars map[int]*ir.Variable, ctx *context) {
+func (b *builder) processCallExprWithCallKind(callExpr *ast.CallExpr, callKind ir.CallKind, ctx *context) map[int]*ir.Variable {
 	if b.canIgnoreCall(callExpr.Fun, ctx) {
 		b.processExprs(callExpr.Args, ctx)
-		return
+		return map[int]*ir.Variable{}
 	}
 
 	switch funcExpr := callExpr.Fun.(type) {
@@ -85,17 +120,14 @@ func (b *builder) processCallExprWithResultVars(callExpr *ast.CallExpr, callKind
 		}
 		switch builtin.Name() {
 		case "make":
-			v, ok := resVars[0]
-			if !ok {
-				v = b.program.NewVariable("", ir.ChanType, -1)
-				ctx.body.Scope().AddVariable(v)
-				resVars[0] = v
+			result := b.processMakeExpr(callExpr, ctx)
+			if result != nil {
+				return map[int]*ir.Variable{0: result}
 			}
-			b.processMakeExpr(callExpr, v, ctx)
-			return
+			return map[int]*ir.Variable{}
 		case "close":
 			b.processCloseExpr(callExpr, callKind, ctx)
-			return
+			return map[int]*ir.Variable{}
 		}
 	case *ast.SelectorExpr:
 		used, ok := b.pkgTypesInfos[ctx.pkg].Uses[funcExpr.Sel]
@@ -110,37 +142,43 @@ func (b *builder) processCallExprWithResultVars(callExpr *ast.CallExpr, callKind
 			"func (*sync.RWMutex).RUnlock()",
 			"func (*sync.RWMutex).Unlock()":
 			b.processMutexOpExpr(callExpr, callKind, ctx)
-			return
+			return map[int]*ir.Variable{}
 		case "func (*sync.WaitGroup).Add(delta int)",
 			"func (*sync.WaitGroup).Done()",
 			"func (*sync.WaitGroup).Wait()":
 			b.processWaitGroupOpExpr(callExpr, callKind, ctx)
-			return
+			return map[int]*ir.Variable{}
 		}
 	}
 
-	callee, calleeSignature := b.findCallee(callExpr.Fun, ctx)
+	callee, calleeSignature, receiverVal := b.findCallee(callExpr.Fun, ctx)
 	if callee == nil {
-		return
+		return map[int]*ir.Variable{}
 	}
+
 	argVals, ok := b.processCallArgVals(callExpr, calleeSignature, ctx)
 	if !ok {
-		return
+		return map[int]*ir.Variable{}
 	}
 
 	callStmt := ir.NewCallStmt(callee, calleeSignature, callKind, callExpr.Pos(), callExpr.End())
 	ctx.body.AddStmt(callStmt)
 
+	if receiverVal != nil {
+		callStmt.AddArg(-1, receiverVal)
+	}
 	for i, v := range argVals {
 		callStmt.AddArg(i, v)
 	}
 
 	if callKind != ir.Call {
-		return
+		return map[int]*ir.Variable{}
 	}
 
-	b.processCallResultVars(calleeSignature, resVars, ctx)
-	for i, v := range resVars {
+	resultVars := b.processCallResultVars(calleeSignature, ctx)
+	for i, v := range resultVars {
 		callStmt.AddResult(i, v)
 	}
+
+	return resultVars
 }

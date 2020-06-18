@@ -8,6 +8,26 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
+func (b *builder) processFuncReceiver(recv *ast.FieldList, ctx *context) {
+	if recv == nil || len(recv.List) != 1 {
+		return
+	}
+	f := ctx.currentFunc()
+	field := recv.List[0]
+	if len(field.Names) != 1 {
+		return
+	}
+	fieldNameIdent := field.Names[0]
+	fieldType, initialValue, ok := typesTypeToIrType(b.pkgTypesInfos[ctx.pkg].TypeOf(field.Type).Underlying())
+	if !ok {
+		return
+	}
+	typesVar := b.pkgTypesInfos[ctx.pkg].ObjectOf(fieldNameIdent).(*types.Var)
+	v := b.program.NewVariable(fieldNameIdent.Name, fieldType, initialValue)
+	f.AddArg(-1, v)
+	b.pkgVarTypes[ctx.pkg][typesVar] = v
+}
+
 func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 	f := ctx.currentFunc()
 
@@ -64,6 +84,12 @@ func (b *builder) processFuncLit(funcLit *ast.FuncLit, ctx *context) *ir.Func {
 }
 
 func (b *builder) processFuncBody(body *ast.BlockStmt, ctx *context) {
+	if body == nil {
+		f := ctx.currentFunc()
+		p := b.fset.Position(f.Pos())
+		b.addWarning(fmt.Errorf("%v: function is not defined: %s", p, f.Name()))
+		return
+	}
 	b.processBlockStmt(body, ctx)
 }
 
@@ -134,98 +160,4 @@ func (b *builder) canIgnoreCall(funcExpr ast.Expr, ctx *context) bool {
 		}
 	}
 	return false
-}
-
-func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callable, calleeSignature *types.Signature) {
-	if b.canIgnoreCall(funcExpr, ctx) {
-		return nil, nil
-	}
-
-	switch funcExpr := funcExpr.(type) {
-	case *ast.FuncLit:
-		f := b.processFuncLit(funcExpr, ctx)
-		return f, f.Signature()
-
-	case *ast.Ident:
-		switch used := b.pkgTypesInfos[ctx.pkg].Uses[funcExpr].(type) {
-		case *types.Func:
-			f := b.pkgFuncTypes[ctx.pkg][used]
-			if f == nil {
-				p := b.fset.Position(funcExpr.Pos())
-				b.addWarning(fmt.Errorf("%v: could not resolve callee: %q", p, funcExpr.Name))
-				return nil, nil
-			}
-			return f, f.Signature()
-
-		case *types.Var:
-			v := b.pkgVarTypes[ctx.pkg][used]
-			if v == nil {
-				p := b.fset.Position(funcExpr.Pos())
-				b.addWarning(fmt.Errorf("%v: could not resolve callee: %q", p, funcExpr.Name))
-				return nil, nil
-			}
-			return v, used.Type().Underlying().(*types.Signature)
-
-		default:
-			p := b.fset.Position(funcExpr.Pos())
-			b.addWarning(fmt.Errorf("%v: could not resolve %T callee: %q", p, used, funcExpr.Name))
-			return nil, nil
-		}
-
-	case *ast.SelectorExpr:
-		pkg := ctx.pkg
-		funcType := b.pkgTypesInfos[pkg].Uses[funcExpr.Sel]
-
-		if ident, ok := funcExpr.X.(*ast.Ident); ok {
-			if typesPkg, ok := b.pkgTypesInfos[ctx.pkg].Uses[ident].(*types.PkgName); ok {
-				_, ok := b.pkgAstFiles[typesPkg.Imported().Path()]
-				if ok {
-					pkg = typesPkg.Imported().Path()
-					typesPkg := b.pkgTypesPackages[pkg]
-					typesPkgScope := typesPkg.Scope()
-					funcType = typesPkgScope.Lookup(funcExpr.Sel.Name)
-				}
-			}
-		}
-
-		switch funcType := funcType.(type) {
-		case *types.Func:
-			f := b.pkgFuncTypes[pkg][funcType]
-			if f != nil {
-				return f, f.Signature()
-			}
-
-			funcSub := b.getSubstitute(funcType)
-			if funcSub != nil {
-				return funcSub, funcSub.Signature()
-			}
-
-			b.processExpr(funcExpr.X, ctx)
-
-			p := b.fset.Position(funcExpr.Pos())
-			b.addWarning(fmt.Errorf("%v: could not resolve callee: %v", p, funcType))
-			return nil, nil
-
-		case *types.Var:
-			v := b.pkgVarTypes[pkg][funcType]
-			if v == nil {
-				p := b.fset.Position(funcExpr.Pos())
-				b.addWarning(fmt.Errorf("%v: could not resolve callee: %q", p, funcType))
-				return nil, nil
-			}
-			return v, funcType.Type().Underlying().(*types.Signature)
-
-		default:
-			b.processExpr(funcExpr.X, ctx)
-
-			p := b.fset.Position(funcExpr.Pos())
-			b.addWarning(fmt.Errorf("%v: could not resolve callee: %v", p, funcExpr))
-			return nil, nil
-		}
-
-	default:
-		p := b.fset.Position(funcExpr.Pos())
-		b.addWarning(fmt.Errorf("%v: could not resolve %T callee", p, funcExpr))
-		return nil, nil
-	}
 }

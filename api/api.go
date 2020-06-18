@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"go/build"
 	"os"
 
 	"github.com/arneph/toph/analyzer"
@@ -15,6 +16,9 @@ import (
 type Config struct {
 	// EntryFuncName is the name of the entry function to the program.
 	EntryFuncName string
+	// BuildContext is the context used by the builder package to find packages
+	// and files.
+	BuildContext build.Context
 	// Debug indicates if debug output files should be generated.
 	Debug bool
 	// Optimize indicates if the optimizer should be run on the IR.
@@ -52,7 +56,7 @@ func Run(path string, config Config) Result {
 	warnings := false
 
 	// Builder
-	program, errs := builder.BuildProgram(path, config.EntryFuncName)
+	program, errs := builder.BuildProgram(path, config.EntryFuncName, config.BuildContext)
 	warnings = warnings || len(errs) > 0
 	for _, err := range errs {
 		fmt.Fprintln(os.Stderr, err)
@@ -62,7 +66,7 @@ func Run(path string, config Config) Result {
 	}
 
 	if config.Debug {
-		outputProgram(program, path, config.OutName, 1)
+		outputProgram(program, config.OutName, "init")
 	}
 
 	if config.Optimize {
@@ -71,7 +75,7 @@ func Run(path string, config Config) Result {
 		optimizer.EliminateUnusedFunctions(program)
 
 		if config.Debug {
-			outputProgram(program, path, config.OutName, 2)
+			outputProgram(program, config.OutName, "opt")
 		}
 	}
 
@@ -91,7 +95,7 @@ func Run(path string, config Config) Result {
 			continue
 		}
 
-		sysFile, err := os.Create(path + "/" + config.OutName + "." + ffmt)
+		sysFile, err := os.Create(config.OutName + "." + ffmt)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "\tcould not write %s file: %v\n", ffmt, err)
 			return RunFailedWritingOutputFiles
@@ -118,11 +122,11 @@ func Run(path string, config Config) Result {
 
 // outputProgram generates debug output files showing the IR at a certain
 // point during the process.
-func outputProgram(program *ir.Program, path, name string, index int) {
+func outputProgram(program *ir.Program, outName string, stepName string) {
 	fcg := analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
 
 	// IR file
-	programPath := fmt.Sprintf("%s/%s.%d.ir.txt", path, name, index)
+	programPath := fmt.Sprintf("%s.%s.ir.txt", outName, stepName)
 	programFile, err := os.Create(programPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not write ir.txt file: %v\n", err)
@@ -133,7 +137,7 @@ func outputProgram(program *ir.Program, path, name string, index int) {
 	fmt.Fprintln(programFile, program.String())
 
 	// FCG files
-	fcgPath := fmt.Sprintf("%s/%s.%d.fcg.txt", path, name, index)
+	fcgPath := fmt.Sprintf("./%s.%s.fcg.txt", outName, stepName)
 	fcgFile, err := os.Create(fcgPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not write call_fcg.txt file: %v\n", err)

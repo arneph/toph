@@ -6,7 +6,20 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
-func (b *builder) getSubstitute(funcType *types.Func) *ir.Func {
+func (b *builder) getSubstitute(typesObj types.Object) ir.RValue {
+	switch typesObj := typesObj.(type) {
+	case *types.Func:
+		substituteFunc := b.getSubstituteFunc(typesObj)
+		if substituteFunc == nil {
+			return nil
+		}
+		return substituteFunc.FuncValue()
+	default:
+		return nil
+	}
+}
+
+func (b *builder) getSubstituteFunc(funcType *types.Func) *ir.Func {
 	var subFuncName string
 	switch funcType.Pkg().Name() {
 	case "time":

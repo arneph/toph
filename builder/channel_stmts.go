@@ -3,6 +3,7 @@ package builder
 import (
 	"fmt"
 	"go/ast"
+	"go/token"
 
 	"github.com/arneph/toph/ir"
 )
@@ -19,10 +20,10 @@ func (b *builder) findChannel(chanExpr ast.Expr, ctx *context) *ir.Variable {
 	return v
 }
 
-func (b *builder) processMakeExpr(callExpr *ast.CallExpr, result *ir.Variable, ctx *context) {
+func (b *builder) processMakeExpr(callExpr *ast.CallExpr, ctx *context) *ir.Variable {
 	_, ok := callExpr.Args[0].(*ast.ChanType)
 	if !ok {
-		return
+		return nil
 	}
 
 	bufferSize := 0
@@ -39,8 +40,11 @@ func (b *builder) processMakeExpr(callExpr *ast.CallExpr, result *ir.Variable, c
 		}
 	}
 
+	result := b.program.NewVariable("", ir.ChanType, -1)
 	makeStmt := ir.NewMakeChanStmt(result, bufferSize, callExpr.Pos(), callExpr.End())
 	ctx.body.AddStmt(makeStmt)
+
+	return result
 }
 
 func (b *builder) processReceiveExpr(expr *ast.UnaryExpr, addToCtx bool, ctx *context) *ir.ChanCommOpStmt {
@@ -122,27 +126,26 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, label string, ctx *con
 			subCtx := ctx.subContextForBody(selectStmt, "", body)
 
 			// Create newly defined variables:
-			definedVars := b.getDefinedVarsInAssignStmt(stmt, ctx)
+			if stmt.Tok == token.DEFINE {
+				for _, expr := range stmt.Lhs {
+					ident, ok := expr.(*ast.Ident)
+					if !ok {
+						continue
+					}
+					b.processVarDefinition(ident, subCtx)
+				}
+			}
 
-			// Resolve all assigned variables:
-			lhs := b.getAssignedVarsInAssignStmt(stmt, definedVars, subCtx)
-
-			// Handle lhs expressions
+			// Handle Lhs expressions:
+			lhs := b.processExprs(stmt.Lhs, subCtx)
 			for i, expr := range stmt.Lhs {
-				if v, ok := definedVars[i]; ok {
-					ctx.body.Scope().AddVariable(v)
-					p := b.fset.Position(expr.Pos())
-					b.addWarning(
-						fmt.Errorf("%v: can not model value passing via channel", p))
+				if _, ok := lhs[i]; !ok {
 					continue
 				}
-				if _, ok := lhs[i]; ok {
-					p := b.fset.Position(expr.Pos())
-					b.addWarning(
-						fmt.Errorf("%v: can not model value passing via channel", p))
-					continue
-				}
-				b.processExpr(expr, ctx)
+				p := b.fset.Position(expr.Pos())
+				b.addWarning(
+					fmt.Errorf("%v: can not model value passing via channel", p))
+				continue
 			}
 
 		default:

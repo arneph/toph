@@ -3,142 +3,91 @@ package builder
 import (
 	"fmt"
 	"go/ast"
-	"go/types"
+	"go/token"
 
 	"github.com/arneph/toph/ir"
 )
 
-func (b *builder) getDefinedVarsInAssignStmt(stmt *ast.AssignStmt, ctx *context) map[int]*ir.Variable {
-	definedVars := make(map[int]*ir.Variable)
-	for i, expr := range stmt.Lhs {
-		nameIdent, ok := expr.(*ast.Ident)
-		if !ok || nameIdent.Name == "_" {
-			continue
-		}
-		obj, ok := b.pkgTypesInfos[ctx.pkg].Defs[nameIdent]
-		if !ok {
-			continue
-		}
-
-		varType := obj.(*types.Var)
-		t, initialValue, ok := typesTypeToIrType(varType.Type())
-		if !ok {
-			continue
-		} else if t == ir.MutexType {
-			p := b.fset.Position(expr.Pos())
-			b.addWarning(fmt.Errorf("%v: can not declare sync.Mutex or sync.RWMutex in assignment", p))
-			continue
-		} else if t == ir.WaitGroupType {
-			p := b.fset.Position(expr.Pos())
-			b.addWarning(fmt.Errorf("%v: can not declare sync.WaitGroup in assignment", p))
-			continue
-		}
-
-		v := b.program.NewVariable(nameIdent.Name, t, initialValue)
-		definedVars[i] = v
-		b.pkgVarTypes[ctx.pkg][varType] = v
-	}
-	return definedVars
-}
-
-func (b *builder) getAssignedVarsInAssignStmt(stmt *ast.AssignStmt, definedVars map[int]*ir.Variable, ctx *context) map[int]*ir.Variable {
-	lhs := make(map[int]*ir.Variable)
-	for i, expr := range stmt.Lhs {
-		definedVar, ok := definedVars[i]
-		if ok {
-			lhs[i] = definedVar
-			continue
-		}
-
-		switch expr := expr.(type) {
-		case *ast.Ident:
-			if expr.Name == "_" {
-				continue
-			}
-			v := b.processIdent(expr, ctx)
-			if v == nil {
-				continue
-			}
-			lhs[i] = v.(*ir.Variable)
-
-		case *ast.SelectorExpr:
-			ident, ok := expr.X.(*ast.Ident)
-			if !ok {
-				continue
-			}
-			typesPkgName, ok := b.pkgTypesInfos[ctx.pkg].Uses[ident].(*types.PkgName)
-			if !ok {
-				continue
-			}
-			pkg := typesPkgName.Imported().Path()
-			typesPkg := b.pkgTypesPackages[pkg]
-			typesPkgScope := typesPkg.Scope()
-			varType, ok := typesPkgScope.Lookup(expr.Sel.Name).(*types.Var)
-			if !ok {
-				continue
-			}
-			v, ok := b.pkgVarTypes[pkg][varType]
-			if !ok {
-				continue
-			}
-			lhs[i] = v
-
-		default:
-			continue
-		}
-	}
-	return lhs
-}
-
 func (b *builder) processAssignStmt(stmt *ast.AssignStmt, ctx *context) {
 	// Create newly defined variables:
-	definedVars := b.getDefinedVarsInAssignStmt(stmt, ctx)
-
-	// Resolve all assigned variables:
-	lhs := b.getAssignedVarsInAssignStmt(stmt, definedVars, ctx)
-
-	defer func() {
-		// Handle lhs expressions
-		for i, expr := range stmt.Lhs {
-			if v, ok := definedVars[i]; ok {
-				ctx.body.Scope().AddVariable(v)
+	if stmt.Tok == token.DEFINE {
+		for _, expr := range stmt.Lhs {
+			ident, ok := expr.(*ast.Ident)
+			if !ok {
 				continue
 			}
-			if _, ok := lhs[i]; ok {
-				continue
-			}
-			if nameIdent, ok := expr.(*ast.Ident); ok && nameIdent.Name == "_" {
-				continue
-			}
-			b.processExpr(expr, ctx)
+			b.processVarDefinition(ident, ctx)
 		}
-	}()
-
-	// Handle single call expression:
-	callExpr, ok := stmt.Rhs[0].(*ast.CallExpr)
-	if ok && len(stmt.Rhs) == 1 {
-		b.processCallExprWithResultVars(callExpr, ir.Call, lhs, ctx)
-		return
 	}
 
+	b.processAssignments(stmt.Lhs, stmt.Rhs, ctx)
+}
+
+func (b *builder) processAssignments(lhsExprs []ast.Expr, rhsExprs []ast.Expr, ctx *context) {
 	// Handle Rhs expressions:
-	for i, expr := range stmt.Rhs {
+	var rhs map[int]ir.RValue
+	callExpr, ok := rhsExprs[0].(*ast.CallExpr)
+	if ok && len(rhsExprs) == 1 {
+		rhs = make(map[int]ir.RValue)
+		resultVars := b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
+		for i, resultVar := range resultVars {
+			rhs[i] = resultVar
+		}
+	} else {
+		rhs = b.processExprs(rhsExprs, ctx)
+	}
+
+	// Handle Lhs expressions:
+	lhs := make(map[int]*ir.Variable)
+	for i, expr := range lhsExprs {
+		irVal := b.processExpr(expr, ctx)
+		if irVal == nil {
+			continue
+		}
+		irVar := irVal.(*ir.Variable)
+		irType := irVar.Type()
+		if irType == ir.MutexType {
+			p := b.fset.Position(expr.Pos())
+			b.addWarning(fmt.Errorf("%v: can not assign sync.Mutex or sync.RWMutex", p))
+			continue
+		} else if irType == ir.WaitGroupType {
+			p := b.fset.Position(expr.Pos())
+			b.addWarning(fmt.Errorf("%v: can not assign sync.WaitGroup", p))
+			continue
+		}
+		lhs[i] = irVar
+	}
+
+	// Create assignment statements:
+	for i := 0; i < len(lhsExprs); i++ {
+		var lhsExpr, rhsExpr ast.Expr
+		lhsExpr = lhsExprs[i]
+		if len(rhsExprs) == 1 {
+			rhsExpr = rhsExprs[0]
+		} else {
+			rhsExpr = rhsExprs[i]
+		}
 		l := lhs[i]
-		r := b.processExpr(expr, ctx)
+		r := rhs[i]
 		if l == nil && r == nil {
 			continue
 		} else if l == nil {
-			p := b.fset.Position(stmt.Lhs[i].Pos())
-			b.addWarning(fmt.Errorf("%v: could not handle lhs of assignment", p))
+			if ident, ok := lhsExpr.(*ast.Ident); ok && ident.Name == "_" {
+				continue
+			}
+			p := b.fset.Position(lhsExpr.Pos())
+			lhsExprStr := b.nodeToString(lhsExpr)
+			b.addWarning(fmt.Errorf("%v: could not handle lhs of assignment: %s", p, lhsExprStr))
 			continue
 		} else if r == nil {
-			p := b.fset.Position(stmt.Rhs[i].Pos())
+			p := b.fset.Position(rhsExpr.Pos())
+			rhsExprStr := b.nodeToString(rhsExpr)
 			b.addWarning(
-				fmt.Errorf("%v: could not handle rhs of assignment", p))
+				fmt.Errorf("%v: could not handle rhs of assignment: %s", p, rhsExprStr))
 			continue
 		}
 
-		assignStmt := ir.NewAssignStmt(r, l, stmt.Pos(), stmt.End())
+		assignStmt := ir.NewAssignStmt(r, l, lhsExpr.Pos(), lhsExpr.End())
 		ctx.body.AddStmt(assignStmt)
 	}
 }

@@ -64,6 +64,7 @@ type Variable struct {
 	t            Type
 	initialValue Value
 	captured     bool
+	scope        *Scope
 }
 
 func newVariable(index VariableIndex, name string, t Type, initialValue Value) *Variable {
@@ -73,6 +74,7 @@ func newVariable(index VariableIndex, name string, t Type, initialValue Value) *
 	v.t = t
 	v.initialValue = initialValue
 	v.captured = false
+	v.scope = nil
 
 	return v
 }
@@ -102,6 +104,11 @@ func (v *Variable) IsCaptured() bool {
 // SetCaptured sets whether the variabled gets captured by any inner functions.
 func (v *Variable) SetCaptured(captured bool) {
 	v.captured = captured
+}
+
+// Scope returns the Scope containing the variable (possibly nil).
+func (v *Variable) Scope() *Scope {
+	return v.scope
 }
 
 func (v *Variable) String() string {

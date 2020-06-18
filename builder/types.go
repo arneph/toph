@@ -6,18 +6,18 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
-func typesTypeToIrType(t types.Type) (ir.Type, ir.Value, bool) {
-	switch t.Underlying().(type) {
+func typesTypeToIrType(typesType types.Type) (ir.Type, ir.Value, bool) {
+	switch typesType.Underlying().(type) {
 	case *types.Chan:
 		return ir.ChanType, -1, true
 	case *types.Signature:
 		return ir.FuncType, -1, true
 	default:
-		if t.String() == "sync.Mutex" {
+		if typesType.String() == "sync.Mutex" {
 			return ir.MutexType, -1, true
-		} else if t.String() == "sync.RWMutex" {
+		} else if typesType.String() == "sync.RWMutex" {
 			return ir.MutexType, -1, true
-		} else if t.String() == "sync.WaitGroup" {
+		} else if typesType.String() == "sync.WaitGroup" {
 			return ir.WaitGroupType, -1, true
 		}
 		return ir.Type(-1), 0, false

@@ -92,16 +92,15 @@ func (t *translator) translateVariable(v *ir.Variable, ctx *context) string {
 		return v.Handle()
 	}
 
-	w, s := ctx.body.Scope().GetVariable(v.Name())
-	if v != w {
-		panic(fmt.Errorf("scope returned unexpected variable: %v, expected: %v", w, v))
-	}
-
 	f := ctx.f
+	s := v.Scope()
 	arg := "pid"
-	for s.IsSuperScopeOf(f.Scope()) {
+	for f != nil && s.IsSuperScopeOf(f.Scope()) {
 		arg = "par_pid_" + t.funcToProcess[f].Name() + "[" + arg + "]"
 		f = f.EnclosingFunc()
+	}
+	if f == nil {
+		panic("attempted to translate variable not defined in function super scopes")
 	}
 	return v.Handle() + "[" + arg + "]"
 }

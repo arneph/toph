@@ -28,8 +28,9 @@ func main() {
 		flag.Usage()
 		return
 	}
-	build.Default.GOOS = *goos
-	build.Default.GOARCH = *goarch
+	buildContext := build.Default
+	buildContext.GOOS = *goos
+	buildContext.GOARCH = *goarch
 	path := flag.Arg(0)
 	ffmts := make(map[string]bool)
 	for _, ffmt := range strings.Split(*outFormats, ",") {
@@ -37,6 +38,7 @@ func main() {
 	}
 	config := api.Config{
 		EntryFuncName: *entryFuncName,
+		BuildContext:  buildContext,
 		Debug:         *debug,
 		Optimize:      *optimize,
 		OutName:       *outName,

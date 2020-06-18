@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/build"
+	"go/format"
 	"go/importer"
 	"go/parser"
 	"go/token"
@@ -19,90 +20,135 @@ const parserMode = parser.ParseComments |
 	parser.AllErrors
 
 // BuildProgram parses the Go files at the given path and builds an ir.Program.
-func BuildProgram(path string, entryFuncName string) (*ir.Program, []error) {
+func BuildProgram(path string, entryFuncName string, buildContext build.Context) (*ir.Program, []error) {
 	b := new(builder)
 
 	// Parse program:
 	b.fset = token.NewFileSet()
-	pkgs := make(map[string]*ast.Package)
-	filter := func(info os.FileInfo) bool {
-		if !strings.HasPrefix(entryFuncName, "Test") && strings.HasSuffix(info.Name(), "_test.go") {
-			return false
-		}
-		ok, err := build.Default.MatchFile(path, info.Name())
+	type importTask struct {
+		path   string
+		srcDir string
+	}
+	pathsQueue := []importTask{importTask{".", path}}
+	pathsQueueSet := make(map[string]bool)
+	pathsQueueSet[path] = true
+	astPkgs := make(map[string]*ast.Package)
+	for len(pathsQueue) > 0 {
+		path := pathsQueue[0].path
+		srcDir := pathsQueue[0].srcDir
+		pathsQueue = pathsQueue[1:]
+
+		buildPkg, err := buildContext.Import(path, srcDir, build.ImportComment)
 		if err != nil {
-			b.addWarning(err)
-			return false
+			b.addWarning(fmt.Errorf("import of %q from %s failed: \n\t%v", path, srcDir, err))
+			continue
 		}
-		return ok
+		if buildPkg.Goroot {
+			continue
+		}
+		absPath := buildPkg.Dir
+
+		for _, importPath := range buildPkg.Imports {
+			if importPath == "C" {
+				continue
+			}
+			if pathsQueueSet[importPath] {
+				continue
+			} else {
+				pathsQueue = append(pathsQueue, importTask{importPath, absPath})
+				pathsQueueSet[importPath] = true
+			}
+		}
+
+		filter := func(info os.FileInfo) bool {
+			ok, err := buildContext.MatchFile(absPath, info.Name())
+			if err != nil {
+				b.addWarning(fmt.Errorf("matching file failed: %v", err))
+				return true
+			}
+			return ok
+		}
+		parsedASTPkgs, err := parser.ParseDir(b.fset, absPath, filter, parserMode)
+		if err != nil {
+			b.addWarning(fmt.Errorf("parsing failed: %v", err))
+			return nil, b.warnings
+		}
+		for _, pkg := range parsedASTPkgs {
+			astPkgs[absPath] = pkg
+		}
 	}
-	pkgs, err := parser.ParseDir(b.fset, path, filter, parserMode)
-	if err != nil {
-		b.addWarning(fmt.Errorf("failed to parse input: %v", err))
-		return b.program, b.warnings
-	}
-	if len(pkgs) < 1 {
-		b.addWarning(fmt.Errorf("expected at least one package, got: %d", len(pkgs)))
+	if len(astPkgs) < 1 {
+		b.addWarning(fmt.Errorf("expected at least one package"))
 	}
 	subsFile, err := parser.ParseFile(b.fset, "substitutes.go", substitutesCode, parserMode)
 	if err != nil {
-		b.addWarning(fmt.Errorf("failed to parse substitutes file: %v", err))
-		return b.program, b.warnings
+		b.addWarning(fmt.Errorf("parsing substitutes failed: %v", err))
+		return nil, b.warnings
+	}
+	subsPkg := new(ast.Package)
+	subsPkg.Name = "subs"
+	subsPkg.Files = map[string]*ast.File{"substitutes.go": subsFile}
+	astPkgs["subs"] = subsPkg
+
+	// Type check:
+	b.pkgTypesInfos = make(map[string]*types.Info)
+	b.pkgTypesPackages = make(map[string]*types.Package)
+	b.pkgFuncTypes = make(map[string]map[*types.Func]*ir.Func)
+	b.pkgVarTypes = make(map[string]map[*types.Var]*ir.Variable)
+	paths := make(map[string]struct{})
+	typesConfig := types.Config{
+		Importer:                 importer.ForCompiler(b.fset, "source", nil),
+		FakeImportC:              true,
+		DisableUnusedImportCheck: true,
+	}
+	for pkgName, astPkg := range astPkgs {
+		info := new(types.Info)
+		info.Types = make(map[ast.Expr]types.TypeAndValue)
+		info.Defs = make(map[*ast.Ident]types.Object)
+		info.Uses = make(map[*ast.Ident]types.Object)
+		info.Selections = make(map[*ast.SelectorExpr]*types.Selection)
+		info.Scopes = make(map[ast.Node]*types.Scope)
+
+		var astFiles []*ast.File
+		for _, file := range astPkg.Files {
+			astFiles = append(astFiles, file)
+		}
+
+		typesPkg, err := typesConfig.Check(pkgName, b.fset, astFiles, info)
+		if err != nil {
+			b.addWarning(fmt.Errorf("type checking failed: %v", err))
+			return nil, b.warnings
+		}
+		path := typesPkg.Path()
+		if _, ok := paths[path]; ok {
+			b.addWarning(fmt.Errorf("type checking failed: found repeated package path: %s", path))
+			return nil, b.warnings
+		}
+		paths[path] = struct{}{}
+		b.pkgTypesInfos[path] = info
+		b.pkgTypesPackages[path] = typesPkg
+		b.pkgFuncTypes[path] = make(map[*types.Func]*ir.Func)
+		b.pkgVarTypes[path] = make(map[*types.Var]*ir.Variable)
 	}
 
 	// Comment maps:
 	b.cmaps = make(map[*ast.File]ast.CommentMap)
-	for _, pkg := range pkgs {
+	for _, pkg := range astPkgs {
 		for _, file := range pkg.Files {
 			b.cmaps[file] = ast.NewCommentMap(b.fset, file, file.Comments)
 		}
 	}
 
-	// Type check:
-	b.info = new(types.Info)
-	b.info.Types = make(map[ast.Expr]types.TypeAndValue)
-	b.info.Defs = make(map[*ast.Ident]types.Object)
-	b.info.Uses = make(map[*ast.Ident]types.Object)
-	b.info.Selections = make(map[*ast.SelectorExpr]*types.Selection)
-	b.info.Scopes = make(map[ast.Node]*types.Scope)
-
-	conf := types.Config{
-		Importer: importer.ForCompiler(b.fset, "source", nil),
-	}
-
-	for pkgName, pkg := range pkgs {
-		var pkgFiles []*ast.File
-		for _, file := range pkg.Files {
-			pkgFiles = append(pkgFiles, file)
-		}
-		_, err = conf.Check(pkgName, b.fset, pkgFiles, b.info)
-		if err != nil {
-			b.addWarning(fmt.Errorf("%v", err))
-			return b.program, b.warnings
-		}
-	}
-
-	_, err = conf.Check("subs", b.fset, []*ast.File{subsFile}, b.info)
-	if err != nil {
-		panic("type checker failed for substitutes")
-	}
-
 	// IR setup:
 	b.program = ir.NewProgram(b.fset)
-	b.funcTypes = make(map[*types.Func]*ir.Func)
-	b.varTypes = make(map[*types.Var]*ir.Variable)
 
 	// File processing:
-	files := []*ast.File{subsFile}
-	for _, pkg := range pkgs {
-		for _, file := range pkg.Files {
-			files = append(files, file)
+	for pkgName, astPkg := range astPkgs {
+		for _, astFile := range astPkg.Files {
+			b.processFuncDeclsInFile(pkgName, astFile)
 		}
 	}
 
-	for _, file := range files {
-		b.processFuncDeclsInFile(file)
-	}
 	for _, f := range b.program.Funcs() {
 		if f.Name() == entryFuncName {
 			b.program.SetEntryFunc(f)
@@ -114,23 +160,31 @@ func BuildProgram(path string, entryFuncName string) (*ir.Program, []error) {
 		entryFunc := b.program.AddOuterFunc(entryFuncName, entrySig, token.NoPos, token.NoPos)
 		b.program.SetEntryFunc(entryFunc)
 	}
-	for _, file := range files {
-		b.processGenDeclsInFile(file)
+
+	for pkgName, astPkg := range astPkgs {
+		for _, astFile := range astPkg.Files {
+			b.processGenDeclsInFile(pkgName, astFile)
+		}
 	}
-	for _, file := range files {
-		b.processFuncDefsInFile(file)
+
+	for pkgName, astPkg := range astPkgs {
+		for _, astFile := range astPkg.Files {
+			b.processFuncDefsInFile(pkgName, astFile)
+		}
 	}
+
 	return b.program, b.warnings
 }
 
 type builder struct {
-	fset  *token.FileSet
-	cmaps map[*ast.File]ast.CommentMap
-	info  *types.Info
+	fset             *token.FileSet
+	pkgTypesInfos    map[string]*types.Info
+	pkgTypesPackages map[string]*types.Package
+	pkgFuncTypes     map[string]map[*types.Func]*ir.Func
+	pkgVarTypes      map[string]map[*types.Var]*ir.Variable
+	cmaps            map[*ast.File]ast.CommentMap
 
-	program   *ir.Program
-	funcTypes map[*types.Func]*ir.Func
-	varTypes  map[*types.Var]*ir.Variable
+	program *ir.Program
 
 	warnings []error
 }
@@ -152,46 +206,34 @@ func (b *builder) processFuncDeclsInFile(pkg string, file *ast.File) {
 			continue
 		}
 		name := funcDecl.Name.Name
-		funcType := b.info.Defs[funcDecl.Name].(*types.Func)
-		sig := funcType.Type().(*types.Signature)
-		f := b.program.AddOuterFunc(name, sig, decl.Pos(), decl.End())
-		v := b.program.NewVariable(name, ir.FuncType, f.FuncValue())
-		if funcDecl.Recv != nil && len(funcDecl.Recv.List) == 1 {
-			field := funcDecl.Recv.List[0]
-			fieldNameIdent := field.Names[0]
-			if t, ok := typesTypeToIrType(b.info.TypeOf(field.Type).Underlying()); ok {
-				varType := b.info.Defs[fieldNameIdent].(*types.Var)
-					v := b.program.NewVariable(fieldNameIdent.Name, t, -1)
-					f.AddArg(-1, v)
-					b.varTypes[varType] = v
-				}
-			}
-		b.processFuncType(funcDecl.Type, newContext(b.cmaps[file], f))
-		b.program.Scope().AddVariable(v)
-		b.funcTypes[funcType] = f
+		typesFunc := b.pkgTypesInfos[pkg].ObjectOf(funcDecl.Name).(*types.Func)
+		typesSig := typesFunc.Type().(*types.Signature)
+		irFunc := b.program.AddOuterFunc(name, typesSig, decl.Pos(), decl.End())
+		ctx := newContext(pkg, b.cmaps[file], irFunc)
+		b.processFuncReceiver(funcDecl.Recv, ctx)
+		b.processFuncType(funcDecl.Type, ctx)
+		b.pkgFuncTypes[pkg][typesFunc] = irFunc
 	}
 }
 
-func (b *builder) processFuncDefsInFile(file *ast.File) {
-	cmap := b.cmaps[file]
+func (b *builder) processFuncDefsInFile(pkg string, file *ast.File) {
 	for _, decl := range file.Decls {
 		funcDecl, ok := decl.(*ast.FuncDecl)
 		if !ok {
 			continue
 		}
-		funcType, ok := b.info.Defs[funcDecl.Name].(*types.Func)
+		funcType, ok := b.pkgTypesInfos[pkg].Defs[funcDecl.Name].(*types.Func)
 		if !ok {
 			continue
 		}
-		f := b.funcTypes[funcType]
-		ctx := newContext(cmap, f)
+		irFunc := b.pkgFuncTypes[pkg][funcType]
+		ctx := newContext(pkg, b.cmaps[file], irFunc)
 		b.processFuncBody(funcDecl.Body, ctx)
 	}
 }
 
-func (b *builder) processGenDeclsInFile(file *ast.File) {
-	cmap := b.cmaps[file]
-	entryCtx := newContext(cmap, b.program.EntryFunc())
+func (b *builder) processGenDeclsInFile(pkg string, file *ast.File) {
+	entryCtx := newContext(pkg, b.cmaps[file], b.program.EntryFunc())
 	for _, decl := range file.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
 		if !ok {
@@ -202,64 +244,22 @@ func (b *builder) processGenDeclsInFile(file *ast.File) {
 }
 
 func (b *builder) processGenDecl(genDecl *ast.GenDecl, scope *ir.Scope, ctx *context) {
+	if genDecl.Tok != token.CONST && genDecl.Tok != token.VAR {
+		return
+	}
 	for _, spec := range genDecl.Specs {
-		valueSpec, ok := spec.(*ast.ValueSpec)
-		if !ok {
-			continue
-		}
+		valueSpec := spec.(*ast.ValueSpec)
 
-		lhs := make(map[int]*ir.Variable)
-		for i, nameIdent := range valueSpec.Names {
-			t, ok := typesTypeToIrType(b.info.TypeOf(nameIdent))
-			if !ok {
-				continue
-			}
-
-			varType := b.info.Defs[nameIdent].(*types.Var)
-			v := b.program.NewVariable(nameIdent.Name, t, -1)
-			lhs[i] = v
-			scope.AddVariable(v)
-			b.pkgVarTypes[ctx.pkg][varType] = v
-
-			if t == ir.MutexType {
-				makeMutexStmt := ir.NewMakeMutexStmt(v, nameIdent.Pos(), nameIdent.End())
-				ctx.body.AddStmt(makeMutexStmt)
-			} else if t == ir.WaitGroupType {
-				makeWaitGroupStmt := ir.NewMakeWaitGroupStmt(v, nameIdent.Pos(), nameIdent.End())
-				ctx.body.AddStmt(makeWaitGroupStmt)
-			}
-		}
+		b.processVarDefinitionsInScope(valueSpec.Names, scope, ctx)
 
 		if len(valueSpec.Values) == 0 {
 			continue
 		}
 
-		// Handle single call expression:
-		callExpr, ok := valueSpec.Values[0].(*ast.CallExpr)
-		if ok && len(valueSpec.Values) == 1 {
-			b.processCallExprWithResultVars(callExpr, ir.Call, lhs, ctx)
-			continue
+		lhsExprs := make([]ast.Expr, len(valueSpec.Names))
+		for i, name := range valueSpec.Names {
+			lhsExprs[i] = name
 		}
-
-		// Handle value expressions:
-		for i, expr := range valueSpec.Values {
-			l := lhs[i]
-			r := b.processExpr(expr, ctx)
-			if l == nil && r == nil {
-				continue
-			} else if l == nil {
-				p := b.fset.Position(valueSpec.Names[i].Pos())
-				b.addWarning(fmt.Errorf("%v: could not handle lhs of assignment", p))
-				continue
-			} else if r == nil {
-				p := b.fset.Position(valueSpec.Values[i].Pos())
-				b.addWarning(
-					fmt.Errorf("%v: could not handle rhs of assignment", p))
-				continue
-			}
-
-			assignStmt := ir.NewAssignStmt(r, l, valueSpec.Pos(), valueSpec.End())
-			ctx.body.AddStmt(assignStmt)
-		}
+		b.processAssignments(lhsExprs, valueSpec.Values, ctx)
 	}
 }

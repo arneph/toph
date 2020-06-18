@@ -36,26 +36,16 @@ func (s *Scope) Variables() []*Variable {
 	return s.variables
 }
 
-// GetVariable does name resolution for the given name and returns the
-// associated variable and its scope.
-func (s *Scope) GetVariable(name string) (*Variable, *Scope) {
-	v, ok := s.variableLookup[name]
-	if ok {
-		return v, s
-	}
-	if s.superScope != nil {
-		return s.superScope.GetVariable(name)
-	}
-	return nil, nil
-}
-
 // AddVariable adds the given variable to the scope.
 func (s *Scope) AddVariable(v *Variable) {
 	if v == nil {
 		panic("tried to add nil variable to scope")
+	} else if v.scope != nil {
+		panic("tried to add variable to more than one scope")
 	}
 	s.variables = append(s.variables, v)
 	s.variableLookup[v.name] = v
+	v.scope = s
 }
 
 func (s *Scope) String() string {

@@ -22,6 +22,8 @@ func main() {
 		requiredSubString = os.Args[1]
 	}
 
+	build.Default.GOOS = "linux"
+
 	buildContext := build.Default
 	buildContext.GOOS = "linux"
 
@@ -56,9 +58,10 @@ func main() {
 			fmt.Printf("running test: %s\n", testPath)
 			config := api.Config{
 				EntryFuncName: "main",
+				BuildContext:  buildContext,
 				Debug:         true,
 				Optimize:      true,
-				OutName:       test.Name(),
+				OutName:       testPath + test.Name(),
 				OutFormats:    map[string]bool{"xml": true},
 			}
 			result := api.Run(testPath, config)

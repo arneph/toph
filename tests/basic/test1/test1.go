@@ -7,11 +7,11 @@ import (
 var ch chan int
 
 func testA() {
-	a, b := 42, make(chan int)
-	c, b := 65, make(chan int)
+	a, b := int32(42), make(chan int)
+	c, b := uint8(65), make(chan int)
 
-	b <- a
-	b <- c
+	b <- int(a)
+	b <- int(c)
 }
 
 func testB() {
