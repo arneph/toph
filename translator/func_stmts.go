@@ -101,7 +101,7 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 		callerArg := stmt.Args()[i]
 		callerArgStr := t.translateRValue(callerArg, ctx)
 		if _, ok := callerArg.(ir.Value); ok && calleeArg.Type() == ir.FuncType {
-			callerArgStr = "make_fid(" + calleeArgStr + ", pid)"
+			callerArgStr = "make_fid(" + callerArgStr + ", pid)"
 		}
 		create.AddUpdate(
 			fmt.Sprintf("%s = %s", calleeArgStr, callerArgStr))
