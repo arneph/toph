@@ -12,7 +12,8 @@ func (b *builder) findMutex(mutexExpr ast.Expr, ctx *context) *ir.Variable {
 	v, ok := rv.(*ir.Variable)
 	if !ok || v == nil {
 		p := b.fset.Position(mutexExpr.Pos())
-		b.addWarning(fmt.Errorf("%v: could not resolve mutex expr: %v", p, mutexExpr))
+		mutexExprStr := b.nodeToString(mutexExpr)
+		b.addWarning(fmt.Errorf("%v: could not resolve mutex expr: %v", p, mutexExprStr))
 		return nil
 	}
 	return v
@@ -23,7 +24,8 @@ func (b *builder) findWaitGroup(waitGroupExpr ast.Expr, ctx *context) *ir.Variab
 	v, ok := rv.(*ir.Variable)
 	if !ok || v == nil {
 		p := b.fset.Position(waitGroupExpr.Pos())
-		b.addWarning(fmt.Errorf("%v: could not resolve wait group expr: %v", p, waitGroupExpr))
+		waitGroupExprStr := b.nodeToString(waitGroupExpr)
+		b.addWarning(fmt.Errorf("%v: could not resolve wait group expr: %v", p, waitGroupExprStr))
 		return nil
 	}
 	return v
