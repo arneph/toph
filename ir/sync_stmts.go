@@ -3,6 +3,7 @@ package ir
 import (
 	"fmt"
 	"go/token"
+	"strings"
 )
 
 // MutexOp represents an operation performed on a sync.Mutex or sync.RWMutex.
@@ -70,8 +71,9 @@ func (s *MakeMutexStmt) CallKind() CallKind {
 	return Call
 }
 
-func (s *MakeMutexStmt) String() string {
-	return fmt.Sprintf("%s <- make(mutex)", s.mutex.Handle())
+func (s *MakeMutexStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	fmt.Fprintf(b, "%s <- make(mutex)", s.mutex.Handle())
 }
 
 // MutexOpStmt represents a sync.(RW)Mutex operation statement.
@@ -123,8 +125,9 @@ func (s *MutexOpStmt) CallKind() CallKind {
 	return s.callKind
 }
 
-func (s *MutexOpStmt) String() string {
-	return fmt.Sprintf("%s %s %s", s.callKind, s.op, s.mutex.Handle())
+func (s *MutexOpStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	fmt.Fprintf(b, "%s %s %s", s.callKind, s.op, s.mutex.Handle())
 }
 
 // WaitGroupOp represents an operation performed on a wait group.
@@ -184,8 +187,9 @@ func (s *MakeWaitGroupStmt) CallKind() CallKind {
 	return Call
 }
 
-func (s *MakeWaitGroupStmt) String() string {
-	return fmt.Sprintf("%s <- make(wait group)", s.waitGroup.Handle())
+func (s *MakeWaitGroupStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	fmt.Fprintf(b, "%s <- make(wait group)", s.waitGroup.Handle())
 }
 
 // WaitGroupOpStmt represents a sync.WaitGroup operation statement.
@@ -244,9 +248,10 @@ func (s *WaitGroupOpStmt) CallKind() CallKind {
 	return s.callKind
 }
 
-func (s *WaitGroupOpStmt) String() string {
+func (s *WaitGroupOpStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
 	if s.op == Add {
-		return fmt.Sprintf("%s %s %s %d", s.callKind, s.op, s.waitGroup.Handle(), s.delta)
+		fmt.Fprintf(b, "%s %s %s %d", s.callKind, s.op, s.waitGroup.Handle(), s.delta)
 	}
-	return fmt.Sprintf("%s %s %s", s.callKind, s.op, s.waitGroup.String())
+	fmt.Fprintf(b, "%s %s %s", s.callKind, s.op, s.waitGroup.String())
 }

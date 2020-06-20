@@ -149,41 +149,48 @@ func (f *Func) Body() *Body {
 	return &f.body
 }
 
-func (f *Func) String() string {
-	s := "func{\n"
-	s += fmt.Sprintf("\tindex: %d\n", f.index)
-	s += "\tname: " + f.Name() + "\n"
-	s += "\targs: "
+func (f *Func) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	b.WriteString("func{\n")
+	writeIndent(b, indent+1)
+	fmt.Fprintf(b, "index: %d\n", f.index)
+	writeIndent(b, indent+1)
+	fmt.Fprintf(b, "name: %s\n", f.name)
+	writeIndent(b, indent+1)
+	b.WriteString("args: ")
 	firstArg := true
 	for _, arg := range f.args {
 		if firstArg {
 			firstArg = false
 		} else {
-			s += ", "
+			b.WriteString(", ")
 		}
-		s += arg.Handle()
+		b.WriteString(arg.Handle())
 	}
-	s += "\n"
-	s += "\tresults: "
+	b.WriteString("\n")
+	writeIndent(b, indent+1)
+	b.WriteString("results: ")
 	firstResult := true
 	for i, resultType := range f.resultTypes {
 		result, ok := f.results[i]
 		if firstResult {
 			firstResult = false
 		} else {
-			s += ", "
+			b.WriteString(", ")
 		}
 		if ok {
-			s += result.Handle()
+			b.WriteString(result.Handle())
 		} else {
-			s += resultType.String()
+			b.WriteString(resultType.String())
 		}
 	}
-	s += "\n"
+	b.WriteString("\n")
 	if f.enclosingFunc != nil {
-		s += fmt.Sprintf("\tenclosing func index: %d\n", f.enclosingFunc.index)
+		writeIndent(b, indent+1)
+		fmt.Fprintf(b, "enclosing func index: %d (%s)\n", f.enclosingFunc.index, f.enclosingFunc.name)
 	}
-	s += "\t" + strings.ReplaceAll(f.body.String(), "\n", "\n\t") + "\n"
-	s += "}"
-	return s
+	f.body.tree(b, indent+1)
+	b.WriteString("\n")
+	writeIndent(b, indent)
+	b.WriteString("}")
 }

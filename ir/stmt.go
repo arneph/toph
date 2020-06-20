@@ -3,15 +3,15 @@ package ir
 import (
 	"fmt"
 	"go/token"
+	"strings"
 )
 
 // Stmt is the interface describing all statements.
 type Stmt interface {
-	fmt.Stringer
-
 	Pos() token.Pos
 	End() token.Pos
 
+	tree(b *strings.Builder, indent int)
 	stmt()
 }
 

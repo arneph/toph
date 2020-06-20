@@ -121,14 +121,24 @@ func (p *Program) FileSet() *token.FileSet {
 	return p.fset
 }
 
-func (p *Program) String() string {
-	str := "prog{\n"
-	str += "\t" + strings.ReplaceAll(p.scope.String(), "\n", "\n\t") + "\n"
-	str += "\tfuncs{\n"
+// Tree returns the program as a tree string representation.
+func (p *Program) Tree() string {
+	var b strings.Builder
+	b.WriteString("prog{\n")
+	p.scope.tree(&b, 1)
+	b.WriteString("\n")
+	b.WriteString("\tfuncs{\n")
 	for _, f := range p.funcs {
-		str += "\t\t" + strings.ReplaceAll(f.String(), "\n", "\n\t\t") + "\n"
+		f.tree(&b, 2)
+		b.WriteString("\n")
 	}
-	str += "\t}\n"
-	str += "}"
-	return str
+	b.WriteString("\t}\n")
+	b.WriteString("}")
+	return b.String()
+}
+
+func writeIndent(b *strings.Builder, indent int) {
+	for i := 0; i < indent; i++ {
+		b.WriteString("\t")
+	}
 }

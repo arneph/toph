@@ -87,12 +87,15 @@ func (b *Body) SetStmts(stmts []Stmt) {
 	b.stmts = stmts
 }
 
-func (b *Body) String() string {
-	s := b.scope.String() + "\n"
-	s += "stmts{\n"
+func (b *Body) tree(bob *strings.Builder, indent int) {
+	b.scope.tree(bob, indent)
+	bob.WriteString("\n")
+	writeIndent(bob, indent)
+	bob.WriteString("stmts{\n")
 	for _, stmt := range b.stmts {
-		s += "\t" + strings.ReplaceAll(stmt.String(), "\n", "\n\t") + "\n"
+		stmt.tree(bob, indent+1)
+		bob.WriteString("\n")
 	}
-	s += "}"
-	return s
+	writeIndent(bob, indent)
+	bob.WriteString("}")
 }

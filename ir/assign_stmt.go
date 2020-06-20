@@ -3,6 +3,7 @@ package ir
 import (
 	"fmt"
 	"go/token"
+	"strings"
 )
 
 // AssignStmt represents an assignment statement.
@@ -38,14 +39,13 @@ func (a *AssignStmt) Destination() *Variable {
 	return a.destination
 }
 
-func (a *AssignStmt) String() string {
+func (a *AssignStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
 	switch s := a.source.(type) {
 	case Value:
-		return fmt.Sprintf("%s <- %s",
-			a.destination.Handle(), s.String())
+		fmt.Fprintf(b, "%s <- %s", a.destination.Handle(), s.String())
 	case *Variable:
-		return fmt.Sprintf("%s <- %s",
-			a.destination.Handle(), s.Handle())
+		fmt.Fprintf(b, "%s <- %s", a.destination.Handle(), s.Handle())
 	default:
 		panic(fmt.Errorf("unexpected %T source type", s))
 	}

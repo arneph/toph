@@ -3,6 +3,7 @@ package analyzer
 import (
 	"fmt"
 	"go/types"
+	"strings"
 
 	"github.com/arneph/toph/ir"
 )
@@ -324,57 +325,67 @@ func (fcg *FuncCallGraph) updateSCCs() {
 func (fcg *FuncCallGraph) String() string {
 	fcg.updateSCCs()
 
-	str := "Graph with SCCs:\n"
+	var b strings.Builder
+
+	b.WriteString("Graph with SCCs:\n")
 	for caller, callees := range fcg.callerToCallees {
-		str += fmt.Sprintf("%s (%d)\n", caller.Name(), fcg.funcToSCCs[caller])
+		fmt.Fprintf(&b, "%s (%d)\n", caller.Name(), fcg.funcToSCCs[caller])
+		i := 0
 		for callee := range callees {
-			str += "\t-> " + callee.Name() + "\n"
+			fmt.Fprintf(&b, "\t-> %s\n", callee.Name())
+			i++
+			if i == 10 {
+				break
+			}
+		}
+		if i < len(callees) {
+			fmt.Fprintf(&b, "\t... (%d more)\n", len(callees)-i)
 		}
 	}
-	str += "\n"
+	b.WriteString("\n")
 
-	str += "Dynamic Call Info:\n"
+	b.WriteString("Dynamic Call Info:\n")
 	for _, info := range fcg.dynamicCallInfos {
-		str += info.signature.String() + "\n"
-		str += "\tcallers: "
+		b.WriteString(info.signature.String() + "\n")
+		b.WriteString("\tcallers: ")
 		firstCaller := true
 		for caller := range info.callers {
 			if firstCaller {
 				firstCaller = false
 			} else {
-				str += ", "
+				b.WriteString(", ")
 			}
-			str += caller.Name()
+			b.WriteString(caller.Name())
 		}
-		str += "\n"
-		str += "\tcallees: "
+		b.WriteString("\n")
+		b.WriteString("\tcallees: ")
 		firstCallee := true
 		for callee := range info.callees {
 			if firstCallee {
 				firstCallee = false
 			} else {
-				str += ", "
+				b.WriteString(", ")
 			}
-			str += callee.Name()
+			b.WriteString(callee.Name())
 		}
-		str += "\n"
+		b.WriteString("\n")
 	}
-	str += "\n"
+	b.WriteString("\n")
 
-	str += "Call Counts:\n"
+	b.WriteString("Call Counts:\n")
 	for f := range fcg.callerToCallees {
-		str += f.Name() + "\n"
-		str += fmt.Sprintf("\tcaller: %d\n", fcg.isCallerCounts[f])
-		str += fmt.Sprintf("\tcallee: %d\n", fcg.isCalleeCounts[f])
-		str += fmt.Sprintf("\tspecial ops:\n")
+		b.WriteString(f.Name() + "\n")
+		fmt.Fprintf(&b, "\tcaller: %d\n", fcg.isCallerCounts[f])
+		fmt.Fprintf(&b, "\tcallee: %d\n", fcg.isCalleeCounts[f])
+		fmt.Fprintf(&b, "\tspecial ops:\n")
 		for op, count := range fcg.callerToSpecialOpCounts[f] {
 			if count == 0 {
 				continue
 			}
-			str += fmt.Sprintf("\t\t%s: %d\n", op, count)
+			fmt.Fprintf(&b, "\t\t%s: %d\n", op, count)
 		}
 	}
-	str += "\n"
+	b.WriteString("\n")
 
-	return str
+	return b.String()
 }

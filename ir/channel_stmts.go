@@ -68,8 +68,9 @@ func (s *MakeChanStmt) CallKind() CallKind {
 	return Call
 }
 
-func (s *MakeChanStmt) String() string {
-	return fmt.Sprintf("%s <- make(chan, %d)", s.channel.Handle(), s.bufferSize)
+func (s *MakeChanStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	fmt.Fprintf(b, "%s <- make(chan, %d)", s.channel.Handle(), s.bufferSize)
 }
 
 // ChanCommOp represents an communication operation performed on a channel.
@@ -124,8 +125,9 @@ func (s *ChanCommOpStmt) Op() ChanCommOp {
 	return s.op
 }
 
-func (s *ChanCommOpStmt) String() string {
-	return fmt.Sprintf("%v %s", s.op, s.channel.Handle())
+func (s *ChanCommOpStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	fmt.Fprintf(b, "%v %s", s.op, s.channel.Handle())
 }
 
 // CloseChanStmt represents a channel close statement.
@@ -167,8 +169,9 @@ func (s *CloseChanStmt) CallKind() CallKind {
 	return s.callKind
 }
 
-func (s *CloseChanStmt) String() string {
-	return fmt.Sprintf("%s close %s", s.callKind, s.channel.Handle())
+func (s *CloseChanStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	fmt.Fprintf(b, "%s close %s", s.callKind, s.channel.Handle())
 }
 
 // SelectCase represents a single case in a select statement.
@@ -206,11 +209,15 @@ func (c *SelectCase) Pos() token.Pos {
 	return c.pos
 }
 
-func (c *SelectCase) String() string {
-	str := "case " + c.opStmt.String() + " {\n"
-	str += "\t" + strings.ReplaceAll(c.body.String(), "\n", "\n\t") + "\n"
-	str += "}"
-	return str
+func (c *SelectCase) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	b.WriteString("case ")
+	c.opStmt.tree(b, 0)
+	b.WriteString(" {\n")
+	c.body.tree(b, indent+1)
+	b.WriteString("\n")
+	writeIndent(b, indent)
+	b.WriteString("}")
 }
 
 // SelectStmt represents a select statement.
@@ -287,16 +294,20 @@ func (s *SelectStmt) SetDefaultPos(defaultPos token.Pos) {
 	s.defaultPos = defaultPos
 }
 
-func (s *SelectStmt) String() string {
-	str := "select{\n"
+func (s *SelectStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	b.WriteString("select{\n")
 	for _, c := range s.cases {
-		str += "\t" + strings.ReplaceAll(c.String(), "\n", "\n\t") + "\n"
+		c.tree(b, indent+1)
+		b.WriteString("\n")
 	}
 	if s.hasDefault {
-		str += "\tdefault {\n"
-		str += "\t\t" + strings.ReplaceAll(s.defaultBody.String(), "\n", "\n\t\t") + "\n"
-		str += "\t}\n"
+		writeIndent(b, indent+1)
+		b.WriteString("default{\n")
+		s.defaultBody.tree(b, indent+2)
+		writeIndent(b, indent+1)
+		b.WriteString("}\n")
 	}
-	str += "}"
-	return str
+	writeIndent(b, indent)
+	b.WriteString("}")
 }

@@ -48,11 +48,13 @@ func (s *Scope) AddVariable(v *Variable) {
 	v.scope = s
 }
 
-func (s *Scope) String() string {
-	str := "scope{\n"
+func (s *Scope) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	b.WriteString("scope{\n")
 	for _, v := range s.variables {
-		str += "\t" + strings.ReplaceAll(v.String(), "\n", "\n\t") + "\n"
+		v.tree(b, indent+1)
+		b.WriteString("\n")
 	}
-	str += "}"
-	return str
+	writeIndent(b, indent)
+	b.WriteString("}")
 }

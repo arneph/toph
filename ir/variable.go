@@ -1,6 +1,9 @@
 package ir
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Type represents the type of a variable
 type Type int
@@ -111,10 +114,6 @@ func (v *Variable) Scope() *Scope {
 	return v.scope
 }
 
-func (v *Variable) String() string {
-	return fmt.Sprintf("var %s %v = %d", v.Handle(), v.t, v.initialValue)
-}
-
 // Handle returns a shorthand to reference the variable.
 func (v *Variable) Handle() string {
 	if v.name == "" {
@@ -123,6 +122,15 @@ func (v *Variable) Handle() string {
 	}
 	return fmt.Sprintf("%s_var%d_%s",
 		v.t.VariablePrefix(), v.index, v.name)
+}
+
+func (v *Variable) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	b.WriteString(fmt.Sprintf("var %s %v = %d", v.Handle(), v.t, v.initialValue))
+}
+
+func (v *Variable) String() string {
+	return v.Handle()
 }
 
 // RValue represents a value that can be assigned to a variable, either an

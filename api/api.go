@@ -134,7 +134,7 @@ func outputProgram(program *ir.Program, outName string, stepName string) {
 	}
 	defer programFile.Close()
 
-	fmt.Fprintln(programFile, program.String())
+	programFile.WriteString(program.Tree())
 
 	// FCG files
 	fcgPath := fmt.Sprintf("./%s.%s.fcg.txt", outName, stepName)
@@ -145,5 +145,5 @@ func outputProgram(program *ir.Program, outName string, stepName string) {
 	}
 	defer fcgFile.Close()
 
-	fmt.Fprintln(fcgFile, fcg.String())
+	fcgFile.WriteString(fcg.String())
 }

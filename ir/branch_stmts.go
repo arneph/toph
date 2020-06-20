@@ -66,13 +66,15 @@ func (s *IfStmt) ElsePos() token.Pos {
 	return s.elsePos
 }
 
-func (s *IfStmt) String() string {
-	str := "if{\n"
-	str += "\t" + strings.ReplaceAll(s.ifBranch.String(), "\n", "\n\t") + "\n"
-	str += "}else{\n"
-	str += "\t" + strings.ReplaceAll(s.elseBranch.String(), "\n", "\n\t") + "\n"
-	str += "}"
-	return str
+func (s *IfStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	b.WriteString("if{\n")
+	s.ifBranch.tree(b, indent+1)
+	writeIndent(b, indent)
+	b.WriteString("}else{\n")
+	s.elseBranch.tree(b, indent+1)
+	writeIndent(b, indent)
+	b.WriteString("}")
 }
 
 // SwitchCase represents a single case in a select statement.
@@ -154,15 +156,27 @@ func (c *SwitchCase) Pos() token.Pos {
 	return c.pos
 }
 
-func (c *SwitchCase) String() string {
-	str := "case{\n"
-	str += "\tconds{\n"
-	str += "\t}\n"
-	str += "\tbody{\n"
-	str += "\t\t" + strings.ReplaceAll(c.body.String(), "\n", "\n\t\t") + "\n"
-	str += "\t}\n"
-	str += "}"
-	return str
+func (c *SwitchCase) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	b.WriteString("case{\n")
+	writeIndent(b, indent+1)
+	fmt.Fprintf(b, "fefault: %b", c.isDefault)
+	writeIndent(b, indent+1)
+	fmt.Fprintf(b, "fallthrough: %b", c.hasFallthrough)
+	writeIndent(b, indent+1)
+	b.WriteString("conds{\n")
+	for _, cond := range c.conds {
+		writeIndent(b, indent+2)
+		b.WriteString("cond{\n")
+		cond.tree(b, indent+3)
+		writeIndent(b, indent+2)
+		b.WriteString("}\n")
+	}
+	writeIndent(b, indent+1)
+	b.WriteString("}\n")
+	c.body.tree(b, indent+1)
+	writeIndent(b, indent)
+	b.WriteString("}")
 }
 
 // SwitchStmt represents a switch statement.
@@ -205,13 +219,15 @@ func (s *SwitchStmt) AddCase(pos token.Pos) *SwitchCase {
 	return c
 }
 
-func (s *SwitchStmt) String() string {
-	str := "switch{\n"
+func (s *SwitchStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	b.WriteString("switch{\n")
 	for _, c := range s.cases {
-		str += "\t" + strings.ReplaceAll(c.String(), "\n", "\n\t") + "\n"
+		c.tree(b, indent+1)
+		b.WriteString("\n")
 	}
-	str += "}"
-	return str
+	writeIndent(b, indent)
+	b.WriteString("}")
 }
 
 // ForStmt represents a conditional loop.
@@ -298,16 +314,19 @@ func (s *ForStmt) SetMaxIterations(maxIterations int) {
 	s.maxIterations = maxIterations
 }
 
-func (s *ForStmt) String() string {
-	str := "for{\n"
-	str += "\tcond{\n"
-	str += "\t\t" + strings.ReplaceAll(s.cond.String(), "\n", "\n\t\t") + "\n"
-	str += "\t}\n"
-	str += "\tbody{\n"
-	str += "\t\t" + strings.ReplaceAll(s.body.String(), "\n", "\n\t\t") + "\n"
-	str += "\t}\n"
-	str += "}"
-	return str
+func (s *ForStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	b.WriteString("for{\n")
+	writeIndent(b, indent+1)
+	b.WriteString("cond{\n")
+	s.cond.tree(b, indent+2)
+	b.WriteString("\n")
+	writeIndent(b, indent+1)
+	b.WriteString("}\n")
+	s.body.tree(b, indent+1)
+	b.WriteString("\n")
+	writeIndent(b, indent)
+	b.WriteString("\n")
 }
 
 // RangeStmt represents a loop ranging over a channel.
@@ -341,11 +360,13 @@ func (s *RangeStmt) Body() *Body {
 	return &s.body
 }
 
-func (s *RangeStmt) String() string {
-	str := fmt.Sprintf("range %s {\n", s.channel.Handle())
-	str += "\t" + strings.ReplaceAll(s.body.String(), "\n", "\n\t") + "\n"
-	str += "}"
-	return str
+func (s *RangeStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	fmt.Fprintf(b, "range %s {\n", s.channel.Handle())
+	s.body.tree(b, indent+1)
+	b.WriteString("\n")
+	writeIndent(b, indent)
+	b.WriteString("}")
 }
 
 // BranchKind represents a continue or break, undertaken in a BranchStmt.
@@ -401,6 +422,7 @@ func (b *BranchStmt) Kind() BranchKind {
 	return b.kind
 }
 
-func (b *BranchStmt) String() string {
-	return b.kind.String()
+func (b *BranchStmt) tree(bob *strings.Builder, indent int) {
+	writeIndent(bob, indent)
+	bob.WriteString(b.kind.String())
 }

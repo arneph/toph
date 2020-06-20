@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/token"
 	"go/types"
+	"strings"
 )
 
 // Callable is the common interface for receivers of function and go calls.
@@ -120,40 +121,39 @@ func (s *CallStmt) AddResult(index int, result *Variable) {
 	s.results[index] = result
 }
 
-func (s *CallStmt) String() string {
-	var str string
+func (s *CallStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
 	if len(s.results) > 0 {
 		firstResult := false
 		for i, result := range s.results {
 			if firstResult {
 				firstResult = false
 			} else {
-				str += ", "
+				b.WriteString(", ")
 			}
-			str += fmt.Sprintf("%d: %v", i, result)
+			fmt.Fprintf(b, "%d: %v", i, result)
 		}
-		str += " <- "
+		b.WriteString(" <- ")
 	}
 	switch callee := s.callee.(type) {
 	case *Func:
-		str += fmt.Sprintf("%s %v (static)", s.callKind, callee.FuncValue())
+		fmt.Fprintf(b, "%s %v (static)", s.callKind, callee.FuncValue())
 	case *Variable:
-		str += fmt.Sprintf("%s %v (dynamic)", s.callKind, callee.Handle())
+		fmt.Fprintf(b, "%s %v (dynamic)", s.callKind, callee.Handle())
 	default:
 		panic(fmt.Errorf("unexpected callee type: %T", callee))
 	}
-	str += "("
+	b.WriteString("(")
 	firstArg := true
 	for i, arg := range s.args {
 		if firstArg {
 			firstArg = false
 		} else {
-			str += ", "
+			b.WriteString(", ")
 		}
-		str += fmt.Sprintf("%d: %v", i, arg)
+		fmt.Fprintf(b, "%d: %v", i, arg)
 	}
-	str += ")"
-	return str
+	b.WriteString(")")
 }
 
 // ReturnStmt represents a return statement inside a function.
@@ -190,24 +190,24 @@ func (s *ReturnStmt) AddResult(index int, result RValue) {
 	s.results[index] = result
 }
 
-func (s *ReturnStmt) String() string {
-	str := "return"
+func (s *ReturnStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	b.WriteString("return")
 	firstResult := true
 	for i, result := range s.results {
 		if firstResult {
 			firstResult = false
-			str += " "
+			b.WriteString(" ")
 		} else {
-			str += ", "
+			b.WriteString(", ")
 		}
 		switch result := result.(type) {
 		case Value:
-			str += fmt.Sprintf("%d: %s", i, result)
+			fmt.Fprintf(b, "%d: %s", i, result)
 		case *Variable:
-			str += fmt.Sprintf("%d: %s", i, result.Handle())
+			fmt.Fprintf(b, "%d: %s", i, result.Handle())
 		default:
 			panic(fmt.Errorf("unexpected %T rvalue type", result))
 		}
 	}
-	return str
 }
