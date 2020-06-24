@@ -62,7 +62,6 @@ func main() {
 			if ignore(test) {
 				continue
 			}
-
 			testPath := dirPath + test.Name() + "/"
 			if !strings.Contains(testPath, requiredSubString) {
 				continue
@@ -75,8 +74,6 @@ func main() {
 
 	fmt.Println("\rdone")
 }
-
-var z int
 
 func runTests() {
 	for test := range testsChan {
