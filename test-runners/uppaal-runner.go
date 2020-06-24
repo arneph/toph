@@ -105,6 +105,7 @@ func runTests() {
 		err = cmd.Run()
 		t2 := time.Now()
 		testIndex++
+		fmt.Printf("\r%100s", "")
 		if err != nil {
 			fmt.Printf("\r%03d failed    % 12.1fs %s\n", testIndex, t2.Sub(t1).Seconds(), xml[6:])
 		} else {
@@ -131,5 +132,8 @@ func printRunning() {
 		s += test
 	}
 	mu.RUnlock()
+	if len(s) > 100 {
+		s = s[:97] + "..."
+	}
 	fmt.Print(s)
 }
