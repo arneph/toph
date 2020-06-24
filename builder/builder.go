@@ -178,6 +178,7 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 
 	// IR setup:
 	b.program = ir.NewProgram(b.fset)
+	b.liftedSpecialOpFuncs = make(map[ir.SpecialOp]*ir.Func)
 
 	// File processing:
 	for _, pkg := range b.pkgs {
@@ -231,7 +232,8 @@ type builder struct {
 	vars             map[*types.Var]*ir.Variable
 	cmaps            map[*ast.File]ast.CommentMap
 
-	program *ir.Program
+	program              *ir.Program
+	liftedSpecialOpFuncs map[ir.SpecialOp]*ir.Func
 
 	warnings []error
 }

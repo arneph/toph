@@ -20,9 +20,6 @@ func (t translator) callCount(f *ir.Func) int {
 
 func (t translator) deferCount(f *ir.Func) int {
 	deferCount := t.deferFCG.CallerCount(f)
-	for _, op := range ir.SpecialOps() {
-		deferCount += t.deferFCG.SpecialOpCount(f, op)
-	}
 	if deferCount > maxDeferCount {
 		deferCount = maxDeferCount
 	}

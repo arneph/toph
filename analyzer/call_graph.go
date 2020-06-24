@@ -176,7 +176,7 @@ func (fcg *FuncCallGraph) addFunc(f *ir.Func) {
 	fcg.callerToCallees[f] = make(map[*ir.Func]struct{})
 	fcg.calleeToCallers[f] = make(map[*ir.Func]struct{})
 
-	if f != fcg.entry {
+	if f != fcg.entry && f.Signature() != nil {
 		if dynInfo := fcg.dynamicCallInfoForSignature(f.Signature()); dynInfo != nil {
 			dynInfo.callees[f] = struct{}{}
 		} else {

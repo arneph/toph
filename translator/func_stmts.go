@@ -163,7 +163,6 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 		deferred.SetLocationAndResetNameAndCommentLocation(
 			created.Location().Add(uppaal.Location{0, 136}))
 		xdefer := ctx.proc.AddTrans(created, deferred)
-		xdefer.AddUpdate("deferred_action[deferred_count] = kDeferredCall")
 		xdefer.AddUpdate("deferred_fid[deferred_count] = " + calleeFunc.FuncValue().String())
 		xdefer.AddUpdate("deferred_pid[deferred_count] = p")
 		xdefer.AddUpdate("deferred_count++")
@@ -188,7 +187,7 @@ func (t *translator) translateDeferredCalls(proc *uppaal.Process, deferred *uppa
 			deferred.Location().Add(uppaal.Location{136 * (i + 1), 136}))
 
 		start := proc.AddTrans(deferred, started)
-		start.SetGuard("deferred_count > 0 && deferred_action[deferred_count-1] == kDeferredCall && deferred_fid[deferred_count-1] == " + calleeFunc.FuncValue().String())
+		start.SetGuard("deferred_count > 0 && deferred_fid[deferred_count-1] == " + calleeFunc.FuncValue().String())
 		start.SetGuardLocation(
 			deferred.Location().Add(uppaal.Location{136 * (i + 1), 16 + 32*(i+1)}))
 		start.SetSync(fmt.Sprintf("sync_%s[deferred_pid[deferred_count-1]]!", calleeProc.Name()))

@@ -21,11 +21,6 @@ func (b *builder) findChannel(chanExpr ast.Expr, ctx *context) *ir.Variable {
 }
 
 func (b *builder) processMakeExpr(callExpr *ast.CallExpr, ctx *context) *ir.Variable {
-	_, ok := callExpr.Args[0].(*ast.ChanType)
-	if !ok {
-		return nil
-	}
-
 	bufferSize := 0
 	if len(callExpr.Args) > 1 {
 		a := callExpr.Args[1]
@@ -74,16 +69,6 @@ func (b *builder) processSendStmt(stmt *ast.SendStmt, addToCtx bool, ctx *contex
 		ctx.body.AddStmt(sendStmt)
 	}
 	return sendStmt
-}
-
-func (b *builder) processCloseExpr(callExpr *ast.CallExpr, callKind ir.CallKind, ctx *context) {
-	chanVar := b.findChannel(callExpr.Args[0], ctx)
-	if chanVar == nil {
-		return
-	}
-
-	closeStmt := ir.NewCloseChanStmt(chanVar, callKind, callExpr.Pos(), callExpr.End())
-	ctx.body.AddStmt(closeStmt)
 }
 
 func (b *builder) processSelectStmt(stmt *ast.SelectStmt, label string, ctx *context) {

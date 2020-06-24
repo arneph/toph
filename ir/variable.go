@@ -9,8 +9,10 @@ import (
 type Type int
 
 const (
+	// IntType is the type of an integer variable (used only internally).
+	IntType Type = iota
 	// FuncType is the type of a function variable.
-	FuncType Type = iota
+	FuncType
 	// ChanType is the type of a channel variable.
 	ChanType
 	// MutexType is the type of a (rw)mutex variable.
@@ -22,6 +24,8 @@ const (
 // VariablePrefix returns the variable prefix for the given type.
 func (t Type) VariablePrefix() string {
 	switch t {
+	case IntType:
+		return "num"
 	case FuncType:
 		return "fid"
 	case ChanType:
@@ -37,6 +41,8 @@ func (t Type) VariablePrefix() string {
 
 func (t Type) String() string {
 	switch t {
+	case IntType:
+		return "Integer"
 	case FuncType:
 		return "Func"
 	case ChanType:

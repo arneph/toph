@@ -32,8 +32,8 @@ func rwMutexTest() {
 	for i := 0; i < 5; i++ {
 		go func() {
 			mu.RLock()
+			defer mu.RUnlock()
 			fmt.Println(x)
-			mu.RUnlock()
 		}()
 	}
 }

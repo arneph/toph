@@ -13,7 +13,7 @@ type DeadEndOp struct{}
 var DeadEnd DeadEndOp
 
 func (o DeadEndOp) String() string {
-	return "dead end"
+	return "dead_end"
 }
 
 // DeadEndStmt is a statement that stalls the current function and models

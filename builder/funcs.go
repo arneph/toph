@@ -93,8 +93,8 @@ func (b *builder) processFuncBody(body *ast.BlockStmt, ctx *context) {
 	b.processBlockStmt(body, ctx)
 }
 
-func (b *builder) canIgnoreCall(funcExpr ast.Expr, ctx *context) bool {
-	switch funcExpr := funcExpr.(type) {
+func (b *builder) canIgnoreCall(callExpr *ast.CallExpr) bool {
+	switch funcExpr := callExpr.Fun.(type) {
 	case *ast.Ident:
 		if used, ok := b.typesInfo.Uses[funcExpr]; ok {
 			switch used := used.(type) {
@@ -112,6 +112,9 @@ func (b *builder) canIgnoreCall(funcExpr ast.Expr, ctx *context) bool {
 					"println",
 					"real":
 					return true
+				case "make":
+					_, ok := callExpr.Args[0].(*ast.ChanType)
+					return !ok
 				}
 			case *types.TypeName:
 				return true
@@ -160,4 +163,50 @@ func (b *builder) canIgnoreCall(funcExpr ast.Expr, ctx *context) bool {
 		}
 	}
 	return false
+}
+
+func (b *builder) specialOpForCall(callExpr *ast.CallExpr) (ir.SpecialOp, bool) {
+	var usedTypesObj types.Object
+
+	switch funcExpr := callExpr.Fun.(type) {
+	case *ast.Ident:
+		usedTypesObj = b.typesInfo.ObjectOf(funcExpr)
+	case *ast.SelectorExpr:
+		usedTypesObj = b.typesInfo.ObjectOf(funcExpr.Sel)
+	default:
+		return nil, false
+	}
+
+	switch usedTypesObj := usedTypesObj.(type) {
+	case *types.Builtin:
+		switch usedTypesObj.Name() {
+		case "make":
+			_, ok := callExpr.Args[0].(*ast.ChanType)
+			if !ok {
+				return nil, false
+			}
+			return ir.MakeChan, true
+		case "close":
+			return ir.Close, true
+		}
+	case *types.Func:
+		switch usedTypesObj.FullName() {
+		case "(*sync.Mutex).Lock", "(*sync.RWMutex).Lock":
+			return ir.Lock, true
+		case "(*sync.Mutex).Unlock", "(*sync.RWMutex).Unlock":
+			return ir.Unlock, true
+		case "(*sync.RWMutex).RLock":
+			return ir.RLock, true
+		case "(*sync.RWMutex).RUnlock":
+			return ir.RUnlock, true
+		case "(*sync.WaitGroup).Add", "(*sync.WaitGroup).Done":
+			return ir.Add, true
+		case "(*sync.WaitGroup).Wait":
+			return ir.Wait, true
+		case "os.Exit":
+			return ir.DeadEnd, true
+		}
+	}
+
+	return nil, false
 }

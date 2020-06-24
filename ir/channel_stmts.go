@@ -20,7 +20,7 @@ const (
 func (o ChanOp) String() string {
 	switch o {
 	case MakeChan:
-		return "make"
+		return "make_chan"
 	case Close:
 		return "close"
 	default:
@@ -61,11 +61,6 @@ func (s *MakeChanStmt) BufferSize() int {
 // SpecialOp returns the performed operation (always MakeChan).
 func (s *MakeChanStmt) SpecialOp() SpecialOp {
 	return MakeChan
-}
-
-// CallKind returns the call kind (always Call) of the make function.
-func (s *MakeChanStmt) CallKind() CallKind {
-	return Call
 }
 
 func (s *MakeChanStmt) tree(b *strings.Builder, indent int) {
@@ -132,22 +127,16 @@ func (s *ChanCommOpStmt) tree(b *strings.Builder, indent int) {
 
 // CloseChanStmt represents a channel close statement.
 type CloseChanStmt struct {
-	channel  *Variable
-	callKind CallKind // Call or Defer
+	channel *Variable
 
 	Node
 }
 
 // NewCloseChanStmt creates a new channel close statement for the given
 // channel.
-func NewCloseChanStmt(channel *Variable, callKind CallKind, pos, end token.Pos) *CloseChanStmt {
-	if callKind == Go {
-		panic("attempted to create CloseChanStmt with Go CallKind")
-	}
-
+func NewCloseChanStmt(channel *Variable, pos, end token.Pos) *CloseChanStmt {
 	s := new(CloseChanStmt)
 	s.channel = channel
-	s.callKind = callKind
 	s.pos = pos
 	s.end = end
 
@@ -164,14 +153,9 @@ func (s *CloseChanStmt) SpecialOp() SpecialOp {
 	return Close
 }
 
-// CallKind returns the call kind (Call or Defer) of the close function.
-func (s *CloseChanStmt) CallKind() CallKind {
-	return s.callKind
-}
-
 func (s *CloseChanStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
-	fmt.Fprintf(b, "%s close %s", s.callKind, s.channel.Handle())
+	fmt.Fprintf(b, "close %s", s.channel.Handle())
 }
 
 // SelectCase represents a single case in a select statement.

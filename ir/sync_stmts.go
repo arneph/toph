@@ -25,7 +25,7 @@ const (
 func (o MutexOp) String() string {
 	switch o {
 	case MakeMutex:
-		return "make"
+		return "make_mutex"
 	case Lock:
 		return "lock"
 	case Unlock:
@@ -66,11 +66,6 @@ func (s *MakeMutexStmt) SpecialOp() SpecialOp {
 	return MakeMutex
 }
 
-// CallKind returns the call kind (always Call) of the mutex creation statement.
-func (s *MakeMutexStmt) CallKind() CallKind {
-	return Call
-}
-
 func (s *MakeMutexStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
 	fmt.Fprintf(b, "%s <- make(mutex)", s.mutex.Handle())
@@ -78,27 +73,22 @@ func (s *MakeMutexStmt) tree(b *strings.Builder, indent int) {
 
 // MutexOpStmt represents a sync.(RW)Mutex operation statement.
 type MutexOpStmt struct {
-	mutex    *Variable
-	op       MutexOp
-	callKind CallKind // Call or Defer
+	mutex *Variable
+	op    MutexOp
 
 	Node
 }
 
 // NewMutexOpStmt creates a new mutex operation statement for the given muxtex
 // and with the given mutex operation.
-func NewMutexOpStmt(mutex *Variable, op MutexOp, callKind CallKind, pos, end token.Pos) *MutexOpStmt {
+func NewMutexOpStmt(mutex *Variable, op MutexOp, pos, end token.Pos) *MutexOpStmt {
 	if op == MakeMutex {
 		panic("attempted to create MutexOpStmt with MakeMutex Operation")
-	}
-	if callKind == Go {
-		panic("attempted to create MutexOpStmt with Go CallKind")
 	}
 
 	s := new(MutexOpStmt)
 	s.mutex = mutex
 	s.op = op
-	s.callKind = callKind
 	s.pos = pos
 	s.end = end
 
@@ -120,14 +110,9 @@ func (s *MutexOpStmt) SpecialOp() SpecialOp {
 	return s.op
 }
 
-// CallKind returns the call kind (regular or deferred) of the mutex operation.
-func (s *MutexOpStmt) CallKind() CallKind {
-	return s.callKind
-}
-
 func (s *MutexOpStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
-	fmt.Fprintf(b, "%s %s %s", s.callKind, s.op, s.mutex.Handle())
+	fmt.Fprintf(b, "%s %s %s", s.op, s.mutex.Handle())
 }
 
 // WaitGroupOp represents an operation performed on a wait group.
@@ -145,7 +130,7 @@ const (
 func (o WaitGroupOp) String() string {
 	switch o {
 	case MakeWaitGroup:
-		return "make"
+		return "make_wait_group"
 	case Add:
 		return "add"
 	case Wait:
@@ -182,11 +167,6 @@ func (s *MakeWaitGroupStmt) SpecialOp() SpecialOp {
 	return MakeWaitGroup
 }
 
-// CallKind returns the call kind (always Call) of the wait group creation statement.
-func (s *MakeWaitGroupStmt) CallKind() CallKind {
-	return Call
-}
-
 func (s *MakeWaitGroupStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
 	fmt.Fprintf(b, "%s <- make(wait group)", s.waitGroup.Handle())
@@ -196,27 +176,22 @@ func (s *MakeWaitGroupStmt) tree(b *strings.Builder, indent int) {
 type WaitGroupOpStmt struct {
 	waitGroup *Variable
 	op        WaitGroupOp
-	delta     int      // only applicable for Add op
-	callKind  CallKind // Call or Defer
+	delta     RValue // only applicable for Add op
 
 	Node
 }
 
 // NewWaitGroupOpStmt creates a new wait group operation satement for the given
 // wait group and with the given wait group operation.
-func NewWaitGroupOpStmt(waitGroup *Variable, op WaitGroupOp, delta int, callKind CallKind, pos, end token.Pos) *WaitGroupOpStmt {
+func NewWaitGroupOpStmt(waitGroup *Variable, op WaitGroupOp, delta RValue, pos, end token.Pos) *WaitGroupOpStmt {
 	if op == MakeWaitGroup {
 		panic("attempted to create WaitGroupOpStmt with MakeWaitGroup Operation")
-	}
-	if callKind == Go {
-		panic("attempted to create WaitGroupOpStmt with Go CallKind")
 	}
 
 	s := new(WaitGroupOpStmt)
 	s.waitGroup = waitGroup
 	s.op = op
 	s.delta = delta
-	s.callKind = callKind
 	s.pos = pos
 	s.end = end
 
@@ -239,19 +214,14 @@ func (s *WaitGroupOpStmt) SpecialOp() SpecialOp {
 }
 
 // Delta returns the argument for sync.WaitGroup.Add, if applicable.
-func (s *WaitGroupOpStmt) Delta() int {
+func (s *WaitGroupOpStmt) Delta() RValue {
 	return s.delta
-}
-
-// CallKind returns the call kind (regular or deferred) of the wait group operation.
-func (s *WaitGroupOpStmt) CallKind() CallKind {
-	return s.callKind
 }
 
 func (s *WaitGroupOpStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
 	if s.op == Add {
-		fmt.Fprintf(b, "%s %s %s %d", s.callKind, s.op, s.waitGroup.Handle(), s.delta)
+		fmt.Fprintf(b, "%s %s %s", s.op, s.waitGroup.Handle(), s.delta)
 	}
-	fmt.Fprintf(b, "%s %s %s", s.callKind, s.op, s.waitGroup.String())
+	fmt.Fprintf(b, "%s %s", s.op, s.waitGroup.String())
 }
