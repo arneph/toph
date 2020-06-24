@@ -74,6 +74,11 @@ func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
 	}
 }
 
+func (b *builder) processDeadEnd(node ast.Node, ctx *context) {
+	deadEndStmt := ir.NewDeadEndStmt(node.Pos(), node.End())
+	ctx.body.AddStmt(deadEndStmt)
+}
+
 func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *types.Signature, ctx *context) (argVals map[int]ir.RValue, ok bool) {
 	argVals = b.processExprs(callExpr.Args, ctx)
 	for i := 0; i < calleeSignature.Params().Len(); i++ {
@@ -147,6 +152,9 @@ func (b *builder) processCallExprWithCallKind(callExpr *ast.CallExpr, callKind i
 			"func (*sync.WaitGroup).Done()",
 			"func (*sync.WaitGroup).Wait()":
 			b.processWaitGroupOpExpr(callExpr, callKind, ctx)
+			return map[int]*ir.Variable{}
+		case "func os.Exit(code int)":
+			b.processDeadEnd(callExpr, ctx)
 			return map[int]*ir.Variable{}
 		}
 	}

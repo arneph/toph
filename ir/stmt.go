@@ -20,6 +20,7 @@ func (s *BranchStmt) stmt()        {}
 func (s *CallStmt) stmt()          {}
 func (s *ChanCommOpStmt) stmt()    {}
 func (s *CloseChanStmt) stmt()     {}
+func (s *DeadEndStmt) stmt()       {}
 func (s *ForStmt) stmt()           {}
 func (s *IfStmt) stmt()            {}
 func (s *MakeChanStmt) stmt()      {}
@@ -41,6 +42,7 @@ type SpecialOp interface {
 }
 
 func (o ChanOp) specialOp()      {}
+func (o DeadEndOp) specialOp()   {}
 func (o MutexOp) specialOp()     {}
 func (o WaitGroupOp) specialOp() {}
 
@@ -48,6 +50,7 @@ func (o WaitGroupOp) specialOp() {}
 func SpecialOps() []SpecialOp {
 	return []SpecialOp{
 		MakeChan, Close,
+		DeadEnd,
 		MakeMutex, Lock, Unlock, RLock, RUnlock,
 		MakeWaitGroup, Add, Wait,
 	}

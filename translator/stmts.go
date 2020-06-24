@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/arneph/toph/ir"
+	"github.com/arneph/toph/uppaal"
 )
 
 func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
@@ -32,6 +33,8 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 		t.translateCloseChanStmt(stmt, ctx)
 	case *ir.SelectStmt:
 		t.translateSelectStmt(stmt, ctx)
+	case *ir.DeadEndStmt:
+		t.translateDeadEndStmt(stmt, ctx)
 	case *ir.MakeMutexStmt:
 		t.translateMakeMutexStmt(stmt, ctx)
 	case *ir.MutexOpStmt:
@@ -43,4 +46,17 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 	default:
 		t.addWarning(fmt.Errorf("ignoring %T statement", stmt))
 	}
+}
+
+func (t *translator) translateDeadEndStmt(stmt *ir.DeadEndStmt, ctx *context) {
+	dead := ctx.proc.AddState("dead_end_", uppaal.Renaming)
+	dead.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+	dead.SetLocationAndResetNameAndCommentLocation(
+		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
+
+	ctx.proc.AddTrans(ctx.currentState, dead)
+
+	ctx.addLocation(dead.Location())
+
+	ctx.currentState = ctx.exitFuncState
 }

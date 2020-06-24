@@ -42,6 +42,7 @@ func (b *Body) WalkStmts(visitFunc func(stmt Stmt, scope *Scope)) {
 		case *AssignStmt,
 			*BranchStmt,
 			*MakeChanStmt, *ChanCommOpStmt, *CloseChanStmt,
+			*DeadEndStmt,
 			*MakeMutexStmt, *MutexOpStmt,
 			*MakeWaitGroupStmt, *WaitGroupOpStmt,
 			*CallStmt, *ReturnStmt:
