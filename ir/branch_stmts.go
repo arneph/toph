@@ -326,7 +326,7 @@ func (s *ForStmt) tree(b *strings.Builder, indent int) {
 	s.body.tree(b, indent+1)
 	b.WriteString("\n")
 	writeIndent(b, indent)
-	b.WriteString("\n")
+	b.WriteString("}")
 }
 
 // RangeStmt represents a loop ranging over a channel.
