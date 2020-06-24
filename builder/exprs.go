@@ -110,7 +110,7 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 		return ir.Value(-1)
 	}
 
-	usedTypesObj := b.pkgTypesInfos[ctx.pkg].ObjectOf(ident)
+	usedTypesObj := b.typesInfo.ObjectOf(ident)
 	if usedTypesObj == nil {
 		p := b.fset.Position(ident.Pos())
 		b.addWarning(fmt.Errorf("%v: types.Object for identifier is nil: %s", p, ident.Name))
@@ -132,26 +132,33 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 		return substitute
 	}
 
-	var definingPkgPath string
-	var definedTypesObj types.Object
-	if usedTypesObj.Pkg() == b.pkgTypesPackages[ctx.pkg] {
-		definingPkgPath = ctx.pkg
-		definedTypesObj = usedTypesObj
-	} else {
-		definingPkgPath = usedTypesObj.Pkg().Path()
-		definingTypesPkg, ok := b.pkgTypesPackages[definingPkgPath]
-		if !ok {
-			return nil
-		}
-		definedTypesObj = definingTypesPkg.Scope().Lookup(ident.Name)
-		if definedTypesObj == nil {
-			return nil
-		}
+	return b.processDefinedTypesObj(usedTypesObj, ctx)
+}
+
+func (b *builder) processSelectorExpr(selExpr *ast.SelectorExpr, ctx *context) (x ir.RValue, sel ir.RValue) {
+	typesSelection, ok := b.typesInfo.Selections[selExpr]
+	if !ok {
+		// Assume *ast.SelectorExpr is for qualified identifier (package.identifier)
+		xIdent := selExpr.X.(*ast.Ident)
+		xTypesObj := b.typesInfo.ObjectOf(xIdent)
+		_ = xTypesObj.(*types.PkgName)
+
+		return nil, b.processIdent(selExpr.Sel, ctx)
 	}
 
+	xVal := b.processExpr(selExpr.X, ctx)
+
+	usedTypesObj := typesSelection.Obj()
+
+	selVal := b.processDefinedTypesObj(usedTypesObj, ctx)
+
+	return xVal, selVal
+}
+
+func (b *builder) processDefinedTypesObj(definedTypesObj types.Object, ctx *context) ir.RValue {
 	switch definedTypesObj := definedTypesObj.(type) {
 	case *types.Var:
-		v := b.pkgVarTypes[definingPkgPath][definedTypesObj]
+		v := b.vars[definedTypesObj]
 		if v == nil {
 			return nil
 		}
@@ -164,7 +171,7 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 		return v
 
 	case *types.Func:
-		f := b.pkgFuncTypes[definingPkgPath][definedTypesObj]
+		f := b.funcs[definedTypesObj]
 		if f == nil {
 			return nil
 		}
@@ -172,27 +179,10 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 
 	case *types.Const, *types.TypeName:
 		return nil
+
 	default:
-		p := b.fset.Position(ident.Pos())
+		p := b.fset.Position(definedTypesObj.Pos())
 		b.addWarning(fmt.Errorf("%v: unexpected types.Object type: %T", p, definedTypesObj))
 		return nil
 	}
-}
-
-func (b *builder) processSelectorExpr(selExpr *ast.SelectorExpr, ctx *context) (x ir.RValue, sel ir.RValue) {
-	xIdent, ok := selExpr.X.(*ast.Ident)
-	if !ok {
-		xVal := b.processExpr(selExpr.X, ctx)
-		selVal := b.processExpr(selExpr.Sel, ctx)
-		return xVal, selVal
-	}
-
-	xTypesObj := b.pkgTypesInfos[ctx.pkg].ObjectOf(xIdent)
-	if _, ok := xTypesObj.(*types.PkgName); !ok {
-		xVal := b.processExpr(selExpr.X, ctx)
-		selVal := b.processExpr(selExpr.Sel, ctx)
-		return xVal, selVal
-	}
-
-	return nil, b.processIdent(selExpr.Sel, ctx)
 }

@@ -22,8 +22,6 @@ func main() {
 		requiredSubString = os.Args[1]
 	}
 
-	build.Default.GOOS = "linux"
-
 	buildContext := build.Default
 	buildContext.GOOS = "linux"
 

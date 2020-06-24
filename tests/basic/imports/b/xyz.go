@@ -1,5 +1,7 @@
 package b
 
+import "hooli.com/logger"
+
 // MapFunc is the type of a function mapping from integers to strings.
 type MapFunc func(x int) (string, error)
 
@@ -35,4 +37,5 @@ func mapImpl(inCh chan int, outCh chan string, mapFunc MapFunc) {
 		outCh <- y
 	}
 	close(outCh)
+	logger.Log("completed map")
 }

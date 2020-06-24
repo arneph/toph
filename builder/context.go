@@ -7,7 +7,6 @@ import (
 )
 
 type context struct {
-	pkg  string
 	cmap ast.CommentMap
 
 	body           *ir.Body
@@ -17,9 +16,8 @@ type context struct {
 	enclosingStmtLabels map[string]ir.Stmt
 }
 
-func newContext(pkg string, cmap ast.CommentMap, f *ir.Func) *context {
+func newContext(cmap ast.CommentMap, f *ir.Func) *context {
 	ctx := new(context)
-	ctx.pkg = pkg
 	ctx.cmap = cmap
 	ctx.body = f.Body()
 	ctx.enclosingFuncs = []*ir.Func{f}
@@ -82,7 +80,6 @@ func (c *context) findContinuable(label string) ir.Stmt {
 
 func (c *context) subContextForBody(stmt ir.Stmt, label string, containedBody *ir.Body) *context {
 	ctx := new(context)
-	ctx.pkg = c.pkg
 	ctx.cmap = c.cmap
 	ctx.body = containedBody
 	ctx.enclosingFuncs = c.enclosingFuncs
@@ -100,7 +97,6 @@ func (c *context) subContextForBody(stmt ir.Stmt, label string, containedBody *i
 
 func (c *context) subContextForFunc(containedFunc *ir.Func) *context {
 	ctx := new(context)
-	ctx.pkg = c.pkg
 	ctx.cmap = c.cmap
 	ctx.body = containedFunc.Body()
 	ctx.enclosingFuncs = append(c.enclosingFuncs, containedFunc)

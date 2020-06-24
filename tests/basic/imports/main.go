@@ -7,7 +7,8 @@ import (
 	"github.com/arneph/toph/tests/basic/imports/a"
 	z "github.com/arneph/toph/tests/basic/imports/b"
 	. "github.com/arneph/toph/tests/basic/imports/c"
-	//_ "github.com/docker/docker/api/server/backend/build"
+	_ "github.com/docker/docker/api/server/backend/build"
+	"hooli.com/logger"
 )
 
 func main() {
@@ -56,5 +57,5 @@ func main() {
 		}
 		return a + ", " + b
 	})
-	fmt.Println(r)
+	logger.Log(r)
 }

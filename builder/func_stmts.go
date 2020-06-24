@@ -17,10 +17,10 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callabl
 	var calleeTypesType types.Type
 	if selExpr, ok := funcExpr.(*ast.SelectorExpr); ok {
 		receiver, calleeValue = b.processSelectorExpr(selExpr, ctx)
-		calleeTypesType = b.pkgTypesInfos[ctx.pkg].TypeOf(selExpr.Sel)
+		calleeTypesType = b.typesInfo.TypeOf(selExpr.Sel)
 	} else {
 		calleeValue = b.processExpr(funcExpr, ctx)
-		calleeTypesType = b.pkgTypesInfos[ctx.pkg].TypeOf(funcExpr)
+		calleeTypesType = b.typesInfo.TypeOf(funcExpr)
 		receiver = nil
 	}
 	if calleeValue == nil {
@@ -114,7 +114,7 @@ func (b *builder) processCallExprWithCallKind(callExpr *ast.CallExpr, callKind i
 
 	switch funcExpr := callExpr.Fun.(type) {
 	case *ast.Ident:
-		builtin, ok := b.pkgTypesInfos[ctx.pkg].Uses[funcExpr].(*types.Builtin)
+		builtin, ok := b.typesInfo.Uses[funcExpr].(*types.Builtin)
 		if !ok {
 			break
 		}
@@ -130,7 +130,7 @@ func (b *builder) processCallExprWithCallKind(callExpr *ast.CallExpr, callKind i
 			return map[int]*ir.Variable{}
 		}
 	case *ast.SelectorExpr:
-		used, ok := b.pkgTypesInfos[ctx.pkg].Uses[funcExpr.Sel]
+		used, ok := b.typesInfo.Uses[funcExpr.Sel]
 		if !ok {
 			break
 		}

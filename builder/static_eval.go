@@ -33,11 +33,11 @@ func (b *builder) staticExprEval(expr ast.Expr, vars []staticVarInfo, ctx *conte
 
 	case *ast.Ident:
 		for _, inf := range vars {
-			if inf.obj == b.pkgTypesInfos[ctx.pkg].Uses[expr] {
+			if inf.obj == b.typesInfo.Uses[expr] {
 				return inf.val, true
 			}
 		}
-		typeAndValue, ok := b.pkgTypesInfos[ctx.pkg].Types[expr]
+		typeAndValue, ok := b.typesInfo.Types[expr]
 		if !ok || typeAndValue.Value == nil {
 			return nil, false
 		}
@@ -86,7 +86,7 @@ func (b *builder) staticStmtEval(stmt ast.Stmt, vars []staticVarInfo, ctx *conte
 			}
 			loopVarIndex := -1
 			for j, inf := range vars {
-				if inf.obj == b.pkgTypesInfos[ctx.pkg].Uses[vIdent] {
+				if inf.obj == b.typesInfo.Uses[vIdent] {
 					loopVarIndex = j
 				}
 			}
@@ -120,7 +120,7 @@ func (b *builder) staticStmtEval(stmt ast.Stmt, vars []staticVarInfo, ctx *conte
 		}
 		loopVarIndex := -1
 		for i, inf := range vars {
-			if inf.obj == b.pkgTypesInfos[ctx.pkg].Uses[vIdent] {
+			if inf.obj == b.typesInfo.Uses[vIdent] {
 				loopVarIndex = i
 			}
 		}
@@ -161,7 +161,7 @@ func (b *builder) staticForLoopBoundsEval(forStmt *ast.ForStmt, ctx *context) in
 		if !ok {
 			return -1
 		}
-		v, ok := b.pkgTypesInfos[ctx.pkg].Defs[vIdent].(*types.Var)
+		v, ok := b.typesInfo.Defs[vIdent].(*types.Var)
 		if !ok {
 			return -1
 		}
@@ -192,7 +192,7 @@ func (b *builder) staticForLoopBoundsEval(forStmt *ast.ForStmt, ctx *context) in
 				if !ok {
 					continue
 				}
-				v, ok := b.pkgTypesInfos[ctx.pkg].Uses[vIdent]
+				v, ok := b.typesInfo.Uses[vIdent]
 				if !ok {
 					continue
 				}

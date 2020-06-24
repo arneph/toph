@@ -28,7 +28,7 @@ func (b *builder) processVarDefinition(ident *ast.Ident, ctx *context) *ir.Varia
 }
 
 func (b *builder) processVarDefinitionInScope(ident *ast.Ident, scope *ir.Scope, ctx *context) *ir.Variable {
-	typesObj, ok := b.pkgTypesInfos[ctx.pkg].Defs[ident]
+	typesObj, ok := b.typesInfo.Defs[ident]
 	if !ok {
 		return nil
 	}
@@ -49,7 +49,7 @@ func (b *builder) processVarDefinitionInScope(ident *ast.Ident, scope *ir.Scope,
 	}
 	irVar := b.program.NewVariable(ident.Name, irType, initialValue)
 	scope.AddVariable(irVar)
-	b.pkgVarTypes[ctx.pkg][typesVar] = irVar
+	b.vars[typesVar] = irVar
 
 	if irType == ir.MutexType {
 		makeMutexStmt := ir.NewMakeMutexStmt(irVar, ident.Pos(), ident.End())

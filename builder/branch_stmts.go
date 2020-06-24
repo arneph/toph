@@ -119,7 +119,7 @@ func (b *builder) processForStmt(stmt *ast.ForStmt, label string, ctx *context) 
 }
 
 func (b *builder) processRangeStmt(stmt *ast.RangeStmt, label string, ctx *context) {
-	typeAndValue, ok := b.pkgTypesInfos[ctx.pkg].Types[stmt.X]
+	typeAndValue, ok := b.typesInfo.Types[stmt.X]
 	if !ok {
 		p := b.fset.Position(stmt.X.Pos())
 		b.addWarning(

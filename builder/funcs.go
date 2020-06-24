@@ -18,14 +18,14 @@ func (b *builder) processFuncReceiver(recv *ast.FieldList, ctx *context) {
 		return
 	}
 	fieldNameIdent := field.Names[0]
-	fieldType, initialValue, ok := typesTypeToIrType(b.pkgTypesInfos[ctx.pkg].TypeOf(field.Type).Underlying())
+	fieldType, initialValue, ok := typesTypeToIrType(b.typesInfo.TypeOf(field.Type).Underlying())
 	if !ok {
 		return
 	}
-	typesVar := b.pkgTypesInfos[ctx.pkg].ObjectOf(fieldNameIdent).(*types.Var)
+	typesVar := b.typesInfo.ObjectOf(fieldNameIdent).(*types.Var)
 	v := b.program.NewVariable(fieldNameIdent.Name, fieldType, initialValue)
 	f.AddArg(-1, v)
-	b.pkgVarTypes[ctx.pkg][typesVar] = v
+	b.vars[typesVar] = v
 }
 
 func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
@@ -33,16 +33,16 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 
 	argIndex := 0
 	for _, field := range funcType.Params.List {
-		t, initialValue, ok := typesTypeToIrType(b.pkgTypesInfos[ctx.pkg].TypeOf(field.Type).Underlying())
+		t, initialValue, ok := typesTypeToIrType(b.typesInfo.TypeOf(field.Type).Underlying())
 		if !ok {
 			argIndex += len(field.Names)
 			continue
 		}
 		for _, fieldNameIdent := range field.Names {
-			varType := b.pkgTypesInfos[ctx.pkg].Defs[fieldNameIdent].(*types.Var)
+			varType := b.typesInfo.Defs[fieldNameIdent].(*types.Var)
 			v := b.program.NewVariable(fieldNameIdent.Name, t, initialValue)
 			f.AddArg(argIndex, v)
-			b.pkgVarTypes[ctx.pkg][varType] = v
+			b.vars[varType] = v
 			argIndex++
 		}
 	}
@@ -52,7 +52,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 	}
 	resultIndex := 0
 	for _, field := range funcType.Results.List {
-		t, initialValue, ok := typesTypeToIrType(b.pkgTypesInfos[ctx.pkg].TypeOf(field.Type).(types.Type).Underlying())
+		t, initialValue, ok := typesTypeToIrType(b.typesInfo.TypeOf(field.Type).(types.Type).Underlying())
 		if !ok {
 			resultIndex += len(field.Names)
 			continue
@@ -64,10 +64,10 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 
 		} else {
 			for _, fieldNameIdent := range field.Names {
-				varType := b.pkgTypesInfos[ctx.pkg].Defs[fieldNameIdent].(*types.Var)
+				varType := b.typesInfo.Defs[fieldNameIdent].(*types.Var)
 				v := b.program.NewVariable(fieldNameIdent.Name, t, initialValue)
 				f.AddResult(resultIndex, v)
-				b.pkgVarTypes[ctx.pkg][varType] = v
+				b.vars[varType] = v
 				resultIndex++
 			}
 		}
@@ -75,7 +75,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 }
 
 func (b *builder) processFuncLit(funcLit *ast.FuncLit, ctx *context) *ir.Func {
-	sig := b.pkgTypesInfos[ctx.pkg].Types[funcLit].Type.(*types.Signature)
+	sig := b.typesInfo.Types[funcLit].Type.(*types.Signature)
 	f := b.program.AddInnerFunc(sig, ctx.currentFunc(), ctx.body.Scope(), funcLit.Pos(), funcLit.End())
 	subCtx := ctx.subContextForFunc(f)
 	b.processFuncType(funcLit.Type, subCtx)
@@ -96,7 +96,7 @@ func (b *builder) processFuncBody(body *ast.BlockStmt, ctx *context) {
 func (b *builder) canIgnoreCall(funcExpr ast.Expr, ctx *context) bool {
 	switch funcExpr := funcExpr.(type) {
 	case *ast.Ident:
-		if used, ok := b.pkgTypesInfos[ctx.pkg].Uses[funcExpr]; ok {
+		if used, ok := b.typesInfo.Uses[funcExpr]; ok {
 			switch used := used.(type) {
 			case *types.Builtin:
 				switch used.Name() {
@@ -118,7 +118,7 @@ func (b *builder) canIgnoreCall(funcExpr ast.Expr, ctx *context) bool {
 			}
 		}
 	case *ast.SelectorExpr:
-		switch funcType := b.pkgTypesInfos[ctx.pkg].Uses[funcExpr.Sel].(type) {
+		switch funcType := b.typesInfo.Uses[funcExpr.Sel].(type) {
 		case *types.Func:
 			if funcType.String() == "func (error).Error() string" {
 				return true

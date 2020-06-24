@@ -56,7 +56,7 @@ func Run(path string, config Config) Result {
 	warnings := false
 
 	// Builder
-	program, errs := builder.BuildProgram(path, config.EntryFuncName, config.BuildContext)
+	program, errs := builder.BuildProgram(path, config.EntryFuncName, &config.BuildContext)
 	warnings = warnings || len(errs) > 0
 	for _, err := range errs {
 		fmt.Fprintln(os.Stderr, err)
