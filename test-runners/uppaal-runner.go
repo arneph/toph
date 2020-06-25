@@ -1,10 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"os/signal"
 	"runtime"
 	"strings"
 	"sync"
@@ -24,12 +26,20 @@ var testIndex int
 var runningTests map[string]struct{} = make(map[string]struct{})
 var wg sync.WaitGroup
 var mu sync.RWMutex
+var ctx, cancel = context.WithCancel(context.Background())
 
 func main() {
 	var requiredSubString string
 	if len(os.Args) > 1 {
 		requiredSubString = os.Args[1]
 	}
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt)
+	go func() {
+		<-sigChan
+		cancel()
+	}()
 
 	dirs, err := ioutil.ReadDir("tests/")
 	if err != nil {
@@ -109,7 +119,7 @@ func runTests() {
 		}
 		defer errG.Close()
 
-		cmd := exec.Command(uppaalPath+"verifyta", "-o0", "-s", "-q", "-t1", xml)
+		cmd := exec.CommandContext(ctx, uppaalPath+"verifyta", "-o0", "-s", "-q", "-t1", xml)
 		cmd.Stdin = strings.NewReader("")
 		cmd.Stdout = outG
 		cmd.Stderr = errG
