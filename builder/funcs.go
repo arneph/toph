@@ -113,8 +113,10 @@ func (b *builder) canIgnoreCall(callExpr *ast.CallExpr) bool {
 					"real":
 					return true
 				case "make":
-					_, ok := callExpr.Args[0].(*ast.ChanType)
-					return !ok
+					astType := callExpr.Args[0]
+					typesType := b.typesInfo.TypeOf(astType)
+					irType, _, ok := typesTypeToIrType(typesType)
+					return !ok || irType != ir.ChanType
 				}
 			case *types.TypeName:
 				return true
@@ -181,8 +183,10 @@ func (b *builder) specialOpForCall(callExpr *ast.CallExpr) (ir.SpecialOp, bool) 
 	case *types.Builtin:
 		switch usedTypesObj.Name() {
 		case "make":
-			_, ok := callExpr.Args[0].(*ast.ChanType)
-			if !ok {
+			astType := callExpr.Args[0]
+			typesType := b.typesInfo.TypeOf(astType)
+			irType, _, ok := typesTypeToIrType(typesType)
+			if !ok || irType != ir.ChanType {
 				return nil, false
 			}
 			return ir.MakeChan, true
