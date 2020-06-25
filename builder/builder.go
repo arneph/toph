@@ -14,6 +14,8 @@ import (
 	"strings"
 
 	"github.com/arneph/toph/ir"
+
+	"golang.org/x/tools/go/ast/astutil"
 )
 
 const buildImportMode build.ImportMode = build.ImportComment
@@ -123,7 +125,7 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 	b.pkgs["subs"].astPackage = subsAstPackage
 
 	// Type check:
-	orderedPaths, err := b.packageProcessingOrder()
+	orderedPkgPaths, err := b.packageProcessingOrder()
 	if err != nil {
 		b.addWarning(fmt.Errorf("type checking failed: %v", err))
 		return nil, b.warnings
@@ -136,7 +138,6 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 	b.typesInfo.Implicits = make(map[ast.Node]types.Object)
 	b.typesInfo.Selections = make(map[*ast.SelectorExpr]*types.Selection)
 	b.typesInfo.Scopes = make(map[ast.Node]*types.Scope)
-	b.typesInfo.InitOrder = make([]*types.Initializer, 0)
 	b.typesSrcImporter = importer.ForCompiler(b.fset, "source", nil)
 	b.funcs = make(map[*types.Func]*ir.Func)
 	b.vars = make(map[*types.Var]*ir.Variable)
@@ -145,7 +146,7 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 		DisableUnusedImportCheck: true,
 	}
 
-	for _, path := range orderedPaths {
+	for _, path := range orderedPkgPaths {
 		buildPackage := b.pkgs[path].buildPackage
 		astPackage := b.pkgs[path].astPackage
 
@@ -166,6 +167,8 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 			return nil, b.warnings
 		}
 		b.pkgs[path].typesPackage = typesPackage
+		b.pkgs[path].initOrder = b.typesInfo.InitOrder
+		b.typesInfo.InitOrder = nil
 	}
 
 	// Comment maps:
@@ -180,9 +183,10 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 	b.program = ir.NewProgram(b.fset)
 	b.liftedSpecialOpFuncs = make(map[ir.SpecialOp]*ir.Func)
 
-	// File processing:
-	for _, pkg := range b.pkgs {
-		for _, astFile := range pkg.astPackage.Files {
+	// AST processing:
+	for _, path := range orderedPkgPaths {
+		astPackage := b.pkgs[path].astPackage
+		for _, astFile := range astPackage.Files {
 			b.processFuncDeclsInFile(astFile)
 		}
 	}
@@ -199,14 +203,24 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 		b.program.SetEntryFunc(entryFunc)
 	}
 
-	for _, pkg := range b.pkgs {
-		for _, astFile := range pkg.astPackage.Files {
+	for _, path := range orderedPkgPaths {
+		astPackage := b.pkgs[path].astPackage
+		for _, astFile := range astPackage.Files {
 			b.processGenDeclsInFile(astFile)
 		}
 	}
 
-	for _, pkg := range b.pkgs {
-		for _, astFile := range pkg.astPackage.Files {
+	for _, path := range orderedPkgPaths {
+		astPackage := b.pkgs[path].astPackage
+		initOrder := b.pkgs[path].initOrder
+		for _, init := range initOrder {
+			b.processInitializer(astPackage, init)
+		}
+	}
+
+	for _, path := range orderedPkgPaths {
+		astPackage := b.pkgs[path].astPackage
+		for _, astFile := range astPackage.Files {
 			b.processFuncDefsInFile(astFile)
 		}
 	}
@@ -220,6 +234,8 @@ type pkg struct {
 	typesPackage *types.Package
 
 	absImportPaths []string
+
+	initOrder []*types.Initializer
 }
 
 type builder struct {
@@ -297,15 +313,44 @@ func (b *builder) processGenDecl(genDecl *ast.GenDecl, scope *ir.Scope, ctx *con
 		valueSpec := spec.(*ast.ValueSpec)
 
 		b.processVarDefinitionsInScope(valueSpec.Names, scope, ctx)
+	}
+}
 
-		if len(valueSpec.Values) == 0 {
+func (b *builder) processInitializer(astPackage *ast.Package, init *types.Initializer) {
+	pos := init.Rhs.Pos()
+	var astFile *ast.File
+	for _, f := range astPackage.Files {
+		if f.Pos() <= pos && pos <= f.End() {
+			astFile = f
+			break
+		}
+	}
+	if astFile == nil {
+		p := b.fset.Position(pos)
+		b.addWarning(fmt.Errorf("%v: could not find file for initialization", p))
+		return
+	}
+
+	entryCtx := newContext(b.cmaps[astFile], b.program.EntryFunc())
+	lhsExprs := make([]ast.Expr, len(init.Lhs))
+	rhsExprs := []ast.Expr{init.Rhs}
+
+	for i, typesVar := range init.Lhs {
+		pos := typesVar.Pos()
+		path, _ := astutil.PathEnclosingInterval(astFile, pos, pos)
+		if len(path) < 1 {
+			p := b.fset.Position(pos)
+			b.addWarning(fmt.Errorf("%v: could not find initialized variable", p))
 			continue
 		}
-
-		lhsExprs := make([]ast.Expr, len(valueSpec.Names))
-		for i, name := range valueSpec.Names {
-			lhsExprs[i] = name
+		expr, ok := path[0].(ast.Expr)
+		if !ok {
+			p := b.fset.Position(pos)
+			b.addWarning(fmt.Errorf("%v: could not find initialized variable", p))
+			continue
 		}
-		b.processAssignments(lhsExprs, valueSpec.Values, ctx)
+		lhsExprs[i] = expr
 	}
+
+	b.processAssignments(lhsExprs, rhsExprs, entryCtx)
 }

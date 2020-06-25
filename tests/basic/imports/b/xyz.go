@@ -6,7 +6,7 @@ import "hooli.com/logger"
 type MapFunc func(x int) (string, error)
 
 // ErrorChan is used to report errors.
-var ErrorChan chan error
+var ErrorChan chan error = make(chan error)
 
 // DefaultMapFunc is the map function used by DefaultMap.
 var DefaultMapFunc MapFunc

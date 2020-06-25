@@ -12,3 +12,7 @@ func Reduce(inCh chan string, startVal string, reducer ReduceFunc) string {
 	}
 	return a
 }
+
+var DefaultReducer ReduceFunc = func(a, b string) string {
+	return a + " " + b
+}

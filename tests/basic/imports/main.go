@@ -7,12 +7,14 @@ import (
 	"github.com/arneph/toph/tests/basic/imports/a"
 	z "github.com/arneph/toph/tests/basic/imports/b"
 	. "github.com/arneph/toph/tests/basic/imports/c"
-	_ "github.com/docker/docker/api/server/backend/build"
+
+	//_ "github.com/docker/docker/api/server/backend/build"
 	"hooli.com/logger"
 )
 
+var chA = make(chan int)
+
 func main() {
-	chA := make(chan int)
 	chB := make(chan int)
 	chC := make(chan int)
 	chD := make(chan string)
