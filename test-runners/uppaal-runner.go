@@ -37,7 +37,7 @@ func main() {
 		return
 	}
 
-	for i := 0; i < runtime.GOMAXPROCS(120); i++ {
+	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
 		wg.Add(1)
 		go runTests()
 	}
@@ -76,7 +76,8 @@ func main() {
 				if testFile.IsDir() || !strings.HasSuffix(name, ".xml") {
 					continue
 				}
-				testsChan <- testPath + name[:len(name)-4]
+				name = name[:len(name)-4]
+				testsChan <- testPath + name
 			}
 		}
 	}
