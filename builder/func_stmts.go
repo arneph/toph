@@ -69,6 +69,18 @@ func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
 	for i, v := range resultVars {
 		returnStmt.AddResult(i, v)
 	}
+	for i := range ctx.currentFunc().ResultTypes() {
+		if resultVars[i] != nil {
+			continue
+		}
+		resultVar, ok := ctx.currentFunc().Results()[i]
+		if !ok {
+			p := b.fset.Position(stmt.Pos())
+			b.addWarning(fmt.Errorf("%v: could not resolve return value at index %d", p, i))
+			continue
+		}
+		resultVars[i] = resultVar
+	}
 }
 
 func (b *builder) processCallExprWithCallKind(callExpr *ast.CallExpr, callKind ir.CallKind, ctx *context) map[int]*ir.Variable {

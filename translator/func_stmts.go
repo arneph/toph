@@ -207,12 +207,12 @@ func (t *translator) translateDeferredCalls(proc *uppaal.Process, deferred *uppa
 func (t *translator) translateReturnStmt(stmt *ir.ReturnStmt, ctx *context) {
 	ret := ctx.proc.AddTrans(ctx.currentState, ctx.exitFuncState)
 	for i, resType := range ctx.f.ResultTypes() {
-		resVar, ok := stmt.Results()[i]
+		resVal, ok := stmt.Results()[i]
 		if !ok {
-			resVar = ctx.f.Results()[i]
+			continue
 		}
-		resStr := t.translateRValue(resVar, ctx)
-		if _, ok := resVar.(ir.Value); ok && resType == ir.FuncType {
+		resStr := t.translateRValue(resVal, ctx)
+		if _, ok := resVal.(ir.Value); ok && resType == ir.FuncType {
 			resStr = "make_fid(" + resStr + ", pid)"
 		}
 
