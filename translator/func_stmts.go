@@ -49,7 +49,7 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 
 		calleeSig := stmt.CalleeSignature()
 		for i, calleeFunc := range t.completeFCG.DynamicCallees(calleeSig) {
-			startState := ctx.proc.AddState(callee.Handle()+"_is_"+calleeFunc.Name()+"_", uppaal.Renaming)
+			startState := ctx.proc.AddState(callee.Handle()+"_is_"+calleeFunc.Handle()+"_", uppaal.Renaming)
 			startState.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 			startState.SetLocationAndResetNameAndCommentLocation(
 				ctx.currentState.Location().Add(uppaal.Location{(i + 1) * 136, 136}))

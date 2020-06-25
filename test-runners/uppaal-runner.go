@@ -37,7 +37,7 @@ func main() {
 		return
 	}
 
-	for i := 0; i < runtime.GOMAXPROCS(0); i++ {
+	for i := 0; i < runtime.GOMAXPROCS(120); i++ {
 		wg.Add(1)
 		go runTests()
 	}
@@ -66,7 +66,18 @@ func main() {
 			if !strings.Contains(testPath, requiredSubString) {
 				continue
 			}
-			testsChan <- testPath + test.Name()
+			testFiles, err := ioutil.ReadDir(testPath)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "could not read %q dir: %v", dirPath, err)
+				continue
+			}
+			for _, testFile := range testFiles {
+				name := testFile.Name()
+				if testFile.IsDir() || !strings.HasSuffix(name, ".xml") {
+					continue
+				}
+				testsChan <- testPath + name[:len(name)-4]
+			}
 		}
 	}
 	close(testsChan)

@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"go/build"
+	"go/token"
 	"os"
 
 	"github.com/arneph/toph/analyzer"
@@ -56,13 +57,15 @@ func Run(path string, config Config) Result {
 	warnings := false
 
 	// Builder
-	program, errs := builder.BuildProgram(path, config.EntryFuncName, &config.BuildContext)
+	program, entryFuncs, errs := builder.BuildProgram(path, &config.BuildContext)
 	warnings = warnings || len(errs) > 0
 	for _, err := range errs {
 		fmt.Fprintln(os.Stderr, err)
 	}
 	if program == nil {
 		return RunFailedWithBuilder
+	} else if len(entryFuncs) == 0 {
+		fmt.Fprintf(os.Stderr, "found no entry functions (main or tests)\n")
 	}
 
 	if config.Debug {
@@ -72,45 +75,55 @@ func Run(path string, config Config) Result {
 	if config.Optimize {
 		// Dead Code Eliminator
 		optimizer.EliminateDeadCode(program)
-		optimizer.EliminateUnusedFunctions(program)
 
 		if config.Debug {
 			outputProgram(program, config.OutName, "opt")
 		}
 	}
 
-	// Translator
-	sys, errs := translator.TranslateProg(program)
-	warnings = warnings || len(errs) > 0
-	for _, err := range errs {
-		fmt.Fprintln(os.Stderr, err)
-	}
-	if sys == nil {
-		return RunFailedWithTranslator
-	}
+	initStmts := program.InitFunc().Body().Stmts()
+	for _, entryFunc := range entryFuncs {
+		callStmt := ir.NewCallStmt(entryFunc, entryFunc.Signature(), ir.Call, token.NoPos, token.NoPos)
+		program.InitFunc().Body().SetStmts(initStmts)
+		program.InitFunc().Body().AddStmt(callStmt)
 
-	// Output files
-	for _, ffmt := range []string{"xml", "xta", "ugi", "q"} {
-		if !config.OutFormats[ffmt] {
-			continue
+		// Translator
+		sys, errs := translator.TranslateProg(program, config.Optimize)
+		warnings = warnings || len(errs) > 0
+		for _, err := range errs {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		if sys == nil {
+			return RunFailedWithTranslator
 		}
 
-		sysFile, err := os.Create(config.OutName + "." + ffmt)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "\tcould not write %s file: %v\n", ffmt, err)
-			return RunFailedWritingOutputFiles
-		}
-		defer sysFile.Close()
+		// Output files
+		for _, ffmt := range []string{"xml", "xta", "ugi", "q"} {
+			if !config.OutFormats[ffmt] {
+				continue
+			}
 
-		switch ffmt {
-		case "xml":
-			fmt.Fprintln(sysFile, sys.AsXML())
-		case "xta":
-			fmt.Fprintln(sysFile, sys.AsXTA())
-		case "ugi":
-			fmt.Fprintln(sysFile, sys.AsUGI())
-		case "q":
-			fmt.Fprintln(sysFile, sys.AsQ())
+			name := config.OutName
+			if len(entryFuncs) > 1 {
+				name += "_" + entryFunc.Handle()
+			}
+			sysFile, err := os.Create(name + "." + ffmt)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "could not write %s file: %v\n", ffmt, err)
+				return RunFailedWritingOutputFiles
+			}
+			defer sysFile.Close()
+
+			switch ffmt {
+			case "xml":
+				fmt.Fprintln(sysFile, sys.AsXML())
+			case "xta":
+				fmt.Fprintln(sysFile, sys.AsXTA())
+			case "ugi":
+				fmt.Fprintln(sysFile, sys.AsUGI())
+			case "q":
+				fmt.Fprintln(sysFile, sys.AsQ())
+			}
 		}
 	}
 

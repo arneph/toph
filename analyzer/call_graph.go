@@ -329,10 +329,10 @@ func (fcg *FuncCallGraph) String() string {
 
 	b.WriteString("Graph with SCCs:\n")
 	for caller, callees := range fcg.callerToCallees {
-		fmt.Fprintf(&b, "%s (%d)\n", caller.Name(), fcg.funcToSCCs[caller])
+		fmt.Fprintf(&b, "%s (%d)\n", caller.Handle(), fcg.funcToSCCs[caller])
 		i := 0
 		for callee := range callees {
-			fmt.Fprintf(&b, "\t-> %s\n", callee.Name())
+			fmt.Fprintf(&b, "\t-> %s\n", callee.Handle())
 			i++
 			if i == 10 {
 				break
@@ -355,7 +355,7 @@ func (fcg *FuncCallGraph) String() string {
 			} else {
 				b.WriteString(", ")
 			}
-			b.WriteString(caller.Name())
+			b.WriteString(caller.Handle())
 		}
 		b.WriteString("\n")
 		b.WriteString("\tcallees: ")
@@ -366,7 +366,7 @@ func (fcg *FuncCallGraph) String() string {
 			} else {
 				b.WriteString(", ")
 			}
-			b.WriteString(callee.Name())
+			b.WriteString(callee.Handle())
 		}
 		b.WriteString("\n")
 	}
@@ -374,7 +374,7 @@ func (fcg *FuncCallGraph) String() string {
 
 	b.WriteString("Call Counts:\n")
 	for f := range fcg.callerToCallees {
-		b.WriteString(f.Name() + "\n")
+		b.WriteString(f.Handle() + "\n")
 		fmt.Fprintf(&b, "\tcaller: %d\n", fcg.isCallerCounts[f])
 		fmt.Fprintf(&b, "\tcallee: %d\n", fcg.isCalleeCounts[f])
 		fmt.Fprintf(&b, "\tspecial ops:\n")

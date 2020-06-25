@@ -39,3 +39,7 @@ func mapImpl(inCh chan int, outCh chan string, mapFunc MapFunc) {
 	close(outCh)
 	logger.Log("completed map")
 }
+
+func init() {
+	logger.Log("starting package b")
+}

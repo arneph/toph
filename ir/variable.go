@@ -120,7 +120,7 @@ func (v *Variable) Scope() *Scope {
 	return v.scope
 }
 
-// Handle returns a shorthand to reference the variable.
+// Handle returns a shorthand to uniquely reference the variable.
 func (v *Variable) Handle() string {
 	if v.name == "" {
 		return fmt.Sprintf("%s_var%d",

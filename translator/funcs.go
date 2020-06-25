@@ -27,10 +27,10 @@ func (t translator) deferCount(f *ir.Func) int {
 }
 
 func (t *translator) addFuncProcess(f *ir.Func) {
-	name := f.Name()
+	name := f.Handle()
 	proc := t.system.AddProcess(name)
 	t.funcToProcess[f] = proc
-	if f == t.program.EntryFunc() {
+	if f == t.program.InitFunc() {
 		t.system.AddProcessInstance(proc.Name(), name)
 	} else {
 		c := t.callCount(f)
@@ -92,7 +92,7 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 	pid = %[1]s_count;
 	%[1]s_count++;
 	return pid;
-}`, proc.Name(), maxProcessCount))
+}`, proc.Name(), t.callCount(f)))
 	} else {
 		t.system.Declarations().AddFunc(
 			fmt.Sprintf(`int make_%[1]s(int par_pid) {
@@ -105,7 +105,7 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 	%[1]s_count++;
 	par_pid_%[1]s[pid] = par_pid;
 	return pid;
-}`, proc.Name(), maxProcessCount))
+}`, proc.Name(), t.callCount(f)))
 	}
 }
 
@@ -115,7 +115,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 	callCount := t.callCount(f)
 	deferCount := t.deferCount(f)
 
-	if f != t.program.EntryFunc() {
+	if f != t.program.InitFunc() {
 		proc.AddParameter(fmt.Sprintf("int[0, %d] pid", callCount-1))
 	} else {
 		proc.Declarations().AddVariable("pid", "int", "0")
@@ -187,7 +187,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 		t.translateDeferredCalls(proc, deferred, f)
 	}
 
-	if f == t.program.EntryFunc() {
+	if f == t.program.InitFunc() {
 		start := proc.AddTrans(starting, started)
 		if t.system.Declarations().RequiresInitFunc() {
 			start.AddUpdate("global_initialize()")

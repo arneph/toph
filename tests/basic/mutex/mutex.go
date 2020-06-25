@@ -6,7 +6,7 @@ import (
 	"sync"
 )
 
-func mutexTest() {
+func mutex() {
 	var mu sync.Mutex
 	var x int
 	for i := 0; i < 3; i++ {
@@ -19,7 +19,7 @@ func mutexTest() {
 	}
 }
 
-func rwMutexTest() {
+func rwMutex() {
 	var mu sync.RWMutex
 	var x int
 	for i := 0; i < 3; i++ {
@@ -40,8 +40,8 @@ func rwMutexTest() {
 
 func main() {
 	if rand.Int()%2 == 0 {
-		mutexTest()
+		mutex()
 	} else {
-		rwMutexTest()
+		rwMutex()
 	}
 }

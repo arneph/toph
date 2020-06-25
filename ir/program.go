@@ -10,7 +10,7 @@ import (
 type Program struct {
 	funcs      []*Func
 	funcLookup map[FuncIndex]*Func
-	entryFunc  *Func
+	initFunc   *Func
 	funcCount  int
 
 	scope         Scope
@@ -24,10 +24,11 @@ func NewProgram(fset *token.FileSet) *Program {
 	p := new(Program)
 	p.funcs = nil
 	p.funcLookup = make(map[FuncIndex]*Func)
-	p.entryFunc = nil
 	p.funcCount = 0
 	p.scope.init()
 	p.fset = fset
+
+	p.initFunc = p.AddOuterFunc("start", nil, token.NoPos, token.NoPos)
 
 	return p
 }
@@ -42,14 +43,9 @@ func (p *Program) Func(index FuncIndex) *Func {
 	return p.funcLookup[index]
 }
 
-// EntryFunc returns the entry function of the program.
-func (p *Program) EntryFunc() *Func {
-	return p.entryFunc
-}
-
-// SetEntryFunc sets the entry function of the program.
-func (p *Program) SetEntryFunc(f *Func) {
-	p.entryFunc = f
+// InitFunc returns the entry function of the program.
+func (p *Program) InitFunc() *Func {
+	return p.initFunc
 }
 
 // AddOuterFunc adds a new, non-inner, empty function to the program and returns
@@ -80,6 +76,10 @@ func (p *Program) AddInnerFunc(signature *types.Signature, enclosingFunc *Func, 
 
 // RemoveFuncs removes the given (old) functions from the program.
 func (p *Program) RemoveFuncs(oldFuncs map[*Func]bool) {
+	if oldFuncs[p.initFunc] {
+		panic("Attempted to remove init func from program")
+	}
+
 	c := 0
 	for i := 0; i < len(p.funcs); i++ {
 		if oldFuncs[p.funcs[i]] {
@@ -95,10 +95,6 @@ func (p *Program) RemoveFuncs(oldFuncs map[*Func]bool) {
 			continue
 		}
 		delete(p.funcLookup, oldFunc.index)
-	}
-
-	if oldFuncs[p.entryFunc] {
-		p.entryFunc = nil
 	}
 }
 

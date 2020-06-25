@@ -24,7 +24,7 @@ const parserMode parser.Mode = parser.ParseComments |
 	parser.AllErrors
 
 // BuildProgram parses the Go files at the given path and builds an ir.Program.
-func BuildProgram(path string, entryFuncName string, buildContext *build.Context) (*ir.Program, []error) {
+func BuildProgram(path string, buildContext *build.Context) (program *ir.Program, entryFuncs []*ir.Func, errs []error) {
 	b := new(builder)
 
 	// Temporarily change build context (needed for source importer):
@@ -48,7 +48,7 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 	buildPackage, err := b.buildContext.Import(".", path, buildImportMode)
 	if err != nil {
 		b.addWarning(fmt.Errorf("import of %q failed: \n\t%v", path, err))
-		return nil, b.warnings
+		return nil, nil, b.warnings
 	}
 	queue := []*build.Package{buildPackage}
 	queueSet := map[string]bool{buildPackage.Dir: true}
@@ -69,7 +69,7 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 					p = buildPackage.TestImportPos["C"][0]
 				}
 				b.addWarning(fmt.Errorf("%v: cgo (import \"C\") not supported", p))
-				return nil, b.warnings
+				return nil, nil, b.warnings
 			}
 
 			importedBuildPackage, err := b.buildContext.Import(importPath, absPath, buildImportMode)
@@ -101,7 +101,7 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 		astPackages, err := parser.ParseDir(b.fset, absPath, filter, parserMode)
 		if err != nil {
 			b.addWarning(fmt.Errorf("parsing failed: %v", err))
-			return nil, b.warnings
+			return nil, nil, b.warnings
 		}
 		for _, astPackage := range astPackages {
 			if astPackage.Name != buildPackage.Name {
@@ -116,7 +116,7 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 	subsFile, err := parser.ParseFile(b.fset, "substitutes.go", substitutesCode, parserMode)
 	if err != nil {
 		b.addWarning(fmt.Errorf("parsing substitutes failed: %v", err))
-		return nil, b.warnings
+		return nil, nil, b.warnings
 	}
 	subsAstPackage := new(ast.Package)
 	subsAstPackage.Name = "subs"
@@ -128,7 +128,7 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 	orderedPkgPaths, err := b.packageProcessingOrder()
 	if err != nil {
 		b.addWarning(fmt.Errorf("type checking failed: %v", err))
-		return nil, b.warnings
+		return nil, nil, b.warnings
 	}
 
 	b.typesInfo = new(types.Info)
@@ -164,7 +164,7 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 		typesPackage, err := typesConfig.Check(importPath, b.fset, astFiles, b.typesInfo)
 		if err != nil {
 			b.addWarning(fmt.Errorf("type checking failed: %v", err))
-			return nil, b.warnings
+			return nil, nil, b.warnings
 		}
 		b.pkgs[path].typesPackage = typesPackage
 		b.pkgs[path].initOrder = b.typesInfo.InitOrder
@@ -191,18 +191,6 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 		}
 	}
 
-	for _, f := range b.program.Funcs() {
-		if f.Name() == entryFuncName {
-			b.program.SetEntryFunc(f)
-			break
-		}
-	}
-	if b.program.EntryFunc() == nil {
-		entrySig := types.NewSignature(nil, nil, nil, false)
-		entryFunc := b.program.AddOuterFunc(entryFuncName, entrySig, token.NoPos, token.NoPos)
-		b.program.SetEntryFunc(entryFunc)
-	}
-
 	for _, path := range orderedPkgPaths {
 		astPackage := b.pkgs[path].astPackage
 		for _, astFile := range astPackage.Files {
@@ -216,6 +204,23 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 		for _, init := range initOrder {
 			b.processInitializer(astPackage, init)
 		}
+		for _, astFile := range astPackage.Files {
+			for _, decl := range astFile.Decls {
+				funcDecl, ok := decl.(*ast.FuncDecl)
+				if !ok || funcDecl.Name.Name != "init" {
+					continue
+				}
+				typesFunc := b.typesInfo.Defs[funcDecl.Name].(*types.Func)
+				irFunc := b.funcs[typesFunc]
+				if irFunc.Signature() != nil &&
+					irFunc.Signature().Recv() == nil &&
+					irFunc.Signature().Params() == nil &&
+					irFunc.Signature().Results() == nil {
+					callStmt := ir.NewCallStmt(irFunc, irFunc.Signature(), ir.Call, funcDecl.Pos(), funcDecl.End())
+					b.program.InitFunc().Body().AddStmt(callStmt)
+				}
+			}
+		}
 	}
 
 	for _, path := range orderedPkgPaths {
@@ -225,7 +230,20 @@ func BuildProgram(path string, entryFuncName string, buildContext *build.Context
 		}
 	}
 
-	return b.program, b.warnings
+	// Entry funcs:
+	for _, irFunc := range b.program.Funcs() {
+		if irFunc.Name() == "main" &&
+			irFunc.Signature() != nil &&
+			irFunc.Signature().String() == "func()" {
+			entryFuncs = append(entryFuncs, irFunc)
+		} else if strings.HasPrefix(irFunc.Name(), "Test") &&
+			irFunc.Signature() != nil &&
+			irFunc.Signature().String() == "func(t *testing.T)" {
+			entryFuncs = append(entryFuncs, irFunc)
+		}
+	}
+
+	return b.program, entryFuncs, b.warnings
 }
 
 type pkg struct {
@@ -295,13 +313,13 @@ func (b *builder) processFuncDefsInFile(file *ast.File) {
 }
 
 func (b *builder) processGenDeclsInFile(file *ast.File) {
-	entryCtx := newContext(b.cmaps[file], b.program.EntryFunc())
+	initCtx := newContext(b.cmaps[file], b.program.InitFunc())
 	for _, decl := range file.Decls {
 		genDecl, ok := decl.(*ast.GenDecl)
 		if !ok {
 			continue
 		}
-		b.processGenDecl(genDecl, b.program.Scope(), entryCtx)
+		b.processGenDecl(genDecl, b.program.Scope(), initCtx)
 	}
 }
 
@@ -331,7 +349,7 @@ func (b *builder) processInitializer(astPackage *ast.Package, init *types.Initia
 		return
 	}
 
-	entryCtx := newContext(b.cmaps[astFile], b.program.EntryFunc())
+	initCtx := newContext(b.cmaps[astFile], b.program.InitFunc())
 	lhsExprs := make([]ast.Expr, len(init.Lhs))
 	rhsExprs := []ast.Expr{init.Rhs}
 
@@ -352,5 +370,5 @@ func (b *builder) processInitializer(astPackage *ast.Package, init *types.Initia
 		lhsExprs[i] = expr
 	}
 
-	b.processAssignments(lhsExprs, rhsExprs, entryCtx)
+	b.processAssignments(lhsExprs, rhsExprs, initCtx)
 }

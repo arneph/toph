@@ -10,10 +10,7 @@ import (
 // program entry function, and call kind. Only calls of the given call kinds
 // are contained in the graph.
 func BuildFuncCallGraph(program *ir.Program, callKinds ir.CallKind) *FuncCallGraph {
-	fcg := newFuncCallGraph(program.EntryFunc())
-	if program.EntryFunc() == nil {
-		return fcg
-	}
+	fcg := newFuncCallGraph(program.InitFunc())
 
 	addFuncsToFuncCallGraph(program, fcg)
 	addCallsToFuncCallGraph(program, callKinds, fcg)
@@ -56,9 +53,9 @@ func addCallCountsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fc
 	}
 
 	// Process all SCCs in topological order (starting from entry):
-	entrySCC := fcg.SCCOfFunc(program.EntryFunc())
+	initSCC := fcg.SCCOfFunc(program.InitFunc())
 	sccCallCounts := make(map[SCC]int)
-	sccCallCounts[entrySCC] = 1
+	sccCallCounts[initSCC] = 1
 	for i := fcg.SCCCount() - 1; i > 0; i-- {
 		currentSCC := SCC(i)
 		currentSCCFuncs := fcg.FuncsInSCC(currentSCC)

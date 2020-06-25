@@ -1,8 +1,6 @@
 package translator
 
 import (
-	"fmt"
-
 	"github.com/arneph/toph/analyzer"
 	"github.com/arneph/toph/ir"
 	"github.com/arneph/toph/uppaal"
@@ -15,19 +13,14 @@ const maxMutexCount = 100
 const maxWaitGroupCount = 100
 
 // TranslateProg translates an ir.Prog to a uppaal.System.
-func TranslateProg(program *ir.Program) (*uppaal.System, []error) {
+func TranslateProg(program *ir.Program, optimize bool) (*uppaal.System, []error) {
 	t := new(translator)
 	t.program = program
 	t.funcToProcess = make(map[*ir.Func]*uppaal.Process)
 	t.system = uppaal.NewSystem()
 	t.completeFCG = analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
 	t.deferFCG = analyzer.BuildFuncCallGraph(program, ir.Defer)
-
-	if t.program.EntryFunc() == nil {
-		t.addWarning(fmt.Errorf("program has no entry function"))
-	} else if len(t.completeFCG.AllCallers(t.program.EntryFunc())) > 0 {
-		t.addWarning(fmt.Errorf("entry function gets called within program"))
-	}
+	t.optimize = optimize
 
 	t.translateProgram()
 
@@ -45,6 +38,8 @@ type translator struct {
 
 	completeFCG *analyzer.FuncCallGraph
 	deferFCG    *analyzer.FuncCallGraph
+
+	optimize bool
 
 	warnings []error
 }
@@ -76,13 +71,19 @@ fid make_fid(int id, int par_pid) {
 	t.system.Declarations().SetInitFuncName("global_initialize")
 
 	for _, f := range t.program.Funcs() {
+		if t.optimize && t.completeFCG.CalleeCount(f) == 0 {
+			continue
+		}
 		t.addFuncProcess(f)
-		if f == t.program.EntryFunc() {
+		if f == t.program.InitFunc() {
 			continue
 		}
 		t.addFuncDeclarations(f)
 	}
 	for _, f := range t.program.Funcs() {
+		if t.optimize && t.completeFCG.CalleeCount(f) == 0 {
+			continue
+		}
 		t.translateFunc(f)
 	}
 

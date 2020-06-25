@@ -10,10 +10,6 @@ import (
 // EliminateDeadCode removes statements that are not necessary for
 // verification.
 func EliminateDeadCode(program *ir.Program) {
-	entryFunc := program.EntryFunc()
-	if entryFunc == nil {
-		return
-	}
 	fcg := analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
 	emptyFuncs := make(map[*ir.Func]bool)
 	for i := 1; i < fcg.SCCCount(); i++ {
@@ -28,19 +24,6 @@ func EliminateDeadCode(program *ir.Program) {
 			}
 		}
 	}
-}
-
-// EliminateUnusedFunctions removes functions that are never called.
-func EliminateUnusedFunctions(program *ir.Program) {
-	fcg := analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
-	oldFuncs := make(map[*ir.Func]bool)
-	for _, f := range program.Funcs() {
-		if fcg.CalleeCount(f) > 0 {
-			continue
-		}
-		oldFuncs[f] = true
-	}
-	program.RemoveFuncs(oldFuncs)
 }
 
 func eliminateDeadCodeInBody(body *ir.Body) {

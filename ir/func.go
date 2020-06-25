@@ -55,7 +55,7 @@ func newOuterFunc(index FuncIndex, name string, signature *types.Signature, glob
 func newInnerFunc(index FuncIndex, signature *types.Signature, enclosingFunc *Func, enclosingScope *Scope, pos, end token.Pos) *Func {
 	f := new(Func)
 	f.index = index
-	f.name = fmt.Sprintf("%s_func%d", enclosingFunc.name, index)
+	f.name = fmt.Sprintf("%s_closure", enclosingFunc.name)
 
 	f.signature = signature
 
@@ -80,6 +80,14 @@ func (f *Func) FuncValue() Value {
 
 // Name returns the name of the function.
 func (f *Func) Name() string {
+	return f.name
+}
+
+// Handle returns a shorthand to uniquely reference the function.
+func (f *Func) Handle() string {
+	if f.signature != nil {
+		return fmt.Sprintf("func%d_%s", f.index, f.name)
+	}
 	return f.name
 }
 
