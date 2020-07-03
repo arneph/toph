@@ -13,11 +13,10 @@ func (t *translator) translateGlobalScope() {
 		switch v.Type() {
 		case ir.FuncType:
 			typ = "fid"
-			initialValue = fmt.Sprintf("make_fid(%d, -1)", v.InitialValue())
 		default:
 			typ = "int"
-			initialValue = fmt.Sprintf("%d", v.InitialValue())
 		}
+		initialValue = t.translateValue(v.InitialValue(), v.Type())
 		t.system.Declarations().AddVariable(v.Handle(), typ, initialValue)
 	}
 	if addedVar {
@@ -33,11 +32,10 @@ func (t *translator) translateScope(ctx *context) {
 		switch v.Type() {
 		case ir.FuncType:
 			typ = "fid"
-			initialValue = fmt.Sprintf("make_fid(%d, pid)", v.InitialValue())
 		default:
 			typ = "int"
-			initialValue = fmt.Sprintf("%d", v.InitialValue())
 		}
+		initialValue = t.translateValue(v.InitialValue(), v.Type())
 		if !v.IsCaptured() {
 			ctx.proc.Declarations().AddVariable(v.Handle(), typ, "")
 			ctx.proc.Declarations().AddInitFuncStmt(v.Handle() + " = " + initialValue + ";")
@@ -68,23 +66,12 @@ func (t *translator) translateArg(v *ir.Variable, pidStr string) string {
 func (t *translator) translateResultName(f *ir.Func, index int) string {
 	proc := t.funcToProcess[f]
 	res := f.ResultTypes()[index]
-	return fmt.Sprintf("res_%s_%d_%v", proc.Name(), index, res)
+	return fmt.Sprintf("res_%s_%s_%d", res.VariablePrefix(), proc.Name(), index)
 }
 
 func (t *translator) translateResult(f *ir.Func, index int, pidStr string) string {
 	name := t.translateResultName(f, index)
 	return fmt.Sprintf("%s[%s]", name, pidStr)
-}
-
-func (t *translator) translateRValue(v ir.RValue, ctx *context) string {
-	switch v := v.(type) {
-	case ir.Value:
-		return v.String()
-	case *ir.Variable:
-		return t.translateVariable(v, ctx)
-	default:
-		panic(fmt.Errorf("unexpected %T rvalue type", v))
-	}
 }
 
 func (t *translator) translateVariable(v *ir.Variable, ctx *context) string {

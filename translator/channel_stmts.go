@@ -8,7 +8,7 @@ import (
 )
 
 func (t *translator) translateMakeChanStmt(stmt *ir.MakeChanStmt, ctx *context) {
-	handle := t.translateVariable(stmt.Channel(), ctx)
+	handle := t.translateLValue(stmt.Channel(), ctx)
 	name := stmt.Channel().Name()
 	b := stmt.BufferSize()
 
@@ -20,12 +20,13 @@ func (t *translator) translateMakeChanStmt(stmt *ir.MakeChanStmt, ctx *context) 
 	make.AddUpdate(fmt.Sprintf("%s = make_chan(%d)", handle, b))
 	make.SetUpdateLocation(
 		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
+
 	ctx.currentState = made
 	ctx.addLocation(made.Location())
 }
 
 func (t *translator) translateChanCommOpStmt(stmt *ir.ChanCommOpStmt, ctx *context) {
-	handle := t.translateVariable(stmt.Channel(), ctx)
+	handle := t.translateLValue(stmt.Channel(), ctx)
 	name := stmt.Channel().Name()
 	var pendingName, confirmedName, triggerChan, confirmChan, counterOp string
 
@@ -77,7 +78,7 @@ func (t *translator) translateChanCommOpStmt(stmt *ir.ChanCommOpStmt, ctx *conte
 }
 
 func (t *translator) translateCloseChanStmt(stmt *ir.CloseChanStmt, ctx *context) {
-	handle := t.translateVariable(stmt.Channel(), ctx)
+	handle := t.translateLValue(stmt.Channel(), ctx)
 	name := stmt.Channel().Name()
 
 	closed := ctx.proc.AddState("closed_"+name+"_", uppaal.Renaming)
@@ -103,7 +104,7 @@ type selectCaseInfo struct {
 
 func (t *translator) infoForSelectCase(selectCase *ir.SelectCase, ctx *context) selectCaseInfo {
 	var info selectCaseInfo
-	handle := t.translateVariable(selectCase.OpStmt().Channel(), ctx)
+	handle := t.translateLValue(selectCase.OpStmt().Channel(), ctx)
 
 	var rangeGuard string
 	switch selectCase.OpStmt().Op() {

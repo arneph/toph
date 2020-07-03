@@ -30,7 +30,7 @@ func (o ChanOp) String() string {
 
 // MakeChanStmt represents a make(chan ...) call.
 type MakeChanStmt struct {
-	channel    *Variable
+	channel    LValue
 	bufferSize int
 
 	Node
@@ -38,7 +38,7 @@ type MakeChanStmt struct {
 
 // NewMakeChanStmt creates a new MakeChanStmt for the given channel and buffer
 // size.
-func NewMakeChanStmt(channel *Variable, bufferSize int, pos, end token.Pos) *MakeChanStmt {
+func NewMakeChanStmt(channel LValue, bufferSize int, pos, end token.Pos) *MakeChanStmt {
 	s := new(MakeChanStmt)
 	s.channel = channel
 	s.bufferSize = bufferSize
@@ -48,8 +48,8 @@ func NewMakeChanStmt(channel *Variable, bufferSize int, pos, end token.Pos) *Mak
 	return s
 }
 
-// Channel returns the variable holding the newly made channel.
-func (s *MakeChanStmt) Channel() *Variable {
+// Channel returns the lvalue holding the newly made channel.
+func (s *MakeChanStmt) Channel() LValue {
 	return s.channel
 }
 
@@ -92,7 +92,7 @@ func (o ChanCommOp) String() string {
 
 // ChanCommOpStmt represents a channel operation statement.
 type ChanCommOpStmt struct {
-	channel *Variable
+	channel LValue
 	op      ChanCommOp
 
 	Node
@@ -100,7 +100,7 @@ type ChanCommOpStmt struct {
 
 // NewChanCommOpStmt creates a new channel operation statement for the given
 // channel and with the given channel operation.
-func NewChanCommOpStmt(channel *Variable, op ChanCommOp, pos, end token.Pos) *ChanCommOpStmt {
+func NewChanCommOpStmt(channel LValue, op ChanCommOp, pos, end token.Pos) *ChanCommOpStmt {
 	s := new(ChanCommOpStmt)
 	s.channel = channel
 	s.op = op
@@ -110,8 +110,8 @@ func NewChanCommOpStmt(channel *Variable, op ChanCommOp, pos, end token.Pos) *Ch
 	return s
 }
 
-// Channel returns the variable holding the channel that is operated on.
-func (s *ChanCommOpStmt) Channel() *Variable {
+// Channel returns the lvalue holding the channel that is operated on.
+func (s *ChanCommOpStmt) Channel() LValue {
 	return s.channel
 }
 
@@ -127,14 +127,14 @@ func (s *ChanCommOpStmt) tree(b *strings.Builder, indent int) {
 
 // CloseChanStmt represents a channel close statement.
 type CloseChanStmt struct {
-	channel *Variable
+	channel LValue
 
 	Node
 }
 
 // NewCloseChanStmt creates a new channel close statement for the given
 // channel.
-func NewCloseChanStmt(channel *Variable, pos, end token.Pos) *CloseChanStmt {
+func NewCloseChanStmt(channel LValue, pos, end token.Pos) *CloseChanStmt {
 	s := new(CloseChanStmt)
 	s.channel = channel
 	s.pos = pos
@@ -143,8 +143,8 @@ func NewCloseChanStmt(channel *Variable, pos, end token.Pos) *CloseChanStmt {
 	return s
 }
 
-// Channel returns the variable holding the channel to be closed.
-func (s *CloseChanStmt) Channel() *Variable {
+// Channel returns the lvalue holding the channel to be closed.
+func (s *CloseChanStmt) Channel() LValue {
 	return s.channel
 }
 

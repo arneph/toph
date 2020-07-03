@@ -6,9 +6,9 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
-// BuildFuncCallGraph returns a new function call graph for the given program,
-// program entry function, and call kind. Only calls of the given call kinds
-// are contained in the graph.
+// BuildFuncCallGraph returns a new function call graph for the given program
+// and call kind. Only calls of the given call kinds are contained in the
+// graph.
 func BuildFuncCallGraph(program *ir.Program, callKinds ir.CallKind) *FuncCallGraph {
 	fcg := newFuncCallGraph(program.InitFunc())
 
@@ -35,7 +35,7 @@ func addCallsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fcg *Fu
 			switch callee := callStmt.Callee().(type) {
 			case *ir.Func:
 				fcg.addStaticCall(caller, callee)
-			case *ir.Variable:
+			case ir.LValue:
 				calleeSig := callStmt.CalleeSignature()
 				fcg.addDynamicCall(caller, calleeSig)
 			default:
@@ -84,20 +84,25 @@ func addCallCountsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fc
 			for op, count := range info.specialOpCounts {
 				fcg.addSpecialOpCount(caller, op, count)
 			}
+			for structType, count := range info.structAllocations {
+				fcg.addStructAllocations(caller, structType, count)
+			}
 		}
 	}
 }
 
 type callsInfo struct {
-	callCount       int
-	calleeCounts    map[*ir.Func]int
-	specialOpCounts map[ir.SpecialOp]int
+	callCount         int
+	calleeCounts      map[*ir.Func]int
+	specialOpCounts   map[ir.SpecialOp]int
+	structAllocations map[*ir.StructType]int
 }
 
 func (info *callsInfo) init() {
 	info.callCount = 0
 	info.calleeCounts = make(map[*ir.Func]int)
 	info.specialOpCounts = make(map[ir.SpecialOp]int)
+	info.structAllocations = make(map[*ir.StructType]int)
 }
 
 func (info *callsInfo) enforceMaxCallCounts() {
@@ -112,6 +117,11 @@ func (info *callsInfo) enforceMaxCallCounts() {
 	for op := range info.specialOpCounts {
 		if info.specialOpCounts[op] > MaxCallCounts {
 			info.specialOpCounts[op] = MaxCallCounts
+		}
+	}
+	for structType := range info.structAllocations {
+		if info.structAllocations[structType] > MaxCallCounts {
+			info.structAllocations[structType] = MaxCallCounts
 		}
 	}
 }
@@ -137,6 +147,13 @@ func (info *callsInfo) addSpecialOpCount(op ir.SpecialOp, count int) {
 	}
 }
 
+func (info *callsInfo) addStructAllocations(structType *ir.StructType, count int) {
+	info.structAllocations[structType] += count
+	if info.structAllocations[structType] > MaxCallCounts {
+		info.structAllocations[structType] = MaxCallCounts
+	}
+}
+
 func (info *callsInfo) multiply(factor int) {
 	info.callCount *= factor
 	for callee := range info.calleeCounts {
@@ -144,6 +161,9 @@ func (info *callsInfo) multiply(factor int) {
 	}
 	for op := range info.specialOpCounts {
 		info.specialOpCounts[op] *= factor
+	}
+	for structType := range info.structAllocations {
+		info.structAllocations[structType] *= factor
 	}
 	info.enforceMaxCallCounts()
 }
@@ -155,6 +175,9 @@ func (info *callsInfo) add(other callsInfo) {
 	}
 	for op, count := range other.specialOpCounts {
 		info.specialOpCounts[op] += count
+	}
+	for structType, count := range other.structAllocations {
+		info.structAllocations[structType] += count
 	}
 	info.enforceMaxCallCounts()
 }
@@ -173,6 +196,11 @@ func (info *callsInfo) mergeFrom(other callsInfo) {
 			info.specialOpCounts[op] = count
 		}
 	}
+	for structType, count := range other.structAllocations {
+		if info.structAllocations[structType] < count {
+			info.structAllocations[structType] = count
+		}
+	}
 }
 
 func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
@@ -180,24 +208,14 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 
 	for _, stmt := range body.Stmts() {
 		switch stmt := stmt.(type) {
+		case *ir.AssignStmt:
+			res.add(findCalleesInfoForAssignStmt(stmt))
 		case *ir.CallStmt:
-			if stmt.CallKind()&callKinds == 0 {
-				continue
-			}
-			res.addCallCount(1)
-			switch callee := stmt.Callee().(type) {
-			case *ir.Func:
-				res.addCalleeCount(callee, 1)
-			case *ir.Variable:
-				calleeSig := stmt.CalleeSignature()
-				for _, dynCallee := range fcg.DynamicCallees(calleeSig) {
-					res.addCalleeCount(dynCallee, 1)
-				}
-			default:
-				panic(fmt.Errorf("unexpected callee type: %T", callee))
-			}
+			res.add(findCalleesInfoForCallStmt(stmt, callKinds, fcg))
 		case ir.SpecialOpStmt:
 			res.addSpecialOpCount(stmt.SpecialOp(), 1)
+		case *ir.MakeStructStmt:
+			res.addStructAllocations(stmt.StructType(), 1)
 		case *ir.IfStmt:
 			res.add(findCalleesInfoForIfStmt(stmt, callKinds, fcg))
 		case *ir.SwitchStmt:
@@ -208,7 +226,7 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 			res.add(findCalleesInfoForForStmt(stmt, callKinds, fcg))
 		case *ir.RangeStmt:
 			res.add(findCalleesInfoForRangeStmt(stmt, callKinds, fcg))
-		case *ir.AssignStmt, *ir.BranchStmt, *ir.ChanCommOpStmt, *ir.ReturnStmt:
+		case *ir.BranchStmt, *ir.ChanCommOpStmt, *ir.ReturnStmt:
 			continue
 		default:
 			panic(fmt.Errorf("unexpected ir.Stmt type: %T", stmt))
@@ -216,6 +234,83 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 	}
 
 	return
+}
+
+func findCalleesInfoForAssignStmt(assignStmt *ir.AssignStmt) (res callsInfo) {
+	structType, ok := assignStmt.Destination().Type().(*ir.StructType)
+	if !ok {
+		return
+	}
+	if !assignStmt.RequiresCopy() {
+		return
+	}
+	return findCalleesForStructTypeCopy(structType)
+}
+
+func findCalleesInfoForCallStmt(callStmt *ir.CallStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
+	res.init()
+	if callStmt.CallKind()&callKinds == 0 {
+		return
+	}
+	res.addCallCount(1)
+	switch callee := callStmt.Callee().(type) {
+	case *ir.Func:
+		res.addCalleeCount(callee, 1)
+	case ir.LValue:
+		calleeSig := callStmt.CalleeSignature()
+		for _, dynCallee := range fcg.DynamicCallees(calleeSig) {
+			res.addCalleeCount(dynCallee, 1)
+		}
+	default:
+		panic(fmt.Errorf("unexpected callee type: %T", callee))
+	}
+	for i, argRV := range callStmt.Args() {
+		argLV, ok := argRV.(ir.LValue)
+		if !ok {
+			continue
+		}
+		structType, ok := argLV.Type().(*ir.StructType)
+		if !ok {
+			continue
+		}
+		if !callStmt.ArgRequiresCopy(i) {
+			continue
+		}
+		res.add(findCalleesForStructTypeCopy(structType))
+	}
+	for i, resLV := range callStmt.Results() {
+		structType, ok := resLV.Type().(*ir.StructType)
+		if !ok {
+			continue
+		}
+		if !callStmt.ResultRequiresCopy(i) {
+			continue
+		}
+		res.add(findCalleesForStructTypeCopy(structType))
+	}
+	return
+}
+
+func findCalleesForStructTypeCopy(structType *ir.StructType) (res callsInfo) {
+	res.init()
+	res.addStructAllocations(structType, 1)
+	queue := []*ir.Field{}
+	for _, field := range structType.Fields() {
+		queue = append(queue, field)
+	}
+	for len(queue) > 0 {
+		field := queue[0]
+		queue = queue[1:]
+		structType, ok := field.Type().(*ir.StructType)
+		if !ok || field.IsPointer() {
+			continue
+		}
+		res.addStructAllocations(structType, 1)
+		for _, field := range structType.Fields() {
+			queue = append(queue, field)
+		}
+	}
+	return res
 }
 
 func findCalleesInfoForIfStmt(ifStmt *ir.IfStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {

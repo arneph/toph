@@ -43,21 +43,38 @@ func (b *builder) processVarDefinitionInScope(ident *ast.Ident, scope *ir.Scope,
 		return nil
 	}
 
-	irType, initialValue, ok := typesTypeToIrType(typesType)
-	if !ok {
+	irType := b.typesTypeToIrType(typesType)
+	if irType == nil {
 		return nil
 	}
+	initialValue := b.initialValueForIrType(irType)
 	irVar := b.program.NewVariable(ident.Name, irType, initialValue)
 	scope.AddVariable(irVar)
 	b.vars[typesVar] = irVar
 
-	if irType == ir.MutexType {
-		makeMutexStmt := ir.NewMakeMutexStmt(irVar, ident.Pos(), ident.End())
-		ctx.body.AddStmt(makeMutexStmt)
-	} else if irType == ir.WaitGroupType {
-		makeWaitGroupStmt := ir.NewMakeWaitGroupStmt(irVar, ident.Pos(), ident.End())
-		ctx.body.AddStmt(makeWaitGroupStmt)
-	}
+	b.addValInitializationStmts(irVar, b.isPointer(typesType), ident, ctx)
 
 	return irVar
+}
+
+func (b *builder) addValInitializationStmts(irVal ir.LValue, isPointer bool, node ast.Node, ctx *context) {
+	irType := irVal.Type()
+	if irType == ir.MutexType {
+		makeMutexStmt := ir.NewMakeMutexStmt(irVal, node.Pos(), node.End())
+		ctx.body.AddStmt(makeMutexStmt)
+	} else if irType == ir.WaitGroupType {
+		makeWaitGroupStmt := ir.NewMakeWaitGroupStmt(irVal, node.Pos(), node.End())
+		ctx.body.AddStmt(makeWaitGroupStmt)
+	} else if irStructType, ok := irType.(*ir.StructType); ok {
+		if isPointer {
+			return
+		}
+		makeStructStmt := ir.NewMakeStructStmt(irVal, node.Pos(), node.End())
+		ctx.body.AddStmt(makeStructStmt)
+
+		for _, irField := range irStructType.Fields() {
+			irFieldSelection := ir.NewFieldSelection(irVal, irField)
+			b.addValInitializationStmts(irFieldSelection, irField.IsPointer(), node, ctx)
+		}
+	}
 }

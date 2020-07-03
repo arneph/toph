@@ -29,22 +29,23 @@ func (b *builder) processAssignments(lhsExprs []ast.Expr, rhsExprs []ast.Expr, c
 	callExpr, ok := rhsExprs[0].(*ast.CallExpr)
 	if ok && len(rhsExprs) == 1 {
 		rhs = make(map[int]ir.RValue)
-		resultVars := b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
-		for i, resultVar := range resultVars {
-			rhs[i] = resultVar
+		resultVals := b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
+		for i, resultVal := range resultVals {
+			rhs[i] = resultVal.(ir.RValue)
 		}
 	} else {
 		rhs = b.processExprs(rhsExprs, ctx)
 	}
 
 	// Handle Lhs expressions:
-	lhs := make(map[int]*ir.Variable)
+	lhs := make(map[int]ir.LValue)
+	requiresCopy := make(map[int]bool)
 	for i, expr := range lhsExprs {
 		irVal := b.processExpr(expr, ctx)
 		if irVal == nil {
 			continue
 		}
-		irVar := irVal.(*ir.Variable)
+		irVar := irVal.(ir.LValue)
 		irType := irVar.Type()
 		if irType == ir.MutexType {
 			p := b.fset.Position(expr.Pos())
@@ -56,6 +57,12 @@ func (b *builder) processAssignments(lhsExprs []ast.Expr, rhsExprs []ast.Expr, c
 			continue
 		}
 		lhs[i] = irVar
+		if _, ok := irType.(*ir.StructType); ok {
+			typesType := b.typesInfo.TypeOf(expr)
+			requiresCopy[i] = !b.isPointer(typesType)
+		} else {
+			requiresCopy[i] = false
+		}
 	}
 
 	// Create assignment statements:
@@ -86,8 +93,8 @@ func (b *builder) processAssignments(lhsExprs []ast.Expr, rhsExprs []ast.Expr, c
 				fmt.Errorf("%v: could not handle rhs of assignment: %s", p, rhsExprStr))
 			continue
 		}
-
-		assignStmt := ir.NewAssignStmt(r, l, lhsExpr.Pos(), lhsExpr.End())
+		c := requiresCopy[i]
+		assignStmt := ir.NewAssignStmt(r, l, c, lhsExpr.Pos(), lhsExpr.End())
 		ctx.body.AddStmt(assignStmt)
 	}
 }

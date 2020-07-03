@@ -8,7 +8,7 @@ import (
 )
 
 func (t *translator) translateMakeMutexStmt(stmt *ir.MakeMutexStmt, ctx *context) {
-	handle := t.translateVariable(stmt.Mutex(), ctx)
+	handle := t.translateLValue(stmt.Mutex(), ctx)
 	name := stmt.Mutex().Name()
 
 	made := ctx.proc.AddState("made_"+name+"_", uppaal.Renaming)
@@ -24,7 +24,7 @@ func (t *translator) translateMakeMutexStmt(stmt *ir.MakeMutexStmt, ctx *context
 }
 
 func (t *translator) translateMutexOpStmt(stmt *ir.MutexOpStmt, ctx *context) {
-	handle := t.translateVariable(stmt.Mutex(), ctx)
+	handle := t.translateLValue(stmt.Mutex(), ctx)
 	name := stmt.Mutex().Name()
 	var isLock bool
 	var registeredName, completedName, registerUpdate, sync, completeUpdate string

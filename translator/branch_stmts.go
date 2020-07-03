@@ -245,7 +245,7 @@ func (t *translator) translateForStmt(stmt *ir.ForStmt, ctx *context) {
 }
 
 func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
-	handle := t.translateVariable(stmt.Channel(), ctx)
+	handle := t.translateLValue(stmt.Channel(), ctx)
 	name := stmt.Channel().Handle()
 	body := stmt.Body()
 

@@ -16,7 +16,7 @@ func (b *builder) processStmt(stmt ast.Stmt, ctx *context) {
 	case *ast.DeferStmt:
 		b.processDeferStmt(s, ctx)
 	case *ast.DeclStmt:
-		b.processGenDecl(s.Decl.(*ast.GenDecl), ctx.body.Scope(), ctx)
+		b.processGenDecl(s.Decl.(*ast.GenDecl), true, ctx.body.Scope(), ctx)
 	case *ast.ExprStmt:
 		b.processExpr(s.X, ctx)
 	case *ast.ForStmt:

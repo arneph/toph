@@ -160,9 +160,9 @@ func (c *SwitchCase) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
 	b.WriteString("case{\n")
 	writeIndent(b, indent+1)
-	fmt.Fprintf(b, "fefault: %b", c.isDefault)
+	fmt.Fprintf(b, "default: %t", c.isDefault)
 	writeIndent(b, indent+1)
-	fmt.Fprintf(b, "fallthrough: %b", c.hasFallthrough)
+	fmt.Fprintf(b, "fallthrough: %t", c.hasFallthrough)
 	writeIndent(b, indent+1)
 	b.WriteString("conds{\n")
 	for _, cond := range c.conds {
@@ -331,7 +331,7 @@ func (s *ForStmt) tree(b *strings.Builder, indent int) {
 
 // RangeStmt represents a loop ranging over a channel.
 type RangeStmt struct {
-	channel *Variable
+	channel LValue
 	body    Body
 
 	Node
@@ -339,7 +339,7 @@ type RangeStmt struct {
 
 // NewRangeStmt creates a new loop ranging over the give channel and embedded
 // in the given enclosing scope.
-func NewRangeStmt(channel *Variable, superScope *Scope, pos, end token.Pos) *RangeStmt {
+func NewRangeStmt(channel LValue, superScope *Scope, pos, end token.Pos) *RangeStmt {
 	s := new(RangeStmt)
 	s.channel = channel
 	s.body.init()
@@ -351,7 +351,7 @@ func NewRangeStmt(channel *Variable, superScope *Scope, pos, end token.Pos) *Ran
 }
 
 // Channel returns the channel the range based loop is ranging over.
-func (s *RangeStmt) Channel() *Variable {
+func (s *RangeStmt) Channel() LValue {
 	return s.channel
 }
 

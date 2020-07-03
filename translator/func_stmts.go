@@ -99,9 +99,9 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 	for i, calleeArg := range calleeFunc.Args() {
 		calleeArgStr := t.translateArg(calleeArg, "p")
 		callerArg := stmt.Args()[i]
-		callerArgStr := t.translateRValue(callerArg, ctx)
-		if _, ok := callerArg.(ir.Value); ok && calleeArg.Type() == ir.FuncType {
-			callerArgStr = "make_fid(" + callerArgStr + ", pid)"
+		callerArgStr := t.translateRValue(callerArg, calleeArg.Type(), ctx)
+		if stmt.ArgRequiresCopy(i) {
+			callerArgStr = t.translateCopyOfRValue(callerArgStr, calleeArg.Type())
 		}
 		create.AddUpdate(
 			fmt.Sprintf("%s = %s", calleeArgStr, callerArgStr))
@@ -127,9 +127,12 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 			wait.SetSync(fmt.Sprintf("sync_%s[p]?", calleeProc.Name()))
 			wait.SetSyncLocation(started.Location().Add(uppaal.Location{4, 48}))
 
-			for i := range calleeFunc.ResultTypes() {
+			for i, resType := range calleeFunc.ResultTypes() {
 				calleeRes := t.translateResult(calleeFunc, i, "p")
-				callerRes := t.translateVariable(stmt.Results()[i], ctx)
+				callerRes := t.translateLValue(stmt.Results()[i], ctx)
+				if stmt.ResultRequiresCopy(i) {
+					calleeRes = t.translateCopyOfRValue(calleeRes, resType)
+				}
 				wait.AddUpdate(
 					fmt.Sprintf("%s = %s", callerRes, calleeRes))
 			}
@@ -211,13 +214,10 @@ func (t *translator) translateReturnStmt(stmt *ir.ReturnStmt, ctx *context) {
 		if !ok {
 			continue
 		}
-		resStr := t.translateRValue(resVal, ctx)
-		if _, ok := resVal.(ir.Value); ok && resType == ir.FuncType {
-			resStr = "make_fid(" + resStr + ", pid)"
-		}
+		resStr := t.translateRValue(resVal, resType, ctx)
 
-		ret.AddUpdate(fmt.Sprintf("res_%s_%d_%v[pid] = %s",
-			ctx.proc.Name(), i, resType, resStr))
+		ret.AddUpdate(fmt.Sprintf("%s = %s",
+			t.translateResult(ctx.f, i, "pid"), resStr))
 	}
 	ret.SetUpdateLocation(
 		ctx.currentState.Location().Add(uppaal.Location{4, 60}))

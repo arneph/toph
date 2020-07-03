@@ -9,13 +9,15 @@ import (
 // AssignStmt represents an assignment statement.
 type AssignStmt struct {
 	source      RValue
-	destination *Variable
+	destination LValue
+
+	requiresCopy bool
 
 	Node
 }
 
 // NewAssignStmt createas a new assignment statement.
-func NewAssignStmt(source RValue, destination *Variable, pos, end token.Pos) *AssignStmt {
+func NewAssignStmt(source RValue, destination LValue, requiresCopy bool, pos, end token.Pos) *AssignStmt {
 	if source == nil || destination == nil {
 		panic("tried to create AssignStmt with nil source or destination")
 	}
@@ -23,20 +25,26 @@ func NewAssignStmt(source RValue, destination *Variable, pos, end token.Pos) *As
 	a := new(AssignStmt)
 	a.source = source
 	a.destination = destination
+	a.requiresCopy = requiresCopy
 	a.pos = pos
 	a.end = end
 
 	return a
 }
 
-// Source returns the source variable of the assignment.
+// Source returns the source of the assignment.
 func (a *AssignStmt) Source() RValue {
 	return a.source
 }
 
-// Destination returns the destination variable of the assignment.
-func (a *AssignStmt) Destination() *Variable {
+// Destination returns the destination of the assignment.
+func (a *AssignStmt) Destination() LValue {
 	return a.destination
+}
+
+// RequiresCopy returns if the value should be copied before being assigned.
+func (a *AssignStmt) RequiresCopy() bool {
+	return a.requiresCopy
 }
 
 func (a *AssignStmt) tree(b *strings.Builder, indent int) {
@@ -48,5 +56,8 @@ func (a *AssignStmt) tree(b *strings.Builder, indent int) {
 		fmt.Fprintf(b, "%s <- %s", a.destination.Handle(), s.Handle())
 	default:
 		panic(fmt.Errorf("unexpected %T source type", s))
+	}
+	if a.requiresCopy {
+		fmt.Fprintf(b, " (copy)")
 	}
 }

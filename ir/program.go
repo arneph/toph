@@ -16,6 +16,10 @@ type Program struct {
 	scope         Scope
 	variableCount int
 
+	types      []Type
+	typeLookup map[TypeIndex]Type
+	typeCount  int
+
 	fset *token.FileSet
 }
 
@@ -25,7 +29,12 @@ func NewProgram(fset *token.FileSet) *Program {
 	p.funcs = nil
 	p.funcLookup = make(map[FuncIndex]*Func)
 	p.funcCount = 0
-	p.scope.init()
+	p.variableCount = 0
+	p.types = []Type{IntType, FuncType, ChanType, MutexType, WaitGroupType}
+	p.typeLookup = map[TypeIndex]Type{
+		0: IntType, 1: FuncType, 2: ChanType, 3: MutexType, 4: WaitGroupType,
+	}
+	p.typeCount = len(p.types)
 	p.fset = fset
 
 	p.initFunc = p.AddOuterFunc("start", nil, token.NoPos, token.NoPos)
@@ -112,6 +121,24 @@ func (p *Program) NewVariable(name string, t Type, initialValue Value) *Variable
 	return v
 }
 
+// Types returns all types defined in the program.
+func (p *Program) Types() []Type {
+	return p.types
+}
+
+// AddStructType adds a new structure type with the given name to the program
+// and returns the new type.
+func (p *Program) AddStructType(name string) *StructType {
+	tIndex := TypeIndex(p.typeCount)
+	t := newStructType(tIndex, name)
+	p.typeCount++
+
+	p.types = append(p.types, t)
+	p.typeLookup[tIndex] = t
+
+	return t
+}
+
 // FileSet returns the token.FileSet from which the program was built.
 func (p *Program) FileSet() *token.FileSet {
 	return p.fset
@@ -126,6 +153,13 @@ func (p *Program) Tree() string {
 	b.WriteString("\tfuncs{\n")
 	for _, f := range p.funcs {
 		f.tree(&b, 2)
+		b.WriteString("\n")
+	}
+	b.WriteString("\t}\n")
+	b.WriteString("\ttypes{\n")
+	for _, t := range p.types {
+		b.WriteString("\t\t")
+		b.WriteString(t.String())
 		b.WriteString("\n")
 	}
 	b.WriteString("\t}\n")

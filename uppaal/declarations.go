@@ -108,7 +108,7 @@ func (d *Declarations) AsXTA() string {
 		str += "\n" + _type
 	}
 	if len(d.types) > 0 {
-		str += "\n\n"
+		str += "\n"
 	}
 	for _, info := range d.variables {
 		if info.name == "" {

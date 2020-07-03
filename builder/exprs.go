@@ -34,13 +34,13 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		if result == nil {
 			return ir.RValue(nil)
 		}
-		return result
+		return result.(ir.RValue)
 	case *ast.CompositeLit:
-		if e.Type != nil {
-			b.processExpr(e.Type, ctx)
+		result := b.processCompositeLit(e, ctx)
+		if result == nil {
+			return ir.RValue(nil)
 		}
-		b.processExprs(e.Elts, ctx)
-		return nil
+		return result
 	case *ast.Ellipsis:
 		b.processExpr(e.Elt, ctx)
 		return nil
@@ -58,8 +58,7 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		b.processExpr(e.X, ctx)
 		return nil
 	case *ast.SelectorExpr:
-		_, sel := b.processSelectorExpr(e, ctx)
-		return sel
+		return b.processSelectorExpr(e, ctx)
 	case *ast.SliceExpr:
 		b.processExpr(e.X, ctx)
 		if e.Low != nil {
@@ -73,18 +72,21 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		}
 		return nil
 	case *ast.StarExpr:
-		b.processExpr(e.X, ctx)
-		return nil
+		return b.processExpr(e.X, ctx)
 	case *ast.TypeAssertExpr:
 		b.processExprs([]ast.Expr{e.X, e.Type}, ctx)
 		return nil
 	case *ast.UnaryExpr:
-		if e.Op == token.ARROW {
+		switch e.Op {
+		case token.ARROW:
 			b.processReceiveExpr(e, true, ctx)
-		} else {
+			return nil
+		case token.AND:
+			return b.processExpr(e.X, ctx)
+		default:
 			b.processExpr(e.X, ctx)
+			return nil
 		}
-		return nil
 	case
 		*ast.ArrayType,
 		*ast.ChanType,
@@ -122,8 +124,8 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 		b.addWarning(fmt.Errorf("%v: types.Type for identifier is nil: %s", p, ident.Name))
 		return nil
 	}
-	_, _, ok := typesTypeToIrType(typesType)
-	if !ok {
+	irType := b.typesTypeToIrType(typesType)
+	if irType == nil {
 		return nil
 	}
 
@@ -132,10 +134,33 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 		return substitute
 	}
 
-	return b.processDefinedTypesObj(usedTypesObj, ctx)
+	switch usedTypesObj := usedTypesObj.(type) {
+	case *types.Var:
+		v := b.vars[usedTypesObj]
+		if v == nil {
+			return nil
+		}
+		s := v.Scope()
+		if s != b.program.Scope() && s.IsSuperScopeOf(ctx.currentFunc().Scope()) {
+			v.SetCaptured(true)
+		}
+		return v
+	case *types.Func:
+		f := b.funcs[usedTypesObj]
+		if f == nil {
+			return nil
+		}
+		return f.FuncValue()
+	case *types.Const, *types.TypeName:
+		return nil
+	default:
+		p := b.fset.Position(usedTypesObj.Pos())
+		b.addWarning(fmt.Errorf("%v: unexpected types.Object type: %T", p, usedTypesObj))
+		return nil
+	}
 }
 
-func (b *builder) processSelectorExpr(selExpr *ast.SelectorExpr, ctx *context) (x ir.RValue, sel ir.RValue) {
+func (b *builder) processSelectorExpr(selExpr *ast.SelectorExpr, ctx *context) ir.RValue {
 	typesSelection, ok := b.typesInfo.Selections[selExpr]
 	if !ok {
 		// Assume *ast.SelectorExpr is for qualified identifier (package.identifier)
@@ -143,46 +168,58 @@ func (b *builder) processSelectorExpr(selExpr *ast.SelectorExpr, ctx *context) (
 		xTypesObj := b.typesInfo.ObjectOf(xIdent)
 		_ = xTypesObj.(*types.PkgName)
 
-		return nil, b.processIdent(selExpr.Sel, ctx)
+		return b.processIdent(selExpr.Sel, ctx)
+	}
+
+	if typesSelection.Kind() != types.FieldVal {
+		p := b.fset.Position(selExpr.Pos())
+		selExprStr := b.nodeToString(selExpr)
+		b.addWarning(fmt.Errorf("%v: method expressions or method values are not supported: %s", p, selExprStr))
+		return nil
 	}
 
 	xVal := b.processExpr(selExpr.X, ctx)
-
-	usedTypesObj := typesSelection.Obj()
-
-	selVal := b.processDefinedTypesObj(usedTypesObj, ctx)
-
-	return xVal, selVal
-}
-
-func (b *builder) processDefinedTypesObj(definedTypesObj types.Object, ctx *context) ir.RValue {
-	switch definedTypesObj := definedTypesObj.(type) {
-	case *types.Var:
-		v := b.vars[definedTypesObj]
-		if v == nil {
-			return nil
-		}
-
-		s := v.Scope()
-		if s != b.program.Scope() && s.IsSuperScopeOf(ctx.currentFunc().Scope()) {
-			v.SetCaptured(true)
-		}
-
-		return v
-
-	case *types.Func:
-		f := b.funcs[definedTypesObj]
-		if f == nil {
-			return nil
-		}
-		return f.FuncValue()
-
-	case *types.Const, *types.TypeName:
-		return nil
-
-	default:
-		p := b.fset.Position(definedTypesObj.Pos())
-		b.addWarning(fmt.Errorf("%v: unexpected types.Object type: %T", p, definedTypesObj))
+	xTypesType := b.typesInfo.TypeOf(selExpr.X)
+	xIrType := b.typesTypeToIrType(xTypesType)
+	if xVal == nil && xIrType == nil {
 		return nil
 	}
+	irStructVal, ok := xVal.(ir.LValue)
+	if xVal == nil || !ok {
+		p := b.fset.Position(selExpr.X.Pos())
+		xStr := b.nodeToString(selExpr.X)
+		b.addWarning(fmt.Errorf("%v: could not resolve struct variable expression: %s", p, xStr))
+		return nil
+	}
+	irStructType := irStructVal.Type().(*ir.StructType)
+
+	fieldTypesVar := typesSelection.Obj().(*types.Var)
+	fieldTypesType := fieldTypesVar.Type()
+	fieldIrType := b.typesTypeToIrType(fieldTypesType)
+	if fieldIrType == nil {
+		return nil
+	}
+	irField, ok := b.fields[fieldTypesVar]
+	if !ok {
+		p := b.fset.Position(selExpr.Sel.Pos())
+		selStr := b.nodeToString(selExpr.Sel)
+		b.addWarning(fmt.Errorf("%v: could not resolve field expression: %s", p, selStr))
+		return nil
+	}
+
+	neededStructType := irField.StructType()
+	if neededStructType != irStructType {
+		embeddedFields, ok := irStructType.FindEmbeddedFieldOfType(neededStructType)
+		if !ok {
+			p := b.fset.Position(selExpr.Sel.Pos())
+			selStr := b.nodeToString(selExpr.Sel)
+			b.addWarning(fmt.Errorf("%v: could not resolve field expression: %s", p, selStr))
+			return nil
+		}
+		for _, irField := range embeddedFields {
+			irStructVal = ir.NewFieldSelection(irStructVal, irField)
+		}
+	}
+
+	return ir.NewFieldSelection(irStructVal, irField)
 }

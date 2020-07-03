@@ -18,6 +18,7 @@ func TranslateProg(program *ir.Program, optimize bool) (*uppaal.System, []error)
 	t.program = program
 	t.funcToProcess = make(map[*ir.Func]*uppaal.Process)
 	t.system = uppaal.NewSystem()
+	t.tg = analyzer.BuildTypeGraph(program)
 	t.completeFCG = analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
 	t.deferFCG = analyzer.BuildFuncCallGraph(program, ir.Defer)
 	t.optimize = optimize
@@ -35,6 +36,8 @@ type translator struct {
 	channelProcess   *uppaal.Process
 	mutexProcess     *uppaal.Process
 	waitGroupProcess *uppaal.Process
+
+	tg *analyzer.TypeGraph
 
 	completeFCG *analyzer.FuncCallGraph
 	deferFCG    *analyzer.FuncCallGraph
@@ -58,7 +61,7 @@ fid make_fid(int id, int par_pid) {
 	fid t = {id, par_pid};
 	return t;
 }`)
-	t.system.Declarations().AddSpace()
+
 	t.system.Declarations().AddVariable("out_of_resources", "bool", "false")
 	t.system.AddProgressMeasure("out_of_resources")
 	t.system.AddQuery(uppaal.MakeQuery(
@@ -70,6 +73,9 @@ fid make_fid(int id, int par_pid) {
 	t.translateGlobalScope()
 	t.system.Declarations().SetInitFuncName("global_initialize")
 
+	for _, u := range t.tg.TopologicalOrder() {
+		t.addType(u)
+	}
 	for _, f := range t.program.Funcs() {
 		if t.optimize && t.completeFCG.CalleeCount(f) == 0 {
 			continue

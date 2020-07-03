@@ -8,11 +8,12 @@ import (
 )
 
 func (t *translator) translateAssignStmt(stmt *ir.AssignStmt, ctx *context) {
-	s := t.translateRValue(stmt.Source(), ctx)
-	if _, ok := stmt.Source().(ir.Value); ok && stmt.Destination().Type() == ir.FuncType {
-		s = "make_fid(" + s + ", pid)"
+	s := t.translateRValue(stmt.Source(), stmt.Destination().Type(), ctx)
+	d := t.translateLValue(stmt.Destination(), ctx)
+
+	if stmt.RequiresCopy() {
+		s = t.translateCopyOfRValue(s, stmt.Destination().Type())
 	}
-	d := t.translateVariable(stmt.Destination(), ctx)
 
 	assigned := ctx.proc.AddState("assigned_"+stmt.Destination().Handle()+"_", uppaal.Renaming)
 	assigned.SetComment(t.program.FileSet().Position(stmt.Pos()).String())

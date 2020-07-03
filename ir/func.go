@@ -149,7 +149,7 @@ func (f *Func) EnclosingFunc() *Func {
 
 // Scope returns the function scope.
 func (f *Func) Scope() *Scope {
-	return f.body.scope
+	return &f.body.scope
 }
 
 // Body returns the function body.

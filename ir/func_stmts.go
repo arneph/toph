@@ -12,8 +12,9 @@ type Callable interface {
 	callable()
 }
 
-func (v *Variable) callable() {}
-func (f *Func) callable()     {}
+func (v *Variable) callable()        {}
+func (fs *FieldSelection) callable() {}
+func (f *Func) callable()            {}
 
 // CallKind represents whether a call is synchronous or asynchronous
 // (go statement). Multiple call kinds can be used in a bit map.
@@ -33,7 +34,7 @@ func (k CallKind) String() string {
 	case Call:
 		return "call"
 	case Defer:
-		return "call"
+		return "defer"
 	case Go:
 		return "go"
 	default:
@@ -43,11 +44,13 @@ func (k CallKind) String() string {
 
 // CallStmt represents a function call (with or without the go keyword).
 type CallStmt struct {
-	callee          Callable
-	calleeSignature *types.Signature
-	callKind        CallKind
-	args            map[int]RValue
-	results         map[int]*Variable // Variables to assign results to
+	callee             Callable
+	calleeSignature    *types.Signature
+	callKind           CallKind
+	args               map[int]RValue
+	argRequiresCopy    map[int]bool
+	results            map[int]LValue
+	resultRequiresCopy map[int]bool
 
 	Node
 }
@@ -63,7 +66,9 @@ func NewCallStmt(callee Callable, calleeSignature *types.Signature, callKind Cal
 	s.calleeSignature = calleeSignature
 	s.callKind = callKind
 	s.args = make(map[int]RValue)
-	s.results = make(map[int]*Variable)
+	s.argRequiresCopy = make(map[int]bool)
+	s.results = make(map[int]LValue)
+	s.resultRequiresCopy = make(map[int]bool)
 	s.pos = pos
 	s.end = end
 
@@ -86,8 +91,7 @@ func (s *CallStmt) IsStaticCall() bool {
 // IsDynamicCall returns whether the call statement represents a dynamic
 // function call, involving a function variable.
 func (s *CallStmt) IsDynamicCall() bool {
-	_, ok := s.callee.(*Variable)
-	return ok
+	return !s.IsStaticCall()
 }
 
 // CalleeSignature returns the full callee type, including argument and result
@@ -106,19 +110,31 @@ func (s *CallStmt) Args() map[int]RValue {
 	return s.args
 }
 
+// ArgRequiresCopy returns if the argument at the given index requires a copy.
+func (s *CallStmt) ArgRequiresCopy(index int) bool {
+	return s.argRequiresCopy[index]
+}
+
 // AddArg adds an argument to the function call.
-func (s *CallStmt) AddArg(index int, arg RValue) {
+func (s *CallStmt) AddArg(index int, arg RValue, requiresCopy bool) {
 	s.args[index] = arg
+	s.argRequiresCopy[index] = requiresCopy
 }
 
 // Results returns all results processed by the function call.
-func (s *CallStmt) Results() map[int]*Variable {
+func (s *CallStmt) Results() map[int]LValue {
 	return s.results
 }
 
-// AddResult adds a variable to store a function call result in.
-func (s *CallStmt) AddResult(index int, result *Variable) {
+// ResultRequiresCopy returns if the result at the given index requires a copy.
+func (s *CallStmt) ResultRequiresCopy(index int) bool {
+	return s.resultRequiresCopy[index]
+}
+
+// AddResult adds an lvalue to store a function call result in.
+func (s *CallStmt) AddResult(index int, result LValue, requiresCopy bool) {
 	s.results[index] = result
+	s.resultRequiresCopy[index] = requiresCopy
 }
 
 func (s *CallStmt) tree(b *strings.Builder, indent int) {
@@ -132,6 +148,9 @@ func (s *CallStmt) tree(b *strings.Builder, indent int) {
 				b.WriteString(", ")
 			}
 			fmt.Fprintf(b, "%d: %v", i, result)
+			if s.resultRequiresCopy[i] {
+				fmt.Fprintf(b, " (copy)")
+			}
 		}
 		b.WriteString(" <- ")
 	}
@@ -152,6 +171,9 @@ func (s *CallStmt) tree(b *strings.Builder, indent int) {
 			b.WriteString(", ")
 		}
 		fmt.Fprintf(b, "%d: %v", i, arg)
+		if s.argRequiresCopy[i] {
+			fmt.Fprintf(b, " (copy)")
+		}
 	}
 	b.WriteString(")")
 }

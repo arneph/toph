@@ -126,8 +126,8 @@ func (b *builder) processRangeStmt(stmt *ast.RangeStmt, label string, ctx *conte
 			fmt.Errorf("%v: could not determine type of value to range over", p))
 	}
 
-	t, _, ok := typesTypeToIrType(typeAndValue.Type)
-	if ok && t == ir.ChanType {
+	irType := b.typesTypeToIrType(typeAndValue.Type)
+	if irType == ir.ChanType {
 		chanVar := b.findChannel(stmt.X, ctx)
 		if chanVar != nil {
 			// Range over channel:

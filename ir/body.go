@@ -7,24 +7,17 @@ import (
 
 // Body represents a function or branch instruction body.
 type Body struct {
-	scope *Scope
+	scope Scope
 	stmts []Stmt
 }
 
 func (b *Body) init() {
-	b.scope = new(Scope)
-	b.scope.init()
-	b.stmts = nil
-}
-
-func (b *Body) initWithScope(s *Scope) {
-	b.scope = s
 	b.stmts = nil
 }
 
 // Scope returns the scope corresponding to the body.
 func (b *Body) Scope() *Scope {
-	return b.scope
+	return &b.scope
 }
 
 // Stmts returns the statements inside the body.
@@ -45,6 +38,7 @@ func (b *Body) WalkStmts(visitFunc func(stmt Stmt, scope *Scope)) {
 			*DeadEndStmt,
 			*MakeMutexStmt, *MutexOpStmt,
 			*MakeWaitGroupStmt, *WaitGroupOpStmt,
+			*MakeStructStmt,
 			*CallStmt, *ReturnStmt:
 			continue
 		case *SelectStmt:

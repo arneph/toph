@@ -16,6 +16,7 @@ import (
 	"github.com/arneph/toph/ir"
 
 	"golang.org/x/tools/go/ast/astutil"
+	"golang.org/x/tools/go/types/typeutil"
 )
 
 const buildImportMode build.ImportMode = build.ImportComment
@@ -141,6 +142,7 @@ func BuildProgram(path string, buildContext *build.Context) (program *ir.Program
 	b.typesSrcImporter = importer.ForCompiler(b.fset, "source", nil)
 	b.funcs = make(map[*types.Func]*ir.Func)
 	b.vars = make(map[*types.Var]*ir.Variable)
+	b.fields = make(map[*types.Var]*ir.Field)
 	typesConfig := types.Config{
 		Importer:                 b,
 		DisableUnusedImportCheck: true,
@@ -264,6 +266,8 @@ type builder struct {
 	pkgs             map[string]*pkg
 	funcs            map[*types.Func]*ir.Func
 	vars             map[*types.Var]*ir.Variable
+	fields           map[*types.Var]*ir.Field
+	types            typeutil.Map
 	cmaps            map[*ast.File]ast.CommentMap
 
 	program              *ir.Program
@@ -279,7 +283,10 @@ func (b *builder) addWarning(err error) {
 func (b *builder) nodeToString(node ast.Node) string {
 	var bob strings.Builder
 	format.Node(&bob, b.fset, node)
-	return bob.String()
+	str := bob.String()
+	str = strings.ReplaceAll(str, "\n", "")
+	str = strings.ReplaceAll(str, "\t", " ")
+	return str
 }
 
 func (b *builder) processFuncDeclsInFile(file *ast.File) {
@@ -319,11 +326,11 @@ func (b *builder) processGenDeclsInFile(file *ast.File) {
 		if !ok {
 			continue
 		}
-		b.processGenDecl(genDecl, b.program.Scope(), initCtx)
+		b.processGenDecl(genDecl, false, b.program.Scope(), initCtx)
 	}
 }
 
-func (b *builder) processGenDecl(genDecl *ast.GenDecl, scope *ir.Scope, ctx *context) {
+func (b *builder) processGenDecl(genDecl *ast.GenDecl, processInitializations bool, scope *ir.Scope, ctx *context) {
 	if genDecl.Tok != token.CONST && genDecl.Tok != token.VAR {
 		return
 	}
@@ -331,6 +338,16 @@ func (b *builder) processGenDecl(genDecl *ast.GenDecl, scope *ir.Scope, ctx *con
 		valueSpec := spec.(*ast.ValueSpec)
 
 		b.processVarDefinitionsInScope(valueSpec.Names, scope, ctx)
+
+		if !processInitializations || len(valueSpec.Values) == 0 {
+			continue
+		}
+		lhs := make([]ast.Expr, len(valueSpec.Names))
+		rhs := valueSpec.Values
+		for i, ident := range valueSpec.Names {
+			lhs[i] = ident
+		}
+		b.processAssignments(lhs, rhs, ctx)
 	}
 }
 

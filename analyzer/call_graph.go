@@ -39,6 +39,9 @@ type FuncCallGraph struct {
 	callerToSpecialOpCounts map[*ir.Func]map[ir.SpecialOp]int
 	totalSpecialOpCounts    map[ir.SpecialOp]int
 
+	callerToStructAllocations map[*ir.Func]map[*ir.StructType]int
+	totalStructAllocations    map[*ir.StructType]int
+
 	// Strongly connected components:
 	sccsOk     bool
 	sccCount   int
@@ -56,6 +59,8 @@ func newFuncCallGraph(entry *ir.Func) *FuncCallGraph {
 	fcg.isCalleeCounts = make(map[*ir.Func]int)
 	fcg.callerToSpecialOpCounts = make(map[*ir.Func]map[ir.SpecialOp]int)
 	fcg.totalSpecialOpCounts = make(map[ir.SpecialOp]int)
+	fcg.callerToStructAllocations = make(map[*ir.Func]map[*ir.StructType]int)
+	fcg.totalStructAllocations = make(map[*ir.StructType]int)
 	fcg.sccsOk = false
 
 	if entry != nil {
@@ -138,6 +143,18 @@ func (fcg *FuncCallGraph) TotalSpecialOpCount(op ir.SpecialOp) int {
 	return fcg.totalSpecialOpCounts[op]
 }
 
+// StructAllocations returns how many times the caller allocates an instance
+// of the given struct type.
+func (fcg *FuncCallGraph) StructAllocations(caller *ir.Func, structType *ir.StructType) int {
+	return fcg.callerToStructAllocations[caller][structType]
+}
+
+// TotalStructAllocations returns how many times an instance of the given
+// struct type gets created.
+func (fcg *FuncCallGraph) TotalStructAllocations(structType *ir.StructType) int {
+	return fcg.totalStructAllocations[structType]
+}
+
 // SCCCount returns the number of strongly connected components in the
 // function graph. Disconnected functions are counted in SCC 0.
 func (fcg *FuncCallGraph) SCCCount() int {
@@ -190,6 +207,7 @@ func (fcg *FuncCallGraph) addFunc(f *ir.Func) {
 	}
 
 	fcg.callerToSpecialOpCounts[f] = make(map[ir.SpecialOp]int)
+	fcg.callerToStructAllocations[f] = make(map[*ir.StructType]int)
 
 	fcg.sccsOk = false
 }
@@ -249,6 +267,17 @@ func (fcg *FuncCallGraph) addSpecialOpCount(caller *ir.Func, op ir.SpecialOp, co
 	fcg.totalSpecialOpCounts[op] += count
 	if fcg.totalSpecialOpCounts[op] > MaxCallCounts {
 		fcg.totalSpecialOpCounts[op] = MaxCallCounts
+	}
+}
+
+func (fcg *FuncCallGraph) addStructAllocations(caller *ir.Func, structType *ir.StructType, count int) {
+	fcg.callerToStructAllocations[caller][structType] += count
+	if fcg.callerToStructAllocations[caller][structType] > MaxCallCounts {
+		fcg.callerToStructAllocations[caller][structType] = MaxCallCounts
+	}
+	fcg.totalStructAllocations[structType] += count
+	if fcg.totalStructAllocations[structType] > MaxCallCounts {
+		fcg.totalStructAllocations[structType] = MaxCallCounts
 	}
 }
 

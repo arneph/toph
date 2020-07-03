@@ -8,7 +8,7 @@ import (
 )
 
 func (t *translator) translateMakeWaitGroupStmt(stmt *ir.MakeWaitGroupStmt, ctx *context) {
-	handle := t.translateVariable(stmt.WaitGroup(), ctx)
+	handle := t.translateLValue(stmt.WaitGroup(), ctx)
 	name := stmt.WaitGroup().Name()
 
 	made := ctx.proc.AddState("made_"+name+"_", uppaal.Renaming)
@@ -24,14 +24,14 @@ func (t *translator) translateMakeWaitGroupStmt(stmt *ir.MakeWaitGroupStmt, ctx 
 }
 
 func (t *translator) translateWaitGroupOpSmt(stmt *ir.WaitGroupOpStmt, ctx *context) {
-	handle := t.translateVariable(stmt.WaitGroup(), ctx)
+	handle := t.translateLValue(stmt.WaitGroup(), ctx)
 	name := stmt.WaitGroup().Name()
 	var isWait bool
 	var registeredName, completedName, registerUpdate, sync, completeUpdate string
 
 	switch stmt.Op() {
 	case ir.Add:
-		delta := t.translateRValue(stmt.Delta(), ctx)
+		delta := t.translateRValue(stmt.Delta(), ir.IntType, ctx)
 		completedName = "added_to_wait_group"
 		sync = fmt.Sprintf("add[%s]!", handle)
 		completeUpdate = fmt.Sprintf("wait_group_counter[%s] += %s", handle, delta)

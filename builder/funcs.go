@@ -12,37 +12,41 @@ func (b *builder) processFuncReceiver(recv *ast.FieldList, ctx *context) {
 	if recv == nil || len(recv.List) != 1 {
 		return
 	}
-	f := ctx.currentFunc()
+	irFunc := ctx.currentFunc()
 	field := recv.List[0]
 	if len(field.Names) != 1 {
 		return
 	}
 	fieldNameIdent := field.Names[0]
-	fieldType, initialValue, ok := typesTypeToIrType(b.typesInfo.TypeOf(field.Type).Underlying())
-	if !ok {
+	typesType := b.typesInfo.TypeOf(field.Type)
+	irType := b.typesTypeToIrType(typesType)
+	if irType == nil {
 		return
 	}
+	initialValue := b.initialValueForIrType(irType)
 	typesVar := b.typesInfo.ObjectOf(fieldNameIdent).(*types.Var)
-	v := b.program.NewVariable(fieldNameIdent.Name, fieldType, initialValue)
-	f.AddArg(-1, v)
-	b.vars[typesVar] = v
+	irVar := b.program.NewVariable(fieldNameIdent.Name, irType, initialValue)
+	irFunc.AddArg(-1, irVar)
+	b.vars[typesVar] = irVar
 }
 
 func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
-	f := ctx.currentFunc()
+	irFunc := ctx.currentFunc()
 
 	argIndex := 0
 	for _, field := range funcType.Params.List {
-		t, initialValue, ok := typesTypeToIrType(b.typesInfo.TypeOf(field.Type).Underlying())
-		if !ok {
+		typesType := b.typesInfo.TypeOf(field.Type)
+		irType := b.typesTypeToIrType(typesType)
+		if irType == nil {
 			argIndex += len(field.Names)
 			continue
 		}
+		initialValue := b.initialValueForIrType(irType)
 		for _, fieldNameIdent := range field.Names {
-			varType := b.typesInfo.Defs[fieldNameIdent].(*types.Var)
-			v := b.program.NewVariable(fieldNameIdent.Name, t, initialValue)
-			f.AddArg(argIndex, v)
-			b.vars[varType] = v
+			typesVar := b.typesInfo.Defs[fieldNameIdent].(*types.Var)
+			irVar := b.program.NewVariable(fieldNameIdent.Name, irType, initialValue)
+			irFunc.AddArg(argIndex, irVar)
+			b.vars[typesVar] = irVar
 			argIndex++
 		}
 	}
@@ -52,22 +56,24 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 	}
 	resultIndex := 0
 	for _, field := range funcType.Results.List {
-		t, initialValue, ok := typesTypeToIrType(b.typesInfo.TypeOf(field.Type).(types.Type).Underlying())
-		if !ok {
+		typesType := b.typesInfo.TypeOf(field.Type)
+		irType := b.typesTypeToIrType(typesType)
+		if irType == nil {
 			resultIndex += len(field.Names)
 			continue
 		}
+		initialValue := b.initialValueForIrType(irType)
 
 		if len(field.Names) == 0 {
-			f.AddResultType(resultIndex, t)
+			irFunc.AddResultType(resultIndex, irType)
 			resultIndex++
 
 		} else {
 			for _, fieldNameIdent := range field.Names {
-				varType := b.typesInfo.Defs[fieldNameIdent].(*types.Var)
-				v := b.program.NewVariable(fieldNameIdent.Name, t, initialValue)
-				f.AddResult(resultIndex, v)
-				b.vars[varType] = v
+				typesVar := b.typesInfo.Defs[fieldNameIdent].(*types.Var)
+				irVar := b.program.NewVariable(fieldNameIdent.Name, irType, initialValue)
+				irFunc.AddResult(resultIndex, irVar)
+				b.vars[typesVar] = irVar
 				resultIndex++
 			}
 		}
@@ -107,7 +113,6 @@ func (b *builder) canIgnoreCall(callExpr *ast.CallExpr) bool {
 					"delete",
 					"imag",
 					"len",
-					"new",
 					"print",
 					"println",
 					"real":
@@ -115,8 +120,8 @@ func (b *builder) canIgnoreCall(callExpr *ast.CallExpr) bool {
 				case "make":
 					astType := callExpr.Args[0]
 					typesType := b.typesInfo.TypeOf(astType)
-					irType, _, ok := typesTypeToIrType(typesType)
-					return !ok || irType != ir.ChanType
+					irType := b.typesTypeToIrType(typesType)
+					return irType != ir.ChanType
 				}
 			case *types.TypeName:
 				return true
@@ -185,8 +190,8 @@ func (b *builder) specialOpForCall(callExpr *ast.CallExpr) (ir.SpecialOp, bool) 
 		case "make":
 			astType := callExpr.Args[0]
 			typesType := b.typesInfo.TypeOf(astType)
-			irType, _, ok := typesTypeToIrType(typesType)
-			if !ok || irType != ir.ChanType {
+			irType := b.typesTypeToIrType(typesType)
+			if irType != ir.ChanType {
 				return nil, false
 			}
 			return ir.MakeChan, true
@@ -213,4 +218,16 @@ func (b *builder) specialOpForCall(callExpr *ast.CallExpr) (ir.SpecialOp, bool) 
 	}
 
 	return nil, false
+}
+
+func (b *builder) isNewCall(callExpr *ast.CallExpr) bool {
+	funcExpr, ok := callExpr.Fun.(*ast.Ident)
+	if !ok {
+		return false
+	}
+	builtinTypesObj, ok := b.typesInfo.ObjectOf(funcExpr).(*types.Builtin)
+	if !ok {
+		return false
+	}
+	return builtinTypesObj.Name() == "new"
 }

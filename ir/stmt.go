@@ -26,6 +26,7 @@ func (s *IfStmt) stmt()            {}
 func (s *MakeChanStmt) stmt()      {}
 func (s *MakeMutexStmt) stmt()     {}
 func (s *MakeWaitGroupStmt) stmt() {}
+func (s *MakeStructStmt) stmt()    {}
 func (s *MutexOpStmt) stmt()       {}
 func (s *RangeStmt) stmt()         {}
 func (s *ReturnStmt) stmt()        {}

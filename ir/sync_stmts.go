@@ -41,13 +41,13 @@ func (o MutexOp) String() string {
 
 // MakeMutexStmt is a mutex creation statement, executed for every variable declaration.
 type MakeMutexStmt struct {
-	mutex *Variable
+	mutex LValue
 
 	Node
 }
 
 // NewMakeMutexStmt creates a new MakeMutexStmt for the given mutex.
-func NewMakeMutexStmt(mutex *Variable, pos, end token.Pos) *MakeMutexStmt {
+func NewMakeMutexStmt(mutex LValue, pos, end token.Pos) *MakeMutexStmt {
 	s := new(MakeMutexStmt)
 	s.mutex = mutex
 	s.pos = pos
@@ -56,8 +56,8 @@ func NewMakeMutexStmt(mutex *Variable, pos, end token.Pos) *MakeMutexStmt {
 	return s
 }
 
-// Mutex returns the variable holding the newly created mutex.
-func (s *MakeMutexStmt) Mutex() *Variable {
+// Mutex returns the lvalue holding the newly created mutex.
+func (s *MakeMutexStmt) Mutex() LValue {
 	return s.mutex
 }
 
@@ -73,7 +73,7 @@ func (s *MakeMutexStmt) tree(b *strings.Builder, indent int) {
 
 // MutexOpStmt represents a sync.(RW)Mutex operation statement.
 type MutexOpStmt struct {
-	mutex *Variable
+	mutex LValue
 	op    MutexOp
 
 	Node
@@ -81,7 +81,7 @@ type MutexOpStmt struct {
 
 // NewMutexOpStmt creates a new mutex operation statement for the given muxtex
 // and with the given mutex operation.
-func NewMutexOpStmt(mutex *Variable, op MutexOp, pos, end token.Pos) *MutexOpStmt {
+func NewMutexOpStmt(mutex LValue, op MutexOp, pos, end token.Pos) *MutexOpStmt {
 	if op == MakeMutex {
 		panic("attempted to create MutexOpStmt with MakeMutex Operation")
 	}
@@ -95,8 +95,8 @@ func NewMutexOpStmt(mutex *Variable, op MutexOp, pos, end token.Pos) *MutexOpStm
 	return s
 }
 
-// Mutex returns the variable holding the mutex that is operted on.
-func (s *MutexOpStmt) Mutex() *Variable {
+// Mutex returns the mutex that is operted on.
+func (s *MutexOpStmt) Mutex() LValue {
 	return s.mutex
 }
 
@@ -112,7 +112,7 @@ func (s *MutexOpStmt) SpecialOp() SpecialOp {
 
 func (s *MutexOpStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
-	fmt.Fprintf(b, "%s %s %s", s.op, s.mutex.Handle())
+	fmt.Fprintf(b, "%s %s", s.op, s.mutex.Handle())
 }
 
 // WaitGroupOp represents an operation performed on a wait group.
@@ -142,13 +142,13 @@ func (o WaitGroupOp) String() string {
 
 // MakeWaitGroupStmt is a wait group creation statement, executed for every variable declaration.
 type MakeWaitGroupStmt struct {
-	waitGroup *Variable
+	waitGroup LValue
 
 	Node
 }
 
 // NewMakeWaitGroupStmt creates a new MakeWaitGroupStmt for the given wait group.
-func NewMakeWaitGroupStmt(waitGroup *Variable, pos, end token.Pos) *MakeWaitGroupStmt {
+func NewMakeWaitGroupStmt(waitGroup LValue, pos, end token.Pos) *MakeWaitGroupStmt {
 	s := new(MakeWaitGroupStmt)
 	s.waitGroup = waitGroup
 	s.pos = pos
@@ -157,8 +157,8 @@ func NewMakeWaitGroupStmt(waitGroup *Variable, pos, end token.Pos) *MakeWaitGrou
 	return s
 }
 
-// WaitGroup returns the variable holding the newly created wait group.
-func (s *MakeWaitGroupStmt) WaitGroup() *Variable {
+// WaitGroup returns the lvalue holding the newly created wait group.
+func (s *MakeWaitGroupStmt) WaitGroup() LValue {
 	return s.waitGroup
 }
 
@@ -174,7 +174,7 @@ func (s *MakeWaitGroupStmt) tree(b *strings.Builder, indent int) {
 
 // WaitGroupOpStmt represents a sync.WaitGroup operation statement.
 type WaitGroupOpStmt struct {
-	waitGroup *Variable
+	waitGroup LValue
 	op        WaitGroupOp
 	delta     RValue // only applicable for Add op
 
@@ -183,7 +183,7 @@ type WaitGroupOpStmt struct {
 
 // NewWaitGroupOpStmt creates a new wait group operation satement for the given
 // wait group and with the given wait group operation.
-func NewWaitGroupOpStmt(waitGroup *Variable, op WaitGroupOp, delta RValue, pos, end token.Pos) *WaitGroupOpStmt {
+func NewWaitGroupOpStmt(waitGroup LValue, op WaitGroupOp, delta RValue, pos, end token.Pos) *WaitGroupOpStmt {
 	if op == MakeWaitGroup {
 		panic("attempted to create WaitGroupOpStmt with MakeWaitGroup Operation")
 	}
@@ -198,8 +198,8 @@ func NewWaitGroupOpStmt(waitGroup *Variable, op WaitGroupOp, delta RValue, pos, 
 	return s
 }
 
-// WaitGroup returns the variable holding the wait group that is operated on.
-func (s *WaitGroupOpStmt) WaitGroup() *Variable {
+// WaitGroup returns the wait group that is operated on.
+func (s *WaitGroupOpStmt) WaitGroup() LValue {
 	return s.waitGroup
 }
 
@@ -222,6 +222,7 @@ func (s *WaitGroupOpStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
 	if s.op == Add {
 		fmt.Fprintf(b, "%s %s %s", s.op, s.waitGroup.Handle(), s.delta)
+		return
 	}
 	fmt.Fprintf(b, "%s %s", s.op, s.waitGroup.String())
 }

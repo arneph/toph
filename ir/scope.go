@@ -8,12 +8,7 @@ import (
 type Scope struct {
 	superScope *Scope
 
-	variables      []*Variable
-	variableLookup map[string]*Variable
-}
-
-func (s *Scope) init() {
-	s.variableLookup = make(map[string]*Variable)
+	variables []*Variable
 }
 
 // SuperScope returns the immediate super scope of the scope.
@@ -44,7 +39,6 @@ func (s *Scope) AddVariable(v *Variable) {
 		panic("tried to add variable to more than one scope")
 	}
 	s.variables = append(s.variables, v)
-	s.variableLookup[v.name] = v
 	v.scope = s
 }
 

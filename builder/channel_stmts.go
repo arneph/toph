@@ -8,9 +8,9 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
-func (b *builder) findChannel(chanExpr ast.Expr, ctx *context) *ir.Variable {
+func (b *builder) findChannel(chanExpr ast.Expr, ctx *context) ir.LValue {
 	rv := b.processExpr(chanExpr, ctx)
-	v, ok := rv.(*ir.Variable)
+	v, ok := rv.(ir.LValue)
 	if !ok || v == nil {
 		p := b.fset.Position(chanExpr.Pos())
 		chanExprStr := b.nodeToString(chanExpr)
