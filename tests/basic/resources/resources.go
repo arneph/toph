@@ -1,12 +1,12 @@
 package main
 
-func main() {
+func main() { // 67
 	a()
 	c()
 	e()
 }
 
-func a() {
+func a() { // 25
 	for i := 0; i < 10; i++ {
 		b()
 	}
@@ -16,17 +16,17 @@ func a() {
 	close(ch)
 }
 
-func b() {
+func b() { // 2
 	ch := make(chan int)
 	close(ch)
 	d()
 }
 
-func c() {
+func c() { // 2
 	b()
 }
 
-func d() {
+func d() { // 1
 	if false {
 		ch := make(chan int)
 		close(ch)
@@ -37,7 +37,7 @@ func d() {
 	}
 }
 
-func e() {
+func e() { // 40
 	for i := 0; i < 10; i++ {
 		ch := make(chan int)
 		close(ch)
@@ -45,7 +45,7 @@ func e() {
 	}
 }
 
-func f() {
+func f() { // 3
 	ch := make(chan int)
 	ch = make(chan int)
 	ch = make(chan int)

@@ -264,6 +264,9 @@ func (fcg *FuncCallGraph) addSpecialOpCount(caller *ir.Func, op ir.SpecialOp, co
 	if fcg.callerToSpecialOpCounts[caller][op] > MaxCallCounts {
 		fcg.callerToSpecialOpCounts[caller][op] = MaxCallCounts
 	}
+}
+
+func (fcg *FuncCallGraph) addTotalSpecialOpCount(op ir.SpecialOp, count int) {
 	fcg.totalSpecialOpCounts[op] += count
 	if fcg.totalSpecialOpCounts[op] > MaxCallCounts {
 		fcg.totalSpecialOpCounts[op] = MaxCallCounts
@@ -275,6 +278,9 @@ func (fcg *FuncCallGraph) addStructAllocations(caller *ir.Func, structType *ir.S
 	if fcg.callerToStructAllocations[caller][structType] > MaxCallCounts {
 		fcg.callerToStructAllocations[caller][structType] = MaxCallCounts
 	}
+}
+
+func (fcg *FuncCallGraph) addTotalStructAllocations(structType *ir.StructType, count int) {
 	fcg.totalStructAllocations[structType] += count
 	if fcg.totalStructAllocations[structType] > MaxCallCounts {
 		fcg.totalStructAllocations[structType] = MaxCallCounts

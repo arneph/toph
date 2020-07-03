@@ -83,9 +83,11 @@ func addCallCountsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fc
 			fcg.addCalleeCount(caller, sccCallCounts[currentSCC])
 			for op, count := range info.specialOpCounts {
 				fcg.addSpecialOpCount(caller, op, count)
+				fcg.addTotalSpecialOpCount(op, count*sccCallCounts[currentSCC])
 			}
 			for structType, count := range info.structAllocations {
 				fcg.addStructAllocations(caller, structType, count)
+				fcg.addTotalStructAllocations(structType, count*sccCallCounts[currentSCC])
 			}
 		}
 	}
