@@ -58,7 +58,8 @@ func (t *translator) translateWaitGroupOpSmt(stmt *ir.WaitGroupOpStmt, ctx *cont
 
 		ctx.proc.AddQuery(uppaal.MakeQuery(
 			"A[] (not out_of_resources) imply (not (deadlock and $."+registered.Name()+"))",
-			"check deadlock with pending wait group operation unreachable"))
+			"check deadlock with pending wait group operation unreachable",
+			uppaal.NoWaitGroupRelatedDeadlocks))
 
 		ctx.currentState = registered
 		ctx.addLocation(registered.Location())

@@ -25,7 +25,8 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 			ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 		ctx.proc.AddQuery(uppaal.MakeQuery(
 			"A[] (not out_of_resources) imply (not $."+nilState.Name()+")",
-			"check function variable not nil"))
+			"check function variable not nil",
+			uppaal.NoFunctionCallsWithNilVariable))
 		nilTrans := ctx.proc.AddTrans(ctx.currentState, nilState)
 		nilTrans.SetGuard(handle + ".id == -1")
 		nilTrans.SetGuardLocation(

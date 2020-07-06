@@ -193,7 +193,7 @@ func (s *System) AsXML() string {
 	str += "    <queries>\n"
 	for _, query := range s.queries {
 		xml := query.AsXML()
-		str += "        " + strings.ReplaceAll(xml, "\n", "\n        ") + "\n"
+		str += "        " + strings.ReplaceAll(xml, "\n<", "\n        <") + "\n"
 	}
 	for _, inst := range sortedInstances {
 		proc := s.processes[inst.procName]
@@ -201,7 +201,7 @@ func (s *System) AsXML() string {
 		for _, procQuery := range proc.queries {
 			instQuery := procQuery.Substitute(inst.instName)
 			xml := instQuery.AsXML()
-			str += "        " + strings.ReplaceAll(xml, "\n", "\n        ") + "\n"
+			str += "        " + strings.ReplaceAll(xml, "\n<", "\n        <") + "\n"
 		}
 	}
 	str += "    </queries>\n"

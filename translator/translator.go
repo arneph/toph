@@ -66,7 +66,8 @@ fid make_fid(int id, int par_pid) {
 	t.system.AddProgressMeasure("out_of_resources")
 	t.system.AddQuery(uppaal.MakeQuery(
 		"A[] not out_of_resources",
-		"check system never runs out of resources"))
+		"check system never runs out of resources",
+		uppaal.ResourceBoundUnreached))
 	t.system.Declarations().AddVariable("active_go_routines", "int", "1")
 	t.system.Declarations().AddSpace()
 

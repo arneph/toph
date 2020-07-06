@@ -66,7 +66,8 @@ func (t *translator) translateMutexOpStmt(stmt *ir.MutexOpStmt, ctx *context) {
 
 		ctx.proc.AddQuery(uppaal.MakeQuery(
 			"A[] (not out_of_resources) imply (not (deadlock and $."+registered.Name()+"))",
-			"check deadlock with pending mutex operation unreachable"))
+			"check deadlock with pending mutex operation unreachable",
+			uppaal.NoMutexRelatedDeadlocks))
 
 		ctx.currentState = registered
 		ctx.addLocation(registered.Location())

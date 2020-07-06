@@ -36,7 +36,8 @@ func (t *translator) addMutexProcess() {
 	// Queries:
 	proc.AddQuery(uppaal.MakeQuery(
 		"A[] (not out_of_resources) imply (not $.bad)",
-		"check Mutex.bad state unreachable"))
+		"check Mutex.bad state unreachable",
+		uppaal.MutexSafety))
 
 	// Local Declarations:
 	proc.Declarations().AddVariable("active_readers", "int", "0")
