@@ -200,7 +200,6 @@ func (t *translator) translateFunc(f *ir.Func) {
 		end := proc.AddTrans(ending, ended)
 		end.SetGuard("active_go_routines == 1")
 		end.SetGuardLocation(uppaal.Location{4, endingY + 64})
-		proc.AddQuery(uppaal.MakeQuery("$.ending --> $.ended", ""))
 
 	} else {
 		startAsync := proc.AddTrans(starting, started)
