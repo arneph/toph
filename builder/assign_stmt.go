@@ -78,6 +78,8 @@ func (b *builder) processAssignments(lhsExprs []ast.Expr, rhsExprs []ast.Expr, c
 		r := rhs[i]
 		if l == nil && r == nil {
 			continue
+		} else if l == nil && r == ir.Value(-1) {
+			continue
 		} else if l == nil {
 			if ident, ok := lhsExpr.(*ast.Ident); ok && ident.Name == "_" {
 				continue
