@@ -5,12 +5,12 @@ Toph can be installed in $GOBIN with:
 
 go install toph.go
 
-The test-runners folder contains script-like programs to run Toph and Uppaal 
+The runners folder contains script-like programs to run Toph and Uppaal 
 for everything in the tests directory. Run them with:
 
-go run test_runners/toph-runner.go
-go run test_runners/uppaal-runner.go
+go run runners/toph-runner.go
+go run runners/uppaal-runner.go
 
 uppaal-runner.go starts the Uppaal verifier binary in sub-processes. This 
-requires that the "uppaalPath" variable points at a directory containing the 
+requires that the -uppaal-path flag points at a directory containing the 
 Uppaal commandline binaries, e.g. "bin-Darwin" on macOS.
