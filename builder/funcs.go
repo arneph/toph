@@ -192,7 +192,8 @@ func (b *builder) canIgnoreCall(callExpr *ast.CallExpr) bool {
 				}
 			case "testing":
 				if strings.HasPrefix(funcType.FullName(), "(*testing.T)") ||
-					strings.HasPrefix(funcType.FullName(), "(*testing.B)") {
+					strings.HasPrefix(funcType.FullName(), "(*testing.B)") ||
+					strings.HasPrefix(funcType.FullName(), "(*testing.common)") {
 					switch funcType.Name() {
 					case "Error", "Errorf", "Fail", "Failed", "Helper",
 						"Log", "Logf", "Name", "Parallel", "Skipped",
