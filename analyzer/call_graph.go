@@ -178,6 +178,14 @@ func (fcg *FuncCallGraph) FuncsInSCC(scc SCC) []*ir.Func {
 
 func (fcg *FuncCallGraph) dynamicCallInfoForSignature(signature *types.Signature) *dynamicCallInfo {
 	for i, info := range fcg.dynamicCallInfos {
+		wantRecv := info.signature.Recv()
+		haveRecv := signature.Recv()
+		if (wantRecv == nil) != (haveRecv == nil) {
+			continue
+		} else if wantRecv != nil &&
+			!types.Identical(wantRecv.Type(), haveRecv.Type()) {
+			continue
+		}
 		if types.Identical(info.signature, signature.Underlying()) {
 			return &fcg.dynamicCallInfos[i]
 		}
