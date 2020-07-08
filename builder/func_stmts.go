@@ -28,9 +28,14 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callabl
 		calleeTypesType = b.typesInfo.TypeOf(funcExpr)
 	}
 	if calleeValue == nil {
-		p := b.fset.Position(funcExpr.Pos())
-		funcExprStr := b.nodeToString(funcExpr)
-		b.addWarning(fmt.Errorf("%v: could not resolve func expr: %v", p, funcExprStr))
+		funcExprTypesType := b.typesInfo.TypeOf(funcExpr).Underlying()
+		switch funcExprTypesType.(type) {
+		case *types.Array, *types.Basic, *types.Chan, *types.Interface, *types.Map, *types.Pointer, *types.Slice:
+		default:
+			p := b.fset.Position(funcExpr.Pos())
+			funcExprStr := b.nodeToString(funcExpr)
+			b.addWarning(fmt.Errorf("%v: could not resolve func expr: %v", p, funcExprStr))
+		}
 		return nil, nil
 	}
 
