@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/types"
+	"strings"
 
 	"github.com/arneph/toph/ir"
 )
@@ -138,34 +139,76 @@ func (b *builder) canIgnoreCall(callExpr *ast.CallExpr) bool {
 				return true
 			}
 			switch funcType.Pkg().Name() {
-			case "md5", "errors", "flag", "fmt", "math", "rand", "sort", "strconv", "ioutil", "strings":
+			case "bytes",
+				"errors",
+				"flag",
+				"fmt",
+				"fnv",
+				"ioutil",
+				"math",
+				"md5",
+				"rand",
+				"sort",
+				"strconv",
+				"strings":
 				return true
-			case "time":
-				if funcType.Name() == "Now" ||
-					funcType.Name() == "Sleep" ||
-					funcType.Name() == "UnixNano" ||
-					funcType.Name() == "Since" {
+			case "filepath":
+				if funcType.Name() == "Join" {
+					return true
+				}
+			case "log":
+				// Note: this covers both the methods of *Logger and the
+				// convenience functions for the standard logger.
+				switch funcType.Name() {
+				case "Flags", "Output", "Prefix", "Print", "Printf", "Println",
+					"SetFlags", "SetPrefix":
 					return true
 				}
 			case "os":
-				if funcType.Name() == "Getenv" ||
-					funcType.Name() == "Geteuid" ||
-					funcType.Name() == "IsNotExist" ||
-					funcType.Name() == "Hostname" ||
-					funcType.Name() == "Lstat" ||
-					funcType.Name() == "Stat" {
+				if strings.HasPrefix(funcType.FullName(), "(os.FileInfo") ||
+					strings.HasPrefix(funcType.FullName(), "(os.FileMode") ||
+					strings.HasPrefix(funcType.FullName(), "(*os.File") {
 					return true
 				}
-				if funcType.FullName() == "(os.FileInfo).IsDir" ||
-					funcType.FullName() == "(os.FileInfo).IsRegular" ||
-					funcType.FullName() == "(os.FileInfo).Mode" ||
-					funcType.FullName() == "(os.FileInfo).Name" ||
-					funcType.FullName() == "(os.FileMode).Mode" ||
-					funcType.FullName() == "(os.FileMode).IsRegular" {
+				switch funcType.Name() {
+				case "Chdir", "Chmod", "Chown", "Chtimes", "Clearenv",
+					"Environ", "Executable",
+					"Getegid", "Getenv", "Geteuid", "Getgid", "Getgroups",
+					"Getpagesize", "Getpid", "Getppid", "Getuid", "Getwd",
+					"Hostname", "IsExist", "IsNotExist", "IsPathSeparator",
+					"IsPermission", "IsTimeout", "Lchown", "Link",
+					"LookupEnv", "Mkdir", "MkdirAll", "NewSyscallError",
+					"Readlink", "Remove", "RemoveAll", "Rename",
+					"SameFile", "Setenv", "Symlink", "TempDir", "Truncate",
+					"Unsetenv", "UserCacheDir", "UserConfigDir",
+					"UserHomeDir",
+					"Create", "NewFile", "Open", "OpenFile":
 					return true
 				}
-			case "filepath":
-				if funcType.Name() == "Join" {
+			case "reflect":
+				switch funcType.Name() {
+				case "DeepEqual":
+					return true
+				}
+			case "testing":
+				if strings.HasPrefix(funcType.FullName(), "(*testing.T)") ||
+					strings.HasPrefix(funcType.FullName(), "(*testing.B)") {
+					switch funcType.Name() {
+					case "Error", "Errorf", "Fail", "Failed", "Helper",
+						"Log", "Logf", "Name", "Parallel", "Skipped",
+						"ReportAllocs", "ReportMetric", "ResetTimer",
+						"SetBytes", "SetParallelism",
+						"StartTimer", "StopTimer":
+						return true
+					}
+				}
+			case "time":
+				if strings.HasPrefix(funcType.FullName(), "(time.Duration)") ||
+					strings.HasPrefix(funcType.FullName(), "(time.Time)") {
+					return true
+				}
+				switch funcType.Name() {
+				case "Now", "Sleep", "Since", "Until":
 					return true
 				}
 			}
