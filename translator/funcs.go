@@ -56,6 +56,9 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 	if f.EnclosingFunc() != nil {
 		t.system.Declarations().AddArray("par_pid_"+proc.Name(), t.callCount(f), "int")
 	}
+
+	t.system.Declarations().AddArray("external_panic_"+proc.Name(), t.callCount(f), "bool")
+
 	for _, arg := range f.Args() {
 		name := t.translateArgName(arg)
 		var typStr string
@@ -91,6 +94,7 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 	}
 	pid = %[1]s_count;
 	%[1]s_count++;
+	external_panic_%[1]s[pid] = false;
 	return pid;
 }`, proc.Name(), t.callCount(f)))
 	} else {
@@ -104,6 +108,7 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 	pid = %[1]s_count;
 	%[1]s_count++;
 	par_pid_%[1]s[pid] = par_pid;
+	external_panic_%[1]s[pid] = false;
 	return pid;
 }`, proc.Name(), t.callCount(f)))
 	}
@@ -123,6 +128,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 
 	// Internal helper variables:
 	proc.Declarations().AddVariable("is_sync", "bool", "false")
+	proc.Declarations().AddVariable("internal_panic", "bool", "false")
 	if deferCount > 0 {
 		proc.Declarations().AddVariable("deferred_count", "int", "0")
 		proc.Declarations().AddArray("deferred_fid", deferCount, "int")
@@ -141,6 +147,8 @@ func (t *translator) translateFunc(f *ir.Func) {
 
 	proc.SetInitialState(starting)
 
+	finalizing := proc.AddState("finalizing", uppaal.NoRenaming)
+	finalizing.SetComment(t.program.FileSet().Position(f.End()).String())
 	ending := proc.AddState("ending", uppaal.NoRenaming)
 	ending.SetComment(t.program.FileSet().Position(f.End()).String())
 	ended := proc.AddState("ended", uppaal.NoRenaming)
@@ -154,7 +162,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 
 		bodyCtx = newContext(f, proc, started, deferred)
 	} else {
-		bodyCtx = newContext(f, proc, started, ending)
+		bodyCtx = newContext(f, proc, started, finalizing)
 	}
 
 	t.translateBody(f.Body(), bodyCtx)
@@ -165,11 +173,13 @@ func (t *translator) translateFunc(f *ir.Func) {
 		endingY += 272
 
 		deferred.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 136})
-		ending.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 408})
-		ended.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 544})
+		finalizing.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 408})
+		ending.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 544})
+		ended.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 680})
 	} else {
-		ending.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 136})
-		ended.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 272})
+		finalizing.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 136})
+		ending.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 272})
+		ended.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 408})
 	}
 
 	for _, arg := range f.Args() {
@@ -180,12 +190,20 @@ func (t *translator) translateFunc(f *ir.Func) {
 	}
 
 	if deferCount > 0 {
-		reachEnd := proc.AddTrans(deferred, ending)
+		reachEnd := proc.AddTrans(deferred, finalizing)
 		reachEnd.SetGuard("deferred_count == 0")
 		reachEnd.SetGuardLocation(deferred.Location().Add(uppaal.Location{4, 226}))
 
 		t.translateDeferredCalls(proc, deferred, f)
 	}
+
+	finalize := proc.AddTrans(finalizing, ending)
+	if f != t.program.InitFunc() {
+		finalize.AddUpdate(fmt.Sprintf("external_panic_%s[pid] |= internal_panic", proc.Name()))
+		finalize.SetUpdateLocation(uppaal.Location{4, endingY + 60})
+	}
+
+	endingY += 136
 
 	if f == t.program.InitFunc() {
 		start := proc.AddTrans(starting, started)
@@ -236,6 +254,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 		endSync := proc.AddTrans(ending, ended)
 		endSync.SetGuard("is_sync == true")
 		endSync.SetSync("sync_" + proc.Name() + "[pid]!")
+
 		endSync.AddNail(uppaal.Location{34, endingY + 34})
 		endSync.AddNail(uppaal.Location{34, endingY + 102})
 		endSync.SetGuardLocation(uppaal.Location{38, endingY + 48})

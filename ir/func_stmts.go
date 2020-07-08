@@ -181,14 +181,16 @@ func (s *CallStmt) tree(b *strings.Builder, indent int) {
 // ReturnStmt represents a return statement inside a function.
 type ReturnStmt struct {
 	results map[int]RValue
+	isPanic bool
 
 	Node
 }
 
 // NewReturnStmt creates a new return statement.
-func NewReturnStmt(pos, end token.Pos) *ReturnStmt {
+func NewReturnStmt(isPanic bool, pos, end token.Pos) *ReturnStmt {
 	s := new(ReturnStmt)
 	s.results = make(map[int]RValue)
+	s.isPanic = isPanic
 	s.pos = pos
 	s.end = end
 
@@ -212,9 +214,18 @@ func (s *ReturnStmt) AddResult(index int, result RValue) {
 	s.results[index] = result
 }
 
+// IsPanic returns if the statement represents a regular return stmt or a call
+// to panic.
+func (s *ReturnStmt) IsPanic() bool {
+	return s.isPanic
+}
+
 func (s *ReturnStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
 	b.WriteString("return")
+	if s.isPanic {
+		b.WriteString(" (panic)")
+	}
 	firstResult := true
 	for i, result := range s.results {
 		if firstResult {
@@ -232,4 +243,23 @@ func (s *ReturnStmt) tree(b *strings.Builder, indent int) {
 			panic(fmt.Errorf("unexpected %T rvalue type", result))
 		}
 	}
+}
+
+// RecoverStmt represents a call to the builtin recover function.
+type RecoverStmt struct {
+	Node
+}
+
+// NewRecoverStmt creates a new RecoverStmt.
+func NewRecoverStmt(pos, end token.Pos) *RecoverStmt {
+	s := new(RecoverStmt)
+	s.pos = pos
+	s.end = end
+
+	return s
+}
+
+func (s *RecoverStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	b.WriteString("recover")
 }

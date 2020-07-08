@@ -39,7 +39,7 @@ func (b *Body) WalkStmts(visitFunc func(stmt Stmt, scope *Scope)) {
 			*MakeMutexStmt, *MutexOpStmt,
 			*MakeWaitGroupStmt, *WaitGroupOpStmt,
 			*MakeStructStmt,
-			*CallStmt, *ReturnStmt:
+			*CallStmt, *ReturnStmt, *RecoverStmt:
 			continue
 		case *SelectStmt:
 			for _, c := range stmt.Cases() {

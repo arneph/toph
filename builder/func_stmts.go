@@ -73,7 +73,7 @@ func (b *builder) processGoStmt(stmt *ast.GoStmt, ctx *context) {
 
 func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
 	resultVars := b.processExprs(stmt.Results, ctx)
-	returnStmt := ir.NewReturnStmt(stmt.Pos(), stmt.End())
+	returnStmt := ir.NewReturnStmt(false, stmt.Pos(), stmt.End())
 	ctx.body.AddStmt(returnStmt)
 
 	if len(stmt.Results) > 0 {
@@ -99,27 +99,53 @@ func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
 	}
 }
 
+func (b *builder) processPanicCall(callExpr *ast.CallExpr, ctx *context) {
+	returnStmt := ir.NewReturnStmt(true, callExpr.Pos(), callExpr.End())
+	ctx.body.AddStmt(returnStmt)
+
+	for i, t := range ctx.currentFunc().ResultTypes() {
+		v, ok := ctx.currentFunc().Results()[i]
+		if ok {
+			returnStmt.AddResult(i, v)
+		} else {
+			returnStmt.AddResult(i, b.initialValueForIrType(t))
+		}
+	}
+}
+
+func (b *builder) processRecoverCall(callExpr *ast.CallExpr, ctx *context) {
+	recoverStmt := ir.NewRecoverStmt(callExpr.Pos(), callExpr.End())
+	ctx.body.AddStmt(recoverStmt)
+}
+
 func (b *builder) processCallExprWithCallKind(callExpr *ast.CallExpr, callKind ir.CallKind, ctx *context) map[int]ir.LValue {
 	if b.canIgnoreCall(callExpr) {
 		b.processExprs(callExpr.Args, ctx)
 		return map[int]ir.LValue{}
 	}
 
-	specialOp, ok := b.specialOpForCall(callExpr)
-	if ok {
-		resultVar := b.processSpecialOpCallExprWithCallKind(callExpr, callKind, specialOp, ctx)
-		if resultVar != nil {
-			return map[int]ir.LValue{0: resultVar}
+	if name, ok := b.isKnownBuiltin(callExpr); ok {
+		if callKind != ir.Call {
+			p := b.fset.Position(callExpr.Pos())
+			b.addWarning(fmt.Errorf("%v: only direct calls to %s are supported", p, name))
+			return nil
+		}
+		switch name {
+		case "new":
+			resultVar := b.processNewExpr(callExpr, ctx)
+			if resultVar != nil {
+				return map[int]ir.LValue{0: resultVar}
+			}
+		case "panic":
+			b.processPanicCall(callExpr, ctx)
+		case "recover":
+			b.processRecoverCall(callExpr, ctx)
 		}
 		return map[int]ir.LValue{}
 	}
 
-	if b.isNewCall(callExpr) {
-		if callKind != ir.Call {
-			return nil
-		}
-
-		resultVar := b.processNewExpr(callExpr, ctx)
+	if specialOp, ok := b.specialOpForCall(callExpr); ok {
+		resultVar := b.processSpecialOpCallExprWithCallKind(callExpr, callKind, specialOp, ctx)
 		if resultVar != nil {
 			return map[int]ir.LValue{0: resultVar}
 		}

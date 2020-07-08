@@ -268,14 +268,19 @@ func (b *builder) specialOpForCall(callExpr *ast.CallExpr) (ir.SpecialOp, bool) 
 	return nil, false
 }
 
-func (b *builder) isNewCall(callExpr *ast.CallExpr) bool {
+func (b *builder) isKnownBuiltin(callExpr *ast.CallExpr) (string, bool) {
 	funcExpr, ok := callExpr.Fun.(*ast.Ident)
 	if !ok {
-		return false
+		return "", false
 	}
 	builtinTypesObj, ok := b.typesInfo.ObjectOf(funcExpr).(*types.Builtin)
 	if !ok {
-		return false
+		return "", false
 	}
-	return builtinTypesObj.Name() == "new"
+	switch name := builtinTypesObj.Name(); name {
+	case "new", "panic", "recover":
+		return name, true
+	default:
+		return "", false
+	}
 }

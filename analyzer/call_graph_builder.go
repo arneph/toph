@@ -228,7 +228,7 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 			res.add(findCalleesInfoForForStmt(stmt, callKinds, fcg))
 		case *ir.RangeStmt:
 			res.add(findCalleesInfoForRangeStmt(stmt, callKinds, fcg))
-		case *ir.BranchStmt, *ir.ChanCommOpStmt, *ir.ReturnStmt:
+		case *ir.BranchStmt, *ir.ChanCommOpStmt, *ir.ReturnStmt, *ir.RecoverStmt:
 			continue
 		default:
 			panic(fmt.Errorf("unexpected ir.Stmt type: %T", stmt))

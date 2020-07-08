@@ -29,6 +29,7 @@ func (s *MakeWaitGroupStmt) stmt() {}
 func (s *MakeStructStmt) stmt()    {}
 func (s *MutexOpStmt) stmt()       {}
 func (s *RangeStmt) stmt()         {}
+func (s *RecoverStmt) stmt()       {}
 func (s *ReturnStmt) stmt()        {}
 func (s *SelectStmt) stmt()        {}
 func (s *SwitchStmt) stmt()        {}

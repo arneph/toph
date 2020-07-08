@@ -15,6 +15,8 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 		t.translateCallStmt(stmt, ctx)
 	case *ir.ReturnStmt:
 		t.translateReturnStmt(stmt, ctx)
+	case *ir.RecoverStmt:
+		t.translateRecoverStmt(stmt, ctx)
 	case *ir.IfStmt:
 		t.translateIfStmt(stmt, ctx)
 	case *ir.SwitchStmt:
