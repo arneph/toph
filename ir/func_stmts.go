@@ -157,7 +157,7 @@ func (s *CallStmt) tree(b *strings.Builder, indent int) {
 	switch callee := s.callee.(type) {
 	case *Func:
 		fmt.Fprintf(b, "%s %v (static)", s.callKind, callee.FuncValue())
-	case *Variable:
+	case LValue:
 		fmt.Fprintf(b, "%s %v (dynamic)", s.callKind, callee.Handle())
 	default:
 		panic(fmt.Errorf("unexpected callee type: %T", callee))
@@ -226,7 +226,7 @@ func (s *ReturnStmt) tree(b *strings.Builder, indent int) {
 		switch result := result.(type) {
 		case Value:
 			fmt.Fprintf(b, "%d: %s", i, result)
-		case *Variable:
+		case LValue:
 			fmt.Fprintf(b, "%d: %s", i, result.Handle())
 		default:
 			panic(fmt.Errorf("unexpected %T rvalue type", result))

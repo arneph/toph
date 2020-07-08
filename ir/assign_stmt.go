@@ -52,7 +52,7 @@ func (a *AssignStmt) tree(b *strings.Builder, indent int) {
 	switch s := a.source.(type) {
 	case Value:
 		fmt.Fprintf(b, "%s <- %s", a.destination.Handle(), s.String())
-	case *Variable:
+	case LValue:
 		fmt.Fprintf(b, "%s <- %s", a.destination.Handle(), s.Handle())
 	default:
 		panic(fmt.Errorf("unexpected %T source type", s))
