@@ -289,6 +289,7 @@ func (s *SelectStmt) tree(b *strings.Builder, indent int) {
 		writeIndent(b, indent+1)
 		b.WriteString("default{\n")
 		s.defaultBody.tree(b, indent+2)
+		b.WriteString("\n")
 		writeIndent(b, indent+1)
 		b.WriteString("}\n")
 	}

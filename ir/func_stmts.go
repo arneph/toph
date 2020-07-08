@@ -140,7 +140,7 @@ func (s *CallStmt) AddResult(index int, result LValue, requiresCopy bool) {
 func (s *CallStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
 	if len(s.results) > 0 {
-		firstResult := false
+		firstResult := true
 		for i, result := range s.results {
 			if firstResult {
 				firstResult = false

@@ -167,13 +167,13 @@ func (f *Func) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent+1)
 	b.WriteString("args: ")
 	firstArg := true
-	for _, arg := range f.args {
+	for i, arg := range f.args {
 		if firstArg {
 			firstArg = false
 		} else {
 			b.WriteString(", ")
 		}
-		b.WriteString(arg.Handle())
+		fmt.Fprintf(b, "%d: %s", i, arg.Handle())
 	}
 	b.WriteString("\n")
 	writeIndent(b, indent+1)
@@ -187,9 +187,9 @@ func (f *Func) tree(b *strings.Builder, indent int) {
 			b.WriteString(", ")
 		}
 		if ok {
-			b.WriteString(result.Handle())
+			fmt.Fprintf(b, "%d: %s", i, result.Handle())
 		} else {
-			b.WriteString(resultType.String())
+			fmt.Fprintf(b, "%d: %s", i, resultType.String())
 		}
 	}
 	b.WriteString("\n")
