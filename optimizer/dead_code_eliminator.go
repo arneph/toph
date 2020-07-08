@@ -60,12 +60,13 @@ func eliminateFuncCallsInBody(body *ir.Body, calleesToEliminate map[*ir.Func]boo
 stmtsLoop:
 	for _, stmt := range body.Stmts() {
 		if callStmt, ok := stmt.(*ir.CallStmt); ok {
-			switch callee := callStmt.Callee().(type) {
+			switch callStmt.Callee().(type) {
 			case *ir.Func:
+				callee := callStmt.Callee().(*ir.Func)
 				if calleesToEliminate[callee] {
 					continue stmtsLoop
 				}
-			case *ir.Variable:
+			case *ir.Variable, *ir.FieldSelection:
 				canEliminiate := true
 				calleeSig := callStmt.CalleeSignature()
 				for _, dynCallee := range fcg.DynamicCallees(calleeSig) {
@@ -78,7 +79,7 @@ stmtsLoop:
 					continue stmtsLoop
 				}
 			default:
-				panic(fmt.Errorf("unexpected callee type: %T", callee))
+				panic(fmt.Errorf("unexpected callee type: %T", callStmt.Callee()))
 			}
 		}
 		stmts = append(stmts, stmt)
