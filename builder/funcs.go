@@ -269,18 +269,35 @@ func (b *builder) specialOpForCall(callExpr *ast.CallExpr) (ir.SpecialOp, bool) 
 }
 
 func (b *builder) isKnownBuiltin(callExpr *ast.CallExpr) (string, bool) {
-	funcExpr, ok := callExpr.Fun.(*ast.Ident)
-	if !ok {
-		return "", false
-	}
-	builtinTypesObj, ok := b.typesInfo.ObjectOf(funcExpr).(*types.Builtin)
-	if !ok {
-		return "", false
-	}
-	switch name := builtinTypesObj.Name(); name {
-	case "new", "panic", "recover":
-		return name, true
+	var usedTypesObj types.Object
+
+	switch funcExpr := callExpr.Fun.(type) {
+	case *ast.Ident:
+		usedTypesObj = b.typesInfo.ObjectOf(funcExpr)
+	case *ast.SelectorExpr:
+		usedTypesObj = b.typesInfo.ObjectOf(funcExpr.Sel)
 	default:
 		return "", false
 	}
+
+	switch usedTypesObj := usedTypesObj.(type) {
+	case *types.Builtin:
+		switch name := usedTypesObj.Name(); name {
+		case "new", "panic", "recover":
+			return name, true
+		default:
+			return "", false
+		}
+	case *types.Func:
+		switch usedTypesObj.FullName() {
+		case "(*testing.common).FailNow",
+			"(*testing.common).Fatal",
+			"(*testing.common).Fatalf",
+			"(*testing.common).Skip",
+			"(*testing.common).SkipNow",
+			"(*testing.common).Skipf":
+			return "panic", true
+		}
+	}
+	return "", false
 }
