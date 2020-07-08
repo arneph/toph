@@ -76,20 +76,26 @@ func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
 	returnStmt := ir.NewReturnStmt(stmt.Pos(), stmt.End())
 	ctx.body.AddStmt(returnStmt)
 
-	for i, v := range resultVars {
-		returnStmt.AddResult(i, v)
-	}
-	for i := range ctx.currentFunc().ResultTypes() {
-		if resultVars[i] != nil {
-			continue
+	if len(stmt.Results) > 0 {
+		// return stmt returns specified values
+		for i, v := range resultVars {
+			returnStmt.AddResult(i, v)
 		}
-		resultVar, ok := ctx.currentFunc().Results()[i]
-		if !ok {
-			p := b.fset.Position(stmt.Pos())
-			b.addWarning(fmt.Errorf("%v: could not resolve return value at index %d", p, i))
-			continue
+		for i, t := range ctx.currentFunc().ResultTypes() {
+			if resultVars[i] == nil {
+				returnStmt.AddResult(i, b.initialValueForIrType(t))
+
+				p := b.fset.Position(stmt.Pos())
+				resultExpr := stmt.Results[i]
+				resultExprStr := b.nodeToString(resultExpr)
+				b.addWarning(fmt.Errorf("%v: could not resolve return value: %s", p, resultExprStr))
+			}
 		}
-		resultVars[i] = resultVar
+	} else {
+		// return stmt returns function result variables (if any)
+		for i, v := range ctx.currentFunc().Results() {
+			returnStmt.AddResult(i, v)
+		}
 	}
 }
 

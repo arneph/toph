@@ -59,7 +59,11 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 		typesType := b.typesInfo.TypeOf(field.Type)
 		irType := b.typesTypeToIrType(typesType)
 		if irType == nil {
-			resultIndex += len(field.Names)
+			if len(field.Names) > 0 {
+				resultIndex += len(field.Names)
+			} else {
+				resultIndex++
+			}
 			continue
 		}
 		initialValue := b.initialValueForIrType(irType)
