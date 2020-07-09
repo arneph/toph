@@ -16,8 +16,8 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 			startState: ctx.currentState,
 			endState:   nil,
 		}, ctx)
-	case *ir.Variable:
-		handle := t.translateVariable(callee, ctx)
+	case ir.LValue:
+		handle := t.translateLValue(callee, ctx)
 
 		nilState := ctx.proc.AddState(callee.Handle()+"_is_nil_", uppaal.Renaming)
 		nilState.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
