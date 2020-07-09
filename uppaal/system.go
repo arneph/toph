@@ -1,6 +1,7 @@
 package uppaal
 
 import (
+	"encoding/xml"
 	"sort"
 	"strings"
 )
@@ -146,54 +147,57 @@ func (s *System) AsQ() string {
 
 // AsXML returns the xml (file format) representation of the system.
 func (s *System) AsXML() string {
-	var str string
-	str += "<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
-	str += "<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>\n"
-	str += "<nta>\n"
+	var b strings.Builder
 
-	str += "    <declaration>"
-	str += escapeForXML(s.decls.AsXTA())
-	str += "    </declaration>\n"
+	b.WriteString("<?xml version=\"1.0\" encoding=\"utf-8\"?>\n")
+	b.WriteString("<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>\n")
+	b.WriteString("<nta>\n")
+
+	b.WriteString("    <declaration>")
+	xml.EscapeText(&b, []byte(s.decls.AsXTA()))
+	b.WriteString("    </declaration>\n")
 
 	for _, proc := range s.sortedProcesses() {
-		xml := proc.AsXML()
-		str += "    " + strings.ReplaceAll(xml, "\n<", "\n    <") + "\n"
+		proc.asXML(&b, "    ")
+		b.WriteString("\n")
 	}
 
-	str += "    <system>\n"
+	b.WriteString("    <system>\n")
 	sortedInstances := s.sortedInstances()
 	for _, inst := range sortedInstances {
 		if inst.CanSkipDeclaration() {
 			continue
 		}
-		str += inst.AsXTA() + "\n"
+		b.WriteString(inst.AsXTA() + "\n")
 	}
 	if len(sortedInstances) > 0 {
-		str += "system "
+		b.WriteString("system ")
 		first := true
 		for _, inst := range sortedInstances {
 			if first {
 				first = false
 			} else {
-				str += ", "
+				b.WriteString(", ")
 			}
-			str += inst.instName
+			b.WriteString(inst.instName)
 		}
-		str += ";\n"
+		b.WriteString(";\n")
 	}
 	if len(s.progressMeasures) > 0 {
-		str += "progress{\n"
+		b.WriteString("progress{\n")
 		for _, measure := range s.progressMeasures {
-			str += "    " + measure + ";\n"
+			b.WriteString("    " + measure + ";\n")
 		}
-		str += "}\n"
+		b.WriteString("}\n")
 	}
-	str += "</system>\n"
+	b.WriteString("</system>\n")
 
-	str += "    <queries>\n"
+	b.WriteString("    <queries>\n")
 	for _, query := range s.queries {
 		xml := query.AsXML()
-		str += "        " + strings.ReplaceAll(xml, "\n<", "\n        <") + "\n"
+		b.WriteString("        ")
+		b.WriteString(strings.ReplaceAll(xml, "\n<", "\n        <"))
+		b.WriteString("\n")
 	}
 	for _, inst := range sortedInstances {
 		proc := s.processes[inst.procName]
@@ -201,13 +205,15 @@ func (s *System) AsXML() string {
 		for _, procQuery := range proc.queries {
 			instQuery := procQuery.Substitute(inst.instName)
 			xml := instQuery.AsXML()
-			str += "        " + strings.ReplaceAll(xml, "\n<", "\n        <") + "\n"
+			b.WriteString("        ")
+			b.WriteString(strings.ReplaceAll(xml, "\n<", "\n        <"))
+			b.WriteString("\n")
 		}
 	}
-	str += "    </queries>\n"
+	b.WriteString("    </queries>\n")
 
-	str += "</nta>\n"
-	return str
+	b.WriteString("</nta>\n")
+	return b.String()
 }
 
 func (s *System) sortedProcesses() []*Process {

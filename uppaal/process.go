@@ -1,6 +1,7 @@
 package uppaal
 
 import (
+	"encoding/xml"
 	"fmt"
 	"strings"
 )
@@ -217,14 +218,15 @@ func (p *Process) AsUGI() string {
 	return s
 }
 
-// AsXML returns the xml (file format) representation of the process.
-func (p *Process) AsXML() string {
-	s := "<template>\n"
-	s += "    <name>" + p.name + "</name>\n"
+func (p *Process) asXML(b *strings.Builder, indent string) {
+	b.WriteString(indent + "<template>\n")
+	b.WriteString(indent + "    <name>" + p.name + "</name>\n")
 	if len(p.params) > 0 {
-		s += "    <parameter>" + strings.Join(p.params, ", ") + "</parameter>\n"
+		b.WriteString(indent + "    <parameter>" + strings.Join(p.params, ", ") + "</parameter>\n")
 	}
-	s += "    <declaration>" + escapeForXML(p.decls.AsXTA()) + "</declaration>\n"
+	b.WriteString(indent + "    <declaration>")
+	xml.EscapeText(b, []byte(p.decls.AsXTA()))
+	b.WriteString("</declaration>\n")
 
 	stateIndices := make(map[string]int, len(p.states))
 	stateCount := 0
@@ -232,62 +234,61 @@ func (p *Process) AsXML() string {
 		stateIndex := stateCount
 		stateIndices[name] = stateIndex
 		stateCount++
-		s += fmt.Sprintf("    <location id=\"id%d\" x=\"%d\" y=\"%d\">\n",
-			stateIndex, state.location[0], state.location[1])
-		s += fmt.Sprintf("        <name x=\"%d\" y=\"%d\">%s</name>\n",
-			state.nameLocation[0], state.nameLocation[1], state.name)
+		fmt.Fprintf(b, "%s    <location id=\"id%d\" x=\"%d\" y=\"%d\">\n",
+			indent, stateIndex, state.location[0], state.location[1])
+		fmt.Fprintf(b, "%s        <name x=\"%d\" y=\"%d\">%s</name>\n",
+			indent, state.nameLocation[0], state.nameLocation[1], state.name)
 		if state.comment != "" {
-			s += fmt.Sprintf("    <label kind=\"comments\" x=\"%d\" y=\"%d\">",
-				state.commentLocation[0], state.commentLocation[1])
-			s += escapeForXML(state.comment)
-			s += "</label>\n"
+			fmt.Fprintf(b, "%s    <label kind=\"comments\" x=\"%d\" y=\"%d\">",
+				indent, state.commentLocation[0], state.commentLocation[1])
+			b.WriteString(escapeForXML(state.comment))
+			b.WriteString("</label>\n")
 		}
 		if state.stateType == Committed {
-			s += "        <committed/>\n"
+			b.WriteString(indent + "        <committed/>\n")
 		} else if state.stateType == Urgent {
-			s += "        <urgent/>\n"
+			b.WriteString(indent + "        <urgent/>\n")
 		}
-		s += "    </location>\n"
+		b.WriteString(indent + "    </location>\n")
 	}
-	s += fmt.Sprintf("    <init ref=\"id%d\"/>\n", stateIndices[p.init])
+	fmt.Fprintf(b, "%s    <init ref=\"id%d\"/>\n", indent, stateIndices[p.init])
 
 	for _, transition := range p.transitions {
 		srcIndex := stateIndices[transition.start]
 		tgtIndex := stateIndices[transition.end]
 
-		s += "    <transition>\n"
-		s += fmt.Sprintf("        <source ref=\"id%d\"/>\n", srcIndex)
-		s += fmt.Sprintf("        <target ref=\"id%d\"/>\n", tgtIndex)
+		b.WriteString(indent + "    <transition>\n")
+		fmt.Fprintf(b, "%s        <source ref=\"id%d\"/>\n", indent, srcIndex)
+		fmt.Fprintf(b, "%s        <target ref=\"id%d\"/>\n", indent, tgtIndex)
 		if transition.selectStmts != "" {
-			s += fmt.Sprintf("        <label kind=\"select\" x=\"%d\" y=\"%d\">",
-				transition.selectLocation[0], transition.selectLocation[1])
-			s += escapeForXML(transition.selectStmts)
-			s += "</label>\n"
+			fmt.Fprintf(b, "%s        <label kind=\"select\" x=\"%d\" y=\"%d\">",
+				indent, transition.selectLocation[0], transition.selectLocation[1])
+			xml.EscapeText(b, []byte(transition.selectStmts))
+			b.WriteString(indent + "</label>\n")
 		}
 		if transition.guardExpr != "" {
-			s += fmt.Sprintf("        <label kind=\"guard\" x=\"%d\" y=\"%d\">",
-				transition.guardLocation[0], transition.guardLocation[1])
-			s += escapeForXML(transition.guardExpr)
-			s += "</label>\n"
+			fmt.Fprintf(b, "%s        <label kind=\"guard\" x=\"%d\" y=\"%d\">",
+				indent, transition.guardLocation[0], transition.guardLocation[1])
+			xml.EscapeText(b, []byte(transition.guardExpr))
+			b.WriteString("</label>\n")
 		}
 		if transition.syncStmt != "" {
-			s += fmt.Sprintf("        <label kind=\"synchronisation\" x=\"%d\" y=\"%d\">",
-				transition.syncLocation[0], transition.syncLocation[1])
-			s += escapeForXML(transition.syncStmt)
-			s += "</label>\n"
+			fmt.Fprintf(b, "%s        <label kind=\"synchronisation\" x=\"%d\" y=\"%d\">",
+				indent, transition.syncLocation[0], transition.syncLocation[1])
+			xml.EscapeText(b, []byte(transition.syncStmt))
+			b.WriteString("</label>\n")
 		}
 		if transition.updateStmts != "" {
-			s += fmt.Sprintf("        <label kind=\"assignment\" x=\"%d\" y=\"%d\">",
-				transition.updateLocation[0], transition.updateLocation[1])
-			s += escapeForXML(transition.updateStmts)
-			s += "</label>\n"
+			fmt.Fprintf(b, "%s        <label kind=\"assignment\" x=\"%d\" y=\"%d\">",
+				indent, transition.updateLocation[0], transition.updateLocation[1])
+			xml.EscapeText(b, []byte(transition.updateStmts))
+			b.WriteString("</label>\n")
 		}
 		for _, nail := range transition.nails {
-			s += fmt.Sprintf("        <nail x=\"%d\" y=\"%d\"/>\n", nail[0], nail[1])
+			fmt.Fprintf(b, "%s        <nail x=\"%d\" y=\"%d\"/>\n", indent, nail[0], nail[1])
 		}
-		s += "    </transition>\n"
+		b.WriteString(indent + "    </transition>\n")
 	}
 
-	s += "</template>"
-	return s
+	b.WriteString(indent + "</template>")
 }
