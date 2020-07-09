@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"go/build"
 	"go/token"
 	"os"
 
@@ -15,15 +14,12 @@ import (
 
 // Config holds paramters for the Run function.
 type Config struct {
-	// EntryFuncName is the name of the entry function to the program.
-	EntryFuncName string
-	// BuildContext is the context used by the builder package to find packages
-	// and files.
-	BuildContext build.Context
+	builder.BuilderConfig
+	translator.TranslatorConfig
+
 	// Debug indicates if debug output files should be generated.
 	Debug bool
-	// Optimize indicates if the optimizer should be run on the IR.
-	Optimize bool
+
 	// OutName is the file name of all output files.
 	OutName string
 	// OutFormats lists the generated output file formats (supports xml, xta, ugi, q)
@@ -57,7 +53,7 @@ func Run(path string, config Config) Result {
 	warnings := false
 
 	// Builder
-	program, entryFuncs, errs := builder.BuildProgram(path, &config.BuildContext)
+	program, entryFuncs, errs := builder.BuildProgram(path, &config.BuilderConfig)
 	warnings = warnings || len(errs) > 0
 	for _, err := range errs {
 		fmt.Fprintln(os.Stderr, err)
@@ -72,7 +68,7 @@ func Run(path string, config Config) Result {
 		outputProgram(program, config.OutName, "init")
 	}
 
-	if config.Optimize {
+	if config.TranslatorConfig.Optimize {
 		// Dead Code Eliminator
 		optimizer.EliminateDeadCode(program)
 
@@ -88,7 +84,7 @@ func Run(path string, config Config) Result {
 		program.InitFunc().Body().AddStmt(callStmt)
 
 		// Translator
-		sys, errs := translator.TranslateProg(program, config.Optimize)
+		sys, errs := translator.TranslateProg(program, &config.TranslatorConfig)
 		warnings = warnings || len(errs) > 0
 		for _, err := range errs {
 			fmt.Fprintln(os.Stderr, err)

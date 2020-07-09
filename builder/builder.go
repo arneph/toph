@@ -24,19 +24,23 @@ const parserMode parser.Mode = parser.ParseComments |
 	parser.DeclarationErrors |
 	parser.AllErrors
 
+type BuilderConfig struct {
+	BuildContext *build.Context
+}
+
 // BuildProgram parses the Go files at the given path and builds an ir.Program.
-func BuildProgram(path string, buildContext *build.Context) (program *ir.Program, entryFuncs []*ir.Func, errs []error) {
+func BuildProgram(path string, config *BuilderConfig) (program *ir.Program, entryFuncs []*ir.Func, errs []error) {
 	b := new(builder)
+	b.config = config
 
 	// Temporarily change build context (needed for source importer):
 	oldBuildContext := build.Default
-	build.Default = *buildContext
+	build.Default = *config.BuildContext
 	defer func() {
 		build.Default = oldBuildContext
 	}()
 
 	// Parse program:
-	b.buildContext = buildContext
 	b.fset = token.NewFileSet()
 	b.pkgs = make(map[string]*pkg)
 
@@ -46,7 +50,7 @@ func BuildProgram(path string, buildContext *build.Context) (program *ir.Program
 	} else {
 		path = absPath
 	}
-	buildPackage, err := b.buildContext.Import(".", path, buildImportMode)
+	buildPackage, err := b.config.BuildContext.Import(".", path, buildImportMode)
 	if err != nil {
 		b.addWarning(fmt.Errorf("import of %q failed: \n\t%v", path, err))
 		return nil, nil, b.warnings
@@ -73,7 +77,7 @@ func BuildProgram(path string, buildContext *build.Context) (program *ir.Program
 				return nil, nil, b.warnings
 			}
 
-			importedBuildPackage, err := b.buildContext.Import(importPath, absPath, buildImportMode)
+			importedBuildPackage, err := b.config.BuildContext.Import(importPath, absPath, buildImportMode)
 			if err != nil {
 				b.addWarning(fmt.Errorf("import of %q from %s failed: \n\t%v", importPath, absPath, err))
 				continue
@@ -92,7 +96,7 @@ func BuildProgram(path string, buildContext *build.Context) (program *ir.Program
 		}
 
 		filter := func(info os.FileInfo) bool {
-			ok, err := b.buildContext.MatchFile(absPath, info.Name())
+			ok, err := b.config.BuildContext.MatchFile(absPath, info.Name())
 			if err != nil {
 				b.addWarning(fmt.Errorf("file matching failed: %v", err))
 				return true
@@ -259,7 +263,6 @@ type pkg struct {
 }
 
 type builder struct {
-	buildContext     *build.Context
 	fset             *token.FileSet
 	typesInfo        *types.Info
 	typesSrcImporter types.Importer
@@ -272,6 +275,8 @@ type builder struct {
 
 	program              *ir.Program
 	liftedSpecialOpFuncs map[ir.SpecialOp]*ir.Func
+
+	config *BuilderConfig
 
 	warnings []error
 }

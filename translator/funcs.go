@@ -12,16 +12,16 @@ func (t translator) callCount(f *ir.Func) int {
 	callCount := t.completeFCG.CalleeCount(f)
 	if callCount < 1 {
 		callCount = 1
-	} else if callCount > maxProcessCount {
-		callCount = maxProcessCount
+	} else if callCount > t.config.MaxProcessCount {
+		callCount = t.config.MaxProcessCount
 	}
 	return callCount
 }
 
 func (t translator) deferCount(f *ir.Func) int {
 	deferCount := t.deferFCG.CallerCount(f)
-	if deferCount > maxDeferCount {
-		deferCount = maxDeferCount
+	if deferCount > t.config.MaxDeferCount {
+		deferCount = t.config.MaxDeferCount
 	}
 	return deferCount
 }

@@ -10,8 +10,8 @@ import (
 
 func (t *translator) channelCount() int {
 	channelCount := t.completeFCG.TotalSpecialOpCount(ir.MakeChan)
-	if channelCount > maxChannelCount {
-		channelCount = maxChannelCount
+	if channelCount > t.config.MaxChannelCount {
+		channelCount = t.config.MaxChannelCount
 	}
 	return channelCount
 }

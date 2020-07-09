@@ -6,14 +6,20 @@ import (
 	"github.com/arneph/toph/uppaal"
 )
 
-const maxProcessCount = 100
-const maxDeferCount = 100
-const maxChannelCount = 100
-const maxMutexCount = 100
-const maxWaitGroupCount = 100
+// TranslatorConfig contains configuration settings for translation.
+type TranslatorConfig struct {
+	MaxProcessCount   int
+	MaxDeferCount     int
+	MaxChannelCount   int
+	MaxMutexCount     int
+	MaxWaitGroupCount int
+	MaxStructCount    int
+
+	Optimize bool
+}
 
 // TranslateProg translates an ir.Prog to a uppaal.System.
-func TranslateProg(program *ir.Program, optimize bool) (*uppaal.System, []error) {
+func TranslateProg(program *ir.Program, config *TranslatorConfig) (*uppaal.System, []error) {
 	t := new(translator)
 	t.program = program
 	t.funcToProcess = make(map[*ir.Func]*uppaal.Process)
@@ -21,7 +27,7 @@ func TranslateProg(program *ir.Program, optimize bool) (*uppaal.System, []error)
 	t.tg = analyzer.BuildTypeGraph(program)
 	t.completeFCG = analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
 	t.deferFCG = analyzer.BuildFuncCallGraph(program, ir.Defer)
-	t.optimize = optimize
+	t.config = config
 
 	t.translateProgram()
 
@@ -42,7 +48,7 @@ type translator struct {
 	completeFCG *analyzer.FuncCallGraph
 	deferFCG    *analyzer.FuncCallGraph
 
-	optimize bool
+	config *TranslatorConfig
 
 	warnings []error
 }
@@ -78,7 +84,7 @@ fid make_fid(int id, int par_pid) {
 		t.addType(u)
 	}
 	for _, f := range t.program.Funcs() {
-		if t.optimize && t.completeFCG.CalleeCount(f) == 0 {
+		if t.config.Optimize && t.completeFCG.CalleeCount(f) == 0 {
 			continue
 		}
 		t.addFuncProcess(f)
@@ -88,7 +94,7 @@ fid make_fid(int id, int par_pid) {
 		t.addFuncDeclarations(f)
 	}
 	for _, f := range t.program.Funcs() {
-		if t.optimize && t.completeFCG.CalleeCount(f) == 0 {
+		if t.config.Optimize && t.completeFCG.CalleeCount(f) == 0 {
 			continue
 		}
 		t.translateFunc(f)

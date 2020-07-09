@@ -17,7 +17,7 @@ func (b *builder) ImportFrom(importPath, absPath string, mode types.ImportMode) 
 	if abs, err := filepath.Abs(absPath); err == nil {
 		absPath = abs
 	}
-	buildPackage, err := b.buildContext.Import(importPath, absPath, buildImportMode)
+	buildPackage, err := b.config.BuildContext.Import(importPath, absPath, buildImportMode)
 	if err != nil {
 		return nil, err
 	}
