@@ -133,9 +133,9 @@ func runSystem(systemPath string) {
 	systemIndex := completedSystems
 	var result string
 	if err != nil {
-		result = fmt.Sprintf("%03d failed    % 12.1fs %s", systemIndex, t2.Sub(t1).Seconds(), systemPath)
+		result = fmt.Sprintf("%03d \x1b[31mfailed\x1b[0m    % 12.1fs %s", systemIndex, t2.Sub(t1).Seconds(), systemPath)
 	} else {
-		result = fmt.Sprintf("%03d completed % 12.1fs %s", systemIndex, t2.Sub(t1).Seconds(), systemPath)
+		result = fmt.Sprintf("%03d \x1b[32mcompleted\x1b[0m % 12.1fs %s", systemIndex, t2.Sub(t1).Seconds(), systemPath)
 	}
 	print(result, true)
 	if err != nil {
@@ -160,11 +160,12 @@ func generateDetailedResults(systemPath string, outString string) string {
 	systemString := string(systemBytes)
 	queryStrings := regexp.MustCompile("(?s:<query>.*?</query>)").FindAllString(systemString, -1)
 	type query struct {
-		index       int
-		formula     string
-		description string
-		category    string
-		satisfied   bool
+		index          int
+		formula        string
+		description    string
+		sourceLocation string
+		category       string
+		satisfied      bool
 	}
 	queries := make([]*query, len(queryStrings))
 	categories := make(map[string][]*query)
@@ -176,19 +177,22 @@ func generateDetailedResults(systemPath string, outString string) string {
 		comment := regexp.MustCompile("(?s:<comment>.*?</comment>)").FindString(queryString)
 		comment = strings.TrimPrefix(comment, "<comment>")
 		comment = strings.TrimSuffix(comment, "</comment>")
-		var description, category string
+		var description, sourceLocation, category string
 		for _, line := range strings.Split(comment, "\n") {
 			if strings.HasPrefix(line, "description: ") {
 				description = strings.TrimPrefix(line, "description: ")
+			} else if strings.HasPrefix(line, "location: ") {
+				sourceLocation = strings.TrimPrefix(line, "location: ")
 			} else if strings.HasPrefix(line, "category: ") {
 				category = strings.TrimPrefix(line, "category: ")
 			}
 		}
 		queries[i] = &query{
-			index:       i + 1,
-			formula:     formula,
-			description: description,
-			category:    category,
+			index:          i + 1,
+			formula:        formula,
+			description:    description,
+			sourceLocation: sourceLocation,
+			category:       category,
 		}
 		categories[category] = append(categories[category], queries[i])
 	}
@@ -240,17 +244,20 @@ func generateDetailedResults(systemPath string, outString string) string {
 			firstCategory = false
 		}
 		if allSatisfied {
-			fmt.Fprintf(&b, "    satisfied: %s", category)
+			fmt.Fprintf(&b, "    \x1b[32msatisfied:\x1b[0m %s", category)
 		} else {
-			fmt.Fprintf(&b, "not satisfied: %s", category)
+			fmt.Fprintf(&b, "\x1b[31mnot satisfied:\x1b[0m %s", category)
 		}
 
 		for _, query := range queries {
 			fmt.Fprintln(&b)
 			if query.satisfied {
-				fmt.Fprintf(&b, "\t%03d     satisfied: %s", query.index, query.formula)
+				fmt.Fprintf(&b, "\t%03d     \x1b[32msatisfied:\x1b[0m %s", query.index, query.formula)
 			} else {
-				fmt.Fprintf(&b, "\t%03d not satisfied: %s", query.index, query.formula)
+				fmt.Fprintf(&b, "\t%03d \x1b[31mnot satisfied:\x1b[0m %s", query.index, query.formula)
+			}
+			if query.sourceLocation != "" {
+				fmt.Fprintf(&b, "\n\t                   %s", query.sourceLocation)
 			}
 		}
 	}
@@ -278,9 +285,13 @@ func printRunningSystems() {
 }
 
 func print(line string, newline bool) {
+	n := "100"
+	if strings.Contains(line, "\x1b") {
+		n = "109"
+	}
 	if newline {
-		fmt.Printf("\r%-100s\n", line)
+		fmt.Printf("\r%-"+n+"s\n", line)
 	} else {
-		fmt.Printf("\r%-100s", line)
+		fmt.Printf("\r%-"+n+"s", line)
 	}
 }
