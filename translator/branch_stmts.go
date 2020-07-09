@@ -276,6 +276,7 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	ctx.proc.AddQuery(uppaal.MakeQuery(
 		"A[] (not out_of_resources) imply (not (deadlock and $."+receiving.Name()+"))",
 		"check deadlock with pending channel operation unreachable",
+		t.program.FileSet().Position(stmt.Pos()).String(),
 		uppaal.NoChannelRelatedDeadlocks))
 
 	bodyEnter := ctx.proc.AddState("loop_body_enter_", uppaal.Renaming)

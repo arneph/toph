@@ -71,6 +71,7 @@ func (t *translator) translateChanCommOpStmt(stmt *ir.ChanCommOpStmt, ctx *conte
 	ctx.proc.AddQuery(uppaal.MakeQuery(
 		"A[] (not out_of_resources) imply (not (deadlock and $."+pending.Name()+"))",
 		"check deadlock with pending channel operation unreachable",
+		t.program.FileSet().Position(stmt.Pos()).String(),
 		uppaal.NoChannelRelatedDeadlocks))
 
 	ctx.currentState = confirmed
@@ -172,6 +173,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		ctx.proc.AddQuery(uppaal.MakeQuery(
 			"A[] (not out_of_resources) imply (not (deadlock and $."+pass2.Name()+"))",
 			"check deadlock with blocked select statement unreachable",
+			t.program.FileSet().Position(stmt.Pos()).String(),
 			uppaal.NoChannelRelatedDeadlocks))
 
 		if len(stmt.Cases()) > 0 {
@@ -196,11 +198,13 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 			ctx.proc.AddQuery(uppaal.MakeQuery(
 				"E<> (not out_of_resources) and $."+caseEnter.Name(),
 				"check reachable: "+ctx.proc.Name()+"."+caseEnter.Name(),
+				t.program.FileSet().Position(c.Pos()).String(),
 				uppaal.ReachabilityRequirements))
 		} else if c.ReachReq() == ir.Unreachable {
 			ctx.proc.AddQuery(uppaal.MakeQuery(
 				"A[] (not out_of_resources) imply (not $."+caseEnter.Name()+")",
 				"check unreachable: "+ctx.proc.Name()+"."+caseEnter.Name(),
+				t.program.FileSet().Position(c.Pos()).String(),
 				uppaal.ReachabilityRequirements))
 		}
 

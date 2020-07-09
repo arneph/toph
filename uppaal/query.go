@@ -23,8 +23,10 @@ const (
 	NoMutexRelatedDeadlocks
 	// NoWaitGroupRelatedDeadlocks verifies the system is never stuck waiting on a wait group operation.
 	NoWaitGroupRelatedDeadlocks
-	// NoFunctionCallsWithNilVariable verifies the system is attempting to call a nil (-1) function variable.
+	// NoFunctionCallsWithNilVariable verifies the system is never attempting to call a nil (-1) function variable.
 	NoFunctionCallsWithNilVariable
+	// NoGoroutineExitWithPanic verifies the system never exits a panicking goroutine.
+	NoGoroutineExitWithPanic
 	// ReachabilityRequirements are user generated and verify that a certain state is or is not reachable.
 	ReachabilityRequirements
 )
@@ -47,6 +49,8 @@ func (c QueryCategory) String() string {
 		return "no wait group related deadlocks"
 	case NoFunctionCallsWithNilVariable:
 		return "no function calls with nil variable"
+	case NoGoroutineExitWithPanic:
+		return "no goroutine exit with panic"
 	case ReachabilityRequirements:
 		return "reachability requirements"
 	default:
@@ -57,17 +61,19 @@ func (c QueryCategory) String() string {
 // Query holds a query and its comment. Both can be exported to a query file.
 type Query struct {
 	// The '$' serves as a placeholder.
-	query       string
-	description string
-	category    QueryCategory
+	query          string
+	description    string
+	sourceLocation string
+	category       QueryCategory
 }
 
 // MakeQuery returns a query with the given query string and comment.
-func MakeQuery(query, description string, category QueryCategory) Query {
+func MakeQuery(query, description, sourceLocation string, category QueryCategory) Query {
 	return Query{
-		query:       query,
-		description: description,
-		category:    category,
+		query:          query,
+		description:    description,
+		sourceLocation: sourceLocation,
+		category:       category,
 	}
 }
 
@@ -75,9 +81,10 @@ func MakeQuery(query, description string, category QueryCategory) Query {
 // replaced by the given replacement.
 func (q Query) Substitute(replacement string) Query {
 	return Query{
-		query:       strings.ReplaceAll(q.query, "$", replacement),
-		description: q.description,
-		category:    q.category,
+		query:          strings.ReplaceAll(q.query, "$", replacement),
+		description:    q.description,
+		sourceLocation: q.sourceLocation,
+		category:       q.category,
 	}
 }
 
@@ -85,7 +92,10 @@ func (q Query) Substitute(replacement string) Query {
 func (q Query) AsQ() string {
 	var str string
 	str += "/*\n"
-	str += "description: " + escapeForXML(q.description) + "\n"
+	str += "description: " + q.description + "\n"
+	if q.sourceLocation != "" {
+		str += "location: " + q.sourceLocation + "\n"
+	}
 	str += "category: " + q.category.String()
 	str += "*/\n"
 	str += q.query + "\n"
@@ -95,6 +105,9 @@ func (q Query) AsQ() string {
 // AsXML returns the xml (file format) representation of the query.
 func (q Query) AsXML() string {
 	comment := "description: " + escapeForXML(q.description) + "\n"
+	if q.sourceLocation != "" {
+		comment += "location: " + escapeForXML(q.sourceLocation) + "\n"
+	}
 	comment += "category: " + q.category.String()
 	str := "<query>\n"
 	str += "    <formula>" + escapeForXML(q.query) + "</formula>\n"

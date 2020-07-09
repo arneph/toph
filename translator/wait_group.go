@@ -36,7 +36,7 @@ func (t *translator) addWaitGroupProcess() {
 	// Queries:
 	proc.AddQuery(uppaal.MakeQuery(
 		"A[] (not out_of_resources) imply (not $.bad)",
-		"check WaitGroup.bad state unreachable",
+		"check WaitGroup.bad state unreachable", "",
 		uppaal.WaitGroupSafety))
 
 	// States:

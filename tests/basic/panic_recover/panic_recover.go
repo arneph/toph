@@ -79,8 +79,20 @@ func d() {
 	fmt.Printf("d ends normally\n")
 }
 
+func x() {
+	panic("internal error: did not expect to be called upon")
+}
+
+func y() {
+	if 24 == 42 {
+		x()
+	}
+}
+
 func main() {
 	fmt.Printf("main starts\n")
+
+	go y()
 
 	defer func() {
 		if err := recover(); err != nil {

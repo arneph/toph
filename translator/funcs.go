@@ -154,6 +154,16 @@ func (t *translator) translateFunc(f *ir.Func) {
 	ended := proc.AddState("ended", uppaal.NoRenaming)
 	ended.SetComment(t.program.FileSet().Position(f.End()).String())
 
+	sourceLocation := t.program.FileSet().Position(f.End()).String()
+	if f == t.program.InitFunc() {
+		sourceLocation = ""
+	}
+	proc.AddQuery(uppaal.MakeQuery(
+		"A[] (not out_of_resources) imply (not ($.ending and !$.is_sync and $.internal_panic))",
+		"check goroutine does not exit with panic",
+		sourceLocation,
+		uppaal.NoGoroutineExitWithPanic))
+
 	var deferred *uppaal.State
 	var bodyCtx *context
 	if deferCount > 0 {

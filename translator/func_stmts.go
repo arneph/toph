@@ -26,6 +26,7 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 		ctx.proc.AddQuery(uppaal.MakeQuery(
 			"A[] (not out_of_resources) imply (not $."+nilState.Name()+")",
 			"check function variable not nil",
+			t.program.FileSet().Position(stmt.Pos()).String(),
 			uppaal.NoFunctionCallsWithNilVariable))
 		nilTrans := ctx.proc.AddTrans(ctx.currentState, nilState)
 		nilTrans.SetGuard(handle + ".id == -1")
