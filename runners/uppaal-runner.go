@@ -8,6 +8,7 @@ import (
 	"go/build"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -37,6 +38,8 @@ var (
 	uppaalPath     = flag.String("uppaal", uppaalDir()+"/", "path to bin-Windows, bin-Darwin, or bin-Linux Uppaal directory")
 	uppaalFlags    = flag.String("uppaal-flags", "-o0 -s -q", "flags for the Uppaal verifier")
 	uppaalProcesss = flag.Int("uppaal-processes", runtime.GOMAXPROCS(0), "number of parallel Uppaal verifier processes")
+
+	shuffleSystems = flag.Bool("shuffle", false, "verify Uppaal systems in random order")
 
 	detailedResult  = flag.Bool("details", true, "list detailed query results for each Uppaal system")
 	onlyNotSatified = flag.Bool("only-not-satisfied", false, "exclude satisfied queries from results")
@@ -75,12 +78,19 @@ func main() {
 			wg.Done()
 		}()
 	}
-argsLoop:
-	for _, system := range flag.Args() {
+	systems := flag.Args()
+	if *shuffleSystems {
+		rand.Seed(time.Now().UnixNano())
+		rand.Shuffle(len(systems), func(i, j int) {
+			systems[i], systems[j] = systems[j], systems[i]
+		})
+	}
+loop:
+	for _, system := range systems {
 		select {
 		case sysChan <- system:
 		case <-ctx.Done():
-			break argsLoop
+			break loop
 		}
 	}
 	close(sysChan)
