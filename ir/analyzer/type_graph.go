@@ -1,6 +1,11 @@
 package analyzer
 
-import "github.com/arneph/toph/ir"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/arneph/toph/ir"
+)
 
 // TypeGraph represents a directed graph of types.
 type TypeGraph struct {
@@ -108,4 +113,22 @@ func (tg *TypeGraph) updateTopologicalOrder() {
 			panic("internal error: type graph contains circle")
 		}
 	}
+}
+
+func (tg *TypeGraph) String() string {
+	tg.updateTopologicalOrder()
+
+	var b strings.Builder
+
+	b.WriteString("Type Graph:\n")
+	for _, dependant := range tg.topologicalOrder {
+		fmt.Fprintf(&b, "%s\n", dependant.String())
+		dependees := tg.dependantsToDependees[dependant]
+		for dependee := range dependees {
+			fmt.Fprintf(&b, "\t-> %s\n", dependee.String())
+		}
+	}
+	b.WriteString("\n")
+
+	return b.String()
 }

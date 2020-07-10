@@ -370,7 +370,7 @@ func (fcg *FuncCallGraph) String() string {
 
 	var b strings.Builder
 
-	b.WriteString("Graph with SCCs:\n")
+	b.WriteString("Call Graph (with SCCs):\n")
 	for caller, callees := range fcg.callerToCallees {
 		fmt.Fprintf(&b, "%s (%d)\n", caller.Handle(), fcg.funcToSCCs[caller])
 		i := 0

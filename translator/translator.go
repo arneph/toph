@@ -1,8 +1,8 @@
 package translator
 
 import (
-	"github.com/arneph/toph/analyzer"
 	"github.com/arneph/toph/ir"
+	"github.com/arneph/toph/ir/analyzer"
 	"github.com/arneph/toph/uppaal"
 )
 

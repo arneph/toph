@@ -5,11 +5,12 @@ import (
 	"go/token"
 	"os"
 
-	"github.com/arneph/toph/analyzer"
 	"github.com/arneph/toph/builder"
 	"github.com/arneph/toph/ir"
-	"github.com/arneph/toph/optimizer"
+	irAnalyzer "github.com/arneph/toph/ir/analyzer"
+	irOptimizer "github.com/arneph/toph/ir/optimizer"
 	"github.com/arneph/toph/translator"
+	uppaalOptimizer "github.com/arneph/toph/uppaal/optimizer"
 )
 
 // BuilderConfig is a wrapper type for builder.Config to avoid naming collisions
@@ -76,7 +77,7 @@ func Run(path string, config Config) Result {
 
 	if config.TranslatorConfig.Optimize {
 		// Dead Code Eliminator
-		optimizer.EliminateDeadCode(program)
+		irOptimizer.EliminateDeadCode(program)
 
 		if config.Debug {
 			outputProgram(program, config.OutName, "opt")
@@ -98,6 +99,8 @@ func Run(path string, config Config) Result {
 		if sys == nil {
 			return RunFailedWithTranslator
 		}
+
+		uppaalOptimizer.ReduceStates(sys)
 
 		// Output files
 		for _, ffmt := range []string{"xml", "xta", "ugi", "q"} {
@@ -138,7 +141,8 @@ func Run(path string, config Config) Result {
 // outputProgram generates debug output files showing the IR at a certain
 // point during the process.
 func outputProgram(program *ir.Program, outName string, stepName string) {
-	fcg := analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
+	fcg := irAnalyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
+	tg := irAnalyzer.BuildTypeGraph(program)
 
 	// IR file
 	programPath := fmt.Sprintf("%s.%s.ir.txt", outName, stepName)
@@ -155,10 +159,21 @@ func outputProgram(program *ir.Program, outName string, stepName string) {
 	fcgPath := fmt.Sprintf("./%s.%s.fcg.txt", outName, stepName)
 	fcgFile, err := os.Create(fcgPath)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not write call_fcg.txt file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "could not write fcg.txt file: %v\n", err)
 		return
 	}
 	defer fcgFile.Close()
 
 	fcgFile.WriteString(fcg.String())
+
+	// TG files
+	tgPath := fmt.Sprintf("./%s.%s.tg.txt", outName, stepName)
+	tgFile, err := os.Create(tgPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not write tg.txt file: %v\n", err)
+		return
+	}
+	defer tgFile.Close()
+
+	tgFile.WriteString(tg.String())
 }

@@ -3,8 +3,8 @@ package optimizer
 import (
 	"fmt"
 
-	"github.com/arneph/toph/analyzer"
 	"github.com/arneph/toph/ir"
+	"github.com/arneph/toph/ir/analyzer"
 )
 
 // EliminateDeadCode removes statements that are not necessary for
