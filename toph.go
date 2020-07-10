@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"github.com/arneph/toph/api"
-	"github.com/arneph/toph/builder"
-	"github.com/arneph/toph/translator"
 )
 
 var (
@@ -50,10 +48,10 @@ func main() {
 		ffmts[ffmt] = true
 	}
 	config := api.Config{
-		BuilderConfig: builder.BuilderConfig{
+		BuilderConfig: api.BuilderConfig{
 			BuildContext: &buildContext,
 		},
-		TranslatorConfig: translator.TranslatorConfig{
+		TranslatorConfig: api.TranslatorConfig{
 			MaxProcessCount:   *maxProcessCount,
 			MaxDeferCount:     *maxDeferCount,
 			MaxChannelCount:   *maxChannelCount,

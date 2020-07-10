@@ -8,8 +8,6 @@ import (
 	"strings"
 
 	"github.com/arneph/toph/api"
-	"github.com/arneph/toph/builder"
-	"github.com/arneph/toph/translator"
 )
 
 func ignore(info os.FileInfo) bool {
@@ -57,10 +55,10 @@ func main() {
 			}
 			fmt.Printf("running test: %s\n", testPath)
 			config := api.Config{
-				BuilderConfig: builder.BuilderConfig{
+				BuilderConfig: api.BuilderConfig{
 					BuildContext: &buildContext,
 				},
-				TranslatorConfig: translator.TranslatorConfig{
+				TranslatorConfig: api.TranslatorConfig{
 					MaxProcessCount:   10,
 					MaxDeferCount:     10,
 					MaxChannelCount:   100,

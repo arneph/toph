@@ -24,12 +24,13 @@ const parserMode parser.Mode = parser.ParseComments |
 	parser.DeclarationErrors |
 	parser.AllErrors
 
-type BuilderConfig struct {
+// Config contains configuration settings for building IR.
+type Config struct {
 	BuildContext *build.Context
 }
 
 // BuildProgram parses the Go files at the given path and builds an ir.Program.
-func BuildProgram(path string, config *BuilderConfig) (program *ir.Program, entryFuncs []*ir.Func, errs []error) {
+func BuildProgram(path string, config *Config) (program *ir.Program, entryFuncs []*ir.Func, errs []error) {
 	b := new(builder)
 	b.config = config
 
@@ -276,7 +277,7 @@ type builder struct {
 	program              *ir.Program
 	liftedSpecialOpFuncs map[ir.SpecialOp]*ir.Func
 
-	config *BuilderConfig
+	config *Config
 
 	warnings []error
 }

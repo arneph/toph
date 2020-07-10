@@ -12,10 +12,16 @@ import (
 	"github.com/arneph/toph/translator"
 )
 
+// BuilderConfig is a wrapper type for builder.Config to avoid naming collisions
+type BuilderConfig = builder.Config
+
+// TranslatorConfig is a wrapper type for translator.Config to avoid naming collisions
+type TranslatorConfig = translator.Config
+
 // Config holds paramters for the Run function.
 type Config struct {
-	builder.BuilderConfig
-	translator.TranslatorConfig
+	BuilderConfig
+	TranslatorConfig
 
 	// Debug indicates if debug output files should be generated.
 	Debug bool
