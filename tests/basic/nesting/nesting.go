@@ -47,4 +47,5 @@ func main() {
 	} else {
 		ch <- 42
 	}
+	test(ch, ch)
 }
