@@ -67,15 +67,18 @@ fid make_fid(int id, int par_pid) {
 	fid t = {id, par_pid};
 	return t;
 }`)
+	t.system.Declarations().AddSpaceBetweenTypes()
 
 	t.system.Declarations().AddVariable("out_of_resources", "bool", "false")
+	t.system.Declarations().AddVariable("active_go_routines", "int", "1")
+	t.system.Declarations().AddSpaceBetweenVariables()
+
 	t.system.AddProgressMeasure("out_of_resources")
-	t.system.AddQuery(uppaal.MakeQuery(
+
+	t.system.AddQuery(uppaal.NewQuery(
 		"A[] not out_of_resources",
 		"check system never runs out of resources", "",
 		uppaal.ResourceBoundUnreached))
-	t.system.Declarations().AddVariable("active_go_routines", "int", "1")
-	t.system.Declarations().AddSpace()
 
 	t.translateGlobalScope()
 	t.system.Declarations().SetInitFuncName("global_initialize")
@@ -117,6 +120,6 @@ func (t *translator) translateBody(b *ir.Body, ctx *context) {
 	}
 
 	if !ctx.isInSpecialControlFlowState() {
-		ctx.proc.AddTrans(ctx.currentState, ctx.exitBodyState)
+		ctx.proc.AddTransition(ctx.currentState, ctx.exitBodyState)
 	}
 }

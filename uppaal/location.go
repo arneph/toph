@@ -5,6 +5,16 @@ import "fmt"
 // Location represents the 2D coordinates of a state or transition nail.
 type Location [2]int
 
+// X returns the x coordiante of a location.
+func (l Location) X() int {
+	return l[0]
+}
+
+// Y returns the y coordiante of a location.
+func (l Location) Y() int {
+	return l[1]
+}
+
 // Add returns a new location with the given offset from the existing location
 // added.
 func (l Location) Add(offset Location) Location {

@@ -58,7 +58,7 @@ func (t *translator) translateDeadEndStmt(stmt *ir.DeadEndStmt, ctx *context) {
 	dead.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
-	ctx.proc.AddTrans(ctx.currentState, dead)
+	ctx.proc.AddTransition(ctx.currentState, dead)
 
 	ctx.addLocation(dead.Location())
 

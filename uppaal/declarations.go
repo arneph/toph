@@ -1,6 +1,9 @@
 package uppaal
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type variableInfo struct {
 	name         string
@@ -29,16 +32,21 @@ func (d *Declarations) initDeclarations(comment string) {
 	d.initFuncStmts = []string{}
 }
 
-// AddSpace adds space between variable declarations.
-func (d *Declarations) AddSpace() {
-	d.variables = append(d.variables, variableInfo{
-		name: "",
-	})
+// AddSpaceBetweenTypes adds space between variable declarations.
+func (d *Declarations) AddSpaceBetweenTypes() {
+	d.types = append(d.types, "\n")
 }
 
 // AddType adds a type declaration to the list of declarations.
 func (d *Declarations) AddType(_type string) {
 	d.types = append(d.types, _type)
+}
+
+// AddSpaceBetweenVariables adds space between variable declarations.
+func (d *Declarations) AddSpaceBetweenVariables() {
+	d.variables = append(d.variables, variableInfo{
+		name: "",
+	})
 }
 
 // AddVariable adds a variable declaration to the list of declarations.
@@ -103,36 +111,34 @@ func (d *Declarations) AddInitFuncStmt(stmt string) {
 
 // AsXTA returns the xta (file format) representation of the declarations.
 func (d *Declarations) AsXTA() string {
-	str := "// " + d.headerComment
-	for _, _type := range d.types {
-		str += "\n" + _type
-	}
-	if len(d.types) > 0 {
-		str += "\n"
+	var b strings.Builder
+	b.WriteString("// " + d.headerComment)
+	for _, t := range d.types {
+		b.WriteString("\n" + t)
 	}
 	for _, info := range d.variables {
 		if info.name == "" {
-			str += "\n"
+			b.WriteString("\n")
 		} else if info.arraySize < 0 && info.initialValue == "" {
-			str += fmt.Sprintf("\n%s %s;",
+			fmt.Fprintf(&b, "\n%s %s;",
 				info._type, info.name)
 		} else if info.arraySize < 0 && info.initialValue != "" {
-			str += fmt.Sprintf("\n%s %s = %s;",
+			fmt.Fprintf(&b, "\n%s %s = %s;",
 				info._type, info.name, info.initialValue)
 		} else {
-			str += fmt.Sprintf("\n%s %s[%d];",
+			fmt.Fprintf(&b, "\n%s %s[%d];",
 				info._type, info.name, info.arraySize)
 		}
 	}
 	if d.RequiresInitFunc() {
-		str += "\nvoid " + d.initFuncName + "() {\n"
+		fmt.Fprintf(&b, "\nvoid %s() {\n", d.initFuncName)
 		for _, stmt := range d.initFuncStmts {
-			str += "    " + stmt + "\n"
+			b.WriteString("    " + stmt + "\n")
 		}
-		str += "}"
+		b.WriteString("}")
 	}
 	for _, f := range d.funcs {
-		str += "\n\n" + f
+		b.WriteString("\n\n" + f)
 	}
-	return str
+	return b.String()
 }

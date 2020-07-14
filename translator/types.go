@@ -28,7 +28,6 @@ func (t *translator) addType(irType ir.Type) {
 
 func (t *translator) addStructType(structType *ir.StructType) {
 	var b1 strings.Builder
-	b1.WriteString("\n")
 	b1.WriteString("typedef struct{\n")
 	for _, irField := range structType.Fields() {
 		switch irField.Type() {
@@ -41,6 +40,7 @@ func (t *translator) addStructType(structType *ir.StructType) {
 	fmt.Fprintf(&b1, "} %s;",
 		structType.VariablePrefix())
 	t.system.Declarations().AddType(b1.String())
+	t.system.Declarations().AddSpaceBetweenTypes()
 
 	t.system.Declarations().AddVariable(
 		fmt.Sprintf("%s_count", structType.VariablePrefix()),
@@ -49,7 +49,7 @@ func (t *translator) addStructType(structType *ir.StructType) {
 		fmt.Sprintf("%s_array", structType.VariablePrefix()),
 		t.structTypeCount(structType),
 		structType.VariablePrefix())
-	t.system.Declarations().AddSpace()
+	t.system.Declarations().AddSpaceBetweenVariables()
 
 	var b2 strings.Builder
 	var b3 strings.Builder

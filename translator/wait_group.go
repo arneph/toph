@@ -34,7 +34,7 @@ func (t *translator) addWaitGroupProcess() {
 	proc.AddParameter(fmt.Sprintf("int[0, %d] i", t.waitGroupCount()-1))
 
 	// Queries:
-	proc.AddQuery(uppaal.MakeQuery(
+	proc.AddQuery(uppaal.NewQuery(
 		"A[] (not out_of_resources) imply (not $.bad)",
 		"check WaitGroup.bad state unreachable", "",
 		uppaal.WaitGroupSafety))
@@ -61,7 +61,7 @@ func (t *translator) addWaitGroupProcess() {
 
 	// Transitions:
 	// Idle:
-	trans1 := proc.AddTrans(idle, idle)
+	trans1 := proc.AddTransition(idle, idle)
 	trans1.SetGuard("wait_group_waiters[i] > 0")
 	trans1.SetGuardLocation(uppaal.Location{-248, -16})
 	trans1.SetSync("wait[i]!")
@@ -70,7 +70,7 @@ func (t *translator) addWaitGroupProcess() {
 	trans1.AddNail(uppaal.Location{-68, -34})
 
 	// Idle, Adding:
-	trans2 := proc.AddTrans(idle, adding)
+	trans2 := proc.AddTransition(idle, adding)
 	trans2.SetGuard("wait_group_waiters[i] == 0")
 	trans2.SetGuardLocation(uppaal.Location{38, -84})
 	trans2.SetSync("add[i]?")
@@ -78,34 +78,34 @@ func (t *translator) addWaitGroupProcess() {
 	trans2.AddNail(uppaal.Location{34, -68})
 	trans2.AddNail(uppaal.Location{204, -68})
 
-	trans3 := proc.AddTrans(adding, idle)
+	trans3 := proc.AddTransition(adding, idle)
 	trans3.SetGuard("wait_group_counter[i] == 0")
 	trans3.SetGuardLocation(uppaal.Location{38, 52})
 	trans3.AddNail(uppaal.Location{204, 68})
 	trans3.AddNail(uppaal.Location{34, 68})
 
 	// Adding, Active:
-	trans4 := proc.AddTrans(adding, active)
+	trans4 := proc.AddTransition(adding, active)
 	trans4.SetGuard("wait_group_counter[i] > 0")
 	trans4.SetGuardLocation(uppaal.Location{276, -84})
 	trans4.AddNail(uppaal.Location{272, -68})
 	trans4.AddNail(uppaal.Location{408, -68})
 
-	trans5 := proc.AddTrans(active, adding)
+	trans5 := proc.AddTransition(active, adding)
 	trans5.SetSync("add[i]?")
 	trans5.SetSyncLocation(uppaal.Location{276, 68})
 	trans5.AddNail(uppaal.Location{408, 68})
 	trans5.AddNail(uppaal.Location{272, 68})
 
 	// Bad:
-	trans6 := proc.AddTrans(idle, bad)
+	trans6 := proc.AddTransition(idle, bad)
 	trans6.SetGuard("wait_group_waiters[i] > 0")
 	trans6.SetGuardLocation(uppaal.Location{38, -152})
 	trans6.SetSync("add[i]?")
 	trans6.SetSyncLocation(uppaal.Location{38, -136})
 	trans6.AddNail(uppaal.Location{0, -136})
 
-	trans7 := proc.AddTrans(adding, bad)
+	trans7 := proc.AddTransition(adding, bad)
 	trans7.SetGuard("wait_group_counter[i] < 0")
 	trans7.SetGuardLocation(uppaal.Location{242, -110})
 }
@@ -116,6 +116,8 @@ func (t *translator) addWaitGroupDeclarations() {
 	t.system.Declarations().AddArray("wait_group_waiters", t.waitGroupCount(), "int")
 	t.system.Declarations().AddArray("add", t.waitGroupCount(), "chan")
 	t.system.Declarations().AddArray("wait", t.waitGroupCount(), "chan")
+	t.system.Declarations().AddSpaceBetweenVariables()
+
 	t.system.Declarations().AddFunc(fmt.Sprintf(
 		`int make_wait_group() {
 	int wid;
@@ -129,7 +131,6 @@ func (t *translator) addWaitGroupDeclarations() {
 	wait_group_waiters[wid] = 0;
 	return wid;
 }`, t.waitGroupCount()))
-	t.system.Declarations().AddSpace()
 }
 
 func (t *translator) addWaitGroupProcessInstances() {
@@ -140,7 +141,7 @@ func (t *translator) addWaitGroupProcessInstances() {
 	d := fmt.Sprintf("%d", int(math.Log10(float64(c))+1))
 	for i := 0; i < t.waitGroupCount(); i++ {
 		instName := fmt.Sprintf("%s%0"+d+"d", t.waitGroupProcess.Name(), i)
-		inst := t.system.AddProcessInstance(t.waitGroupProcess.Name(), instName)
+		inst := t.system.AddProcessInstance(t.waitGroupProcess, instName)
 		inst.AddParameter(fmt.Sprintf("%d", i))
 	}
 }

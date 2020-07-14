@@ -34,7 +34,7 @@ func (t *translator) addChannelProcess() {
 	proc.AddParameter(fmt.Sprintf("int[0, %d] i", t.channelCount()-1))
 
 	// Queries:
-	proc.AddQuery(uppaal.MakeQuery(
+	proc.AddQuery(uppaal.NewQuery(
 		"A[] (not out_of_resources) imply (not $.bad)",
 		"check Channel.bad state unreachable", "",
 		uppaal.ChannelSafety))
@@ -87,27 +87,27 @@ func (t *translator) addChannelProcess() {
 
 	// Transitions:
 	// Open, Sender
-	trans1 := proc.AddTrans(idle, newSender)
+	trans1 := proc.AddTransition(idle, newSender)
 	trans1.SetSync("sender_trigger[i]?")
 	trans1.SetSyncLocation(uppaal.Location{129, 306})
 
-	trans2 := proc.AddTrans(newSender, idle)
+	trans2 := proc.AddTransition(newSender, idle)
 	trans2.SetGuard("chan_counter[i] > \nchan_buffer[i]")
 	trans2.AddNail(uppaal.Location{136, 238})
 	trans2.AddNail(uppaal.Location{238, 238})
 	trans2.SetGuardLocation(uppaal.Location{129, 206})
 
-	trans3 := proc.AddTrans(newSender, confirmingA)
+	trans3 := proc.AddTransition(newSender, confirmingA)
 	trans3.SetGuard("chan_counter[i] <= \nchan_buffer[i]")
 	trans3.SetSync("sender_confirm[i]!")
 	trans3.SetGuardLocation(uppaal.Location{-42, 342})
 	trans3.SetSyncLocation(uppaal.Location{-42, 374})
 
-	trans4 := proc.AddTrans(confirmingA, idle)
+	trans4 := proc.AddTransition(confirmingA, idle)
 	trans4.SetGuard("chan_counter[i] > 0")
 	trans4.SetGuardLocation(uppaal.Location{107, 358})
 
-	trans5 := proc.AddTrans(confirmingA, idle)
+	trans5 := proc.AddTransition(confirmingA, idle)
 	trans5.SetGuard("chan_counter[i] <= 0")
 	trans5.SetSync("receiver_confirm[i]!")
 	trans5.AddNail(uppaal.Location{204, 442})
@@ -115,27 +115,27 @@ func (t *translator) addChannelProcess() {
 	trans5.SetSyncLocation(uppaal.Location{118, 458})
 
 	// Open, Receiver
-	trans6 := proc.AddTrans(idle, newReceiver)
+	trans6 := proc.AddTransition(idle, newReceiver)
 	trans6.SetSync("receiver_trigger[i]?")
 	trans6.SetSyncLocation(uppaal.Location{298, 306})
 
-	trans7 := proc.AddTrans(newReceiver, idle)
+	trans7 := proc.AddTransition(newReceiver, idle)
 	trans7.SetGuard("chan_counter[i] < 0")
 	trans7.AddNail(uppaal.Location{408, 238})
 	trans7.AddNail(uppaal.Location{306, 238})
 	trans7.SetGuardLocation(uppaal.Location{298, 222})
 
-	trans8 := proc.AddTrans(newReceiver, confirmingB)
+	trans8 := proc.AddTransition(newReceiver, confirmingB)
 	trans8.SetGuard("chan_counter[i] >= 0")
 	trans8.SetSync("receiver_confirm[i]!")
 	trans8.SetGuardLocation(uppaal.Location{446, 358})
 	trans8.SetSyncLocation(uppaal.Location{446, 374})
 
-	trans9 := proc.AddTrans(confirmingB, idle)
+	trans9 := proc.AddTransition(confirmingB, idle)
 	trans9.SetGuard("chan_counter[i] < \nchan_buffer[i]")
 	trans9.SetGuardLocation(uppaal.Location{306, 342})
 
-	trans10 := proc.AddTrans(confirmingB, idle)
+	trans10 := proc.AddTransition(confirmingB, idle)
 	trans10.SetGuard("chan_counter[i] >= \nchan_buffer[i]")
 	trans10.SetSync("sender_confirm[i]!")
 	trans10.AddNail(uppaal.Location{340, 442})
@@ -143,33 +143,33 @@ func (t *translator) addChannelProcess() {
 	trans10.SetSyncLocation(uppaal.Location{306, 474})
 
 	// Closing
-	trans11 := proc.AddTrans(idle, closing)
+	trans11 := proc.AddTransition(idle, closing)
 	trans11.SetGuard("chan_counter[i] <= chan_buffer[i]")
 	trans11.SetSync("close[i]?")
-	trans11.AddUpdate("chan_buffer[i] = -1")
+	trans11.AddUpdate("chan_buffer[i] = -1", true)
 	trans11.SetGuardLocation(uppaal.Location{276, 126})
 	trans11.SetSyncLocation(uppaal.Location{276, 142})
 	trans11.SetUpdateLocation(uppaal.Location{276, 158})
 
-	trans12 := proc.AddTrans(closing, closing)
+	trans12 := proc.AddTransition(closing, closing)
 	trans12.SetGuard("chan_counter[i] < 0")
 	trans12.SetSync("receiver_confirm[i]!")
-	trans12.AddUpdate("chan_counter[i]++")
+	trans12.AddUpdate("chan_counter[i]++", true)
 	trans12.AddNail(uppaal.Location{340, 51})
 	trans12.AddNail(uppaal.Location{340, 119})
 	trans12.SetGuardLocation(uppaal.Location{344, 68})
 	trans12.SetSyncLocation(uppaal.Location{344, 84})
 	trans12.SetUpdateLocation(uppaal.Location{344, 100})
 
-	trans13 := proc.AddTrans(closing, closed)
+	trans13 := proc.AddTransition(closing, closed)
 	trans13.SetGuard("chan_counter[i] >= 0")
 	trans13.SetGuardLocation(uppaal.Location{276, -2})
 	trans13.SetUpdateLocation(uppaal.Location{276, 14})
 
-	trans14 := proc.AddTrans(idle, bad)
+	trans14 := proc.AddTransition(idle, bad)
 	trans14.SetGuard("chan_counter[i] > \nchan_buffer[i]")
 	trans14.SetSync("close[i]?")
-	trans14.AddUpdate("chan_buffer[i] = -1")
+	trans14.AddUpdate("chan_buffer[i] = -1", true)
 	trans14.AddNail(uppaal.Location{272, 170})
 	trans14.AddNail(uppaal.Location{102, 170})
 	trans14.SetGuardLocation(uppaal.Location{106, 10})
@@ -177,24 +177,24 @@ func (t *translator) addChannelProcess() {
 	trans14.SetUpdateLocation(uppaal.Location{106, 58})
 
 	// Closed
-	trans15 := proc.AddTrans(closed, confirmingClosed)
+	trans15 := proc.AddTransition(closed, confirmingClosed)
 	trans15.SetSync("receiver_trigger[i]?")
 	trans15.SetSyncLocation(uppaal.Location{298, -34})
 
-	trans16 := proc.AddTrans(confirmingClosed, closed)
+	trans16 := proc.AddTransition(confirmingClosed, closed)
 	trans16.SetSync("receiver_confirm[i]!")
-	trans16.AddUpdate("chan_counter[i] = (chan_counter[i] >= 0) ? chan_counter[i] : 0")
+	trans16.AddUpdate("chan_counter[i] = (chan_counter[i] >= 0) ? chan_counter[i] : 0", true)
 	trans16.AddNail(uppaal.Location{408, -102})
 	trans16.AddNail(uppaal.Location{306, -102})
 	trans16.SetSyncLocation(uppaal.Location{298, -118})
 	trans16.SetUpdateLocation(uppaal.Location{298, -102})
 
-	trans17 := proc.AddTrans(closed, bad)
+	trans17 := proc.AddTransition(closed, bad)
 	trans17.SetSync("sender_trigger[i]?")
 	trans17.AddNail(uppaal.Location{136, -34})
 	trans17.SetSyncLocation(uppaal.Location{129, -34})
 
-	trans18 := proc.AddTrans(closed, bad)
+	trans18 := proc.AddTransition(closed, bad)
 	trans18.SetSync("close[i]?")
 	trans18.AddNail(uppaal.Location{238, -102})
 	trans18.SetSyncLocation(uppaal.Location{129, -118})
@@ -209,6 +209,8 @@ func (t *translator) addChannelDeclarations() {
 	t.system.Declarations().AddArray("receiver_trigger", t.channelCount(), "chan")
 	t.system.Declarations().AddArray("receiver_confirm", t.channelCount(), "chan")
 	t.system.Declarations().AddArray("close", t.channelCount(), "chan")
+	t.system.Declarations().AddSpaceBetweenVariables()
+
 	t.system.Declarations().AddFunc(fmt.Sprintf(
 		`int make_chan(int buffer) {
 	int cid;
@@ -222,7 +224,6 @@ func (t *translator) addChannelDeclarations() {
 	chan_buffer[cid] = buffer;
 	return cid;
 }`, t.channelCount()))
-	t.system.Declarations().AddSpace()
 }
 
 func (t *translator) addChannelProcessInstances() {
@@ -233,7 +234,7 @@ func (t *translator) addChannelProcessInstances() {
 	d := fmt.Sprintf("%d", int(math.Log10(float64(c))+1))
 	for i := 0; i < t.channelCount(); i++ {
 		instName := fmt.Sprintf("%s%0"+d+"d", t.channelProcess.Name(), i)
-		inst := t.system.AddProcessInstance(t.channelProcess.Name(), instName)
+		inst := t.system.AddProcessInstance(t.channelProcess, instName)
 		inst.AddParameter(fmt.Sprintf("%d", i))
 	}
 }

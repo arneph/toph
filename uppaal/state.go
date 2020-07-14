@@ -16,11 +16,12 @@ const (
 
 // State represents a state that is part of a process.
 type State struct {
-	name string
-
+	name      string
+	isInitial bool
 	stateType StateType
+	comment   string
 
-	comment string
+	transitions []*Trans
 
 	// All locations are absolute. AsGUI() translates to relative coordinates.
 	location        Location
@@ -31,11 +32,10 @@ type State struct {
 func newState(name string) *State {
 	s := new(State)
 	s.name = name
-
+	s.isInitial = false
 	s.stateType = Normal
-
 	s.comment = ""
-
+	s.transitions = nil
 	s.location = Location{}
 	s.nameLocation = Location{}
 	s.commentLocation = Location{}
@@ -46,6 +46,11 @@ func newState(name string) *State {
 // Name returns the name of the state.
 func (s *State) Name() string {
 	return s.name
+}
+
+// IsInitialState returns if the state is the initial state within its process.
+func (s *State) IsInitialState() bool {
+	return s.isInitial
 }
 
 // Type returns the type of the state.
@@ -66,6 +71,33 @@ func (s *State) Comment() string {
 // SetComment sets the comment for the state.
 func (s *State) SetComment(comment string) {
 	s.comment = comment
+}
+
+// Transitions returns all transitions beginning and/or ending at the state.
+func (s *State) Transitions() []*Trans {
+	return s.transitions
+}
+
+// IncomingTransitions returns all transitions ending in the state.
+func (s *State) IncomingTransitions() []*Trans {
+	var incomingTransitions []*Trans
+	for _, t := range s.transitions {
+		if t.end == s {
+			incomingTransitions = append(incomingTransitions, t)
+		}
+	}
+	return incomingTransitions
+}
+
+// OutgoingTransitions returns all transitions starting from the state.
+func (s *State) OutgoingTransitions() []*Trans {
+	var outgoingTransitions []*Trans
+	for _, t := range s.transitions {
+		if t.start == s {
+			outgoingTransitions = append(outgoingTransitions, t)
+		}
+	}
+	return outgoingTransitions
 }
 
 // Location returns the location of the state.

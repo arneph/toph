@@ -40,8 +40,8 @@ func (t *translator) translateIfStmt(stmt *ir.IfStmt, ctx *context) {
 	ifExit.SetLocationAndResetNameAndCommentLocation(
 		uppaal.Location{ctx.currentState.Location()[0], maxY + 136})
 
-	ctx.proc.AddTrans(ctx.currentState, ifEnter)
-	ctx.proc.AddTrans(ctx.currentState, elseEnter)
+	ctx.proc.AddTransition(ctx.currentState, ifEnter)
+	ctx.proc.AddTransition(ctx.currentState, elseEnter)
 
 	ctx.currentState = ifExit
 	ctx.addLocation(ifEnter.Location())
@@ -116,10 +116,10 @@ func (t *translator) translateSwitchStmt(stmt *ir.SwitchStmt, ctx *context) {
 	defaultCaseIndex := -1
 	for i, switchCase := range stmt.Cases() {
 		if !switchCase.HasFallthrough() {
-			trans := ctx.proc.AddTrans(caseBodyEnds[i], exitSwitch)
+			trans := ctx.proc.AddTransition(caseBodyEnds[i], exitSwitch)
 			trans.AddNail(caseBodyEnds[i].Location().Add(uppaal.Location{-136, 0}))
 		} else {
-			trans := ctx.proc.AddTrans(caseBodyEnds[i], caseBodyStarts[i+1])
+			trans := ctx.proc.AddTransition(caseBodyEnds[i], caseBodyStarts[i+1])
 			trans.AddNail(caseBodyEnds[i].Location().Add(uppaal.Location{-34, 0}))
 			trans.AddNail(caseBodyStarts[i+1].Location().Add(uppaal.Location{-34, 0}))
 		}
@@ -129,19 +129,19 @@ func (t *translator) translateSwitchStmt(stmt *ir.SwitchStmt, ctx *context) {
 		}
 
 		for j := range switchCase.Conds() {
-			trans1 := ctx.proc.AddTrans(lastCondState, caseCondStarts[i][j])
+			trans1 := ctx.proc.AddTransition(lastCondState, caseCondStarts[i][j])
 			if i > 0 && j == 0 {
 				trans1.AddNail(lastCondState.Location().Add(uppaal.Location{-102, 0}))
 				trans1.AddNail(caseCondStarts[i][j].Location().Add(uppaal.Location{-102, 0}))
 			}
-			trans2 := ctx.proc.AddTrans(caseCondEnds[i][j], caseBodyStarts[i])
+			trans2 := ctx.proc.AddTransition(caseCondEnds[i][j], caseBodyStarts[i])
 			trans2.AddNail(caseCondEnds[i][j].Location().Add(uppaal.Location{-68, 0}))
 			trans2.AddNail(caseBodyStarts[i].Location().Add(uppaal.Location{-68, 0}))
 			lastCondState = caseCondEnds[i][j]
 		}
 	}
 	if defaultCaseIndex != -1 {
-		trans := ctx.proc.AddTrans(lastCondState, caseBodyStarts[defaultCaseIndex])
+		trans := ctx.proc.AddTransition(lastCondState, caseBodyStarts[defaultCaseIndex])
 		if lastCondState != ctx.currentState {
 			x := 68
 			if defaultCaseIndex < len(stmt.Cases())-1 {
@@ -151,7 +151,7 @@ func (t *translator) translateSwitchStmt(stmt *ir.SwitchStmt, ctx *context) {
 			trans.AddNail(caseBodyStarts[defaultCaseIndex].Location().Add(uppaal.Location{-x, 0}))
 		}
 	} else {
-		trans := ctx.proc.AddTrans(lastCondState, exitSwitch)
+		trans := ctx.proc.AddTransition(lastCondState, exitSwitch)
 		if lastCondState != ctx.currentState {
 			trans.AddNail(lastCondState.Location().Add(uppaal.Location{-136, 0}))
 		}
@@ -204,21 +204,21 @@ func (t *translator) translateForStmt(stmt *ir.ForStmt, ctx *context) {
 		ctx.proc.Declarations().AddVariable(counterVar, "int", "0")
 	}
 
-	trans1 := ctx.proc.AddTrans(ctx.currentState, condEnter)
+	trans1 := ctx.proc.AddTransition(ctx.currentState, condEnter)
 	trans1.AddNail(ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	if stmt.HasMinIterations() || stmt.HasMaxIterations() {
-		trans1.AddUpdate(counterVar + " = 0")
+		trans1.AddUpdate(counterVar+" = 0", false)
 		trans1.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 60}))
 	}
 
-	trans2 := ctx.proc.AddTrans(condExit, bodyEnter)
+	trans2 := ctx.proc.AddTransition(condExit, bodyEnter)
 	if stmt.HasMaxIterations() {
 		trans2.SetGuard(fmt.Sprintf("%s < %d", counterVar, stmt.MaxIterations()))
 		trans2.SetGuardLocation(condExit.Location().Add(uppaal.Location{4, 60}))
 	}
 
 	if !stmt.IsInfinite() {
-		trans3 := ctx.proc.AddTrans(condExit, loopExit)
+		trans3 := ctx.proc.AddTransition(condExit, loopExit)
 		if stmt.HasMinIterations() {
 			trans3.SetGuard(fmt.Sprintf("%s >= %d", counterVar, stmt.MinIterations()))
 			trans3.SetGuardLocation(condExit.Location().Add(uppaal.Location{-132, 60}))
@@ -227,9 +227,9 @@ func (t *translator) translateForStmt(stmt *ir.ForStmt, ctx *context) {
 		trans3.AddNail(condExit.Location().Add(uppaal.Location{-136, 0}))
 	}
 
-	trans4 := ctx.proc.AddTrans(bodyExit, condEnter)
+	trans4 := ctx.proc.AddTransition(bodyExit, condEnter)
 	if stmt.HasMaxIterations() {
-		trans4.AddUpdate(counterVar + "++")
+		trans4.AddUpdate(counterVar+"++", false)
 		trans4.SetUpdateLocation(condEnter.Location().Add(uppaal.Location{-64, 60}))
 	}
 	trans4.AddNail(bodyExit.Location().Add(uppaal.Location{-68, 0}))
@@ -245,7 +245,7 @@ func (t *translator) translateForStmt(stmt *ir.ForStmt, ctx *context) {
 }
 
 func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
-	handle := t.translateLValue(stmt.Channel(), ctx)
+	handle, usesGlobals := t.translateLValue(stmt.Channel(), ctx)
 	name := stmt.Channel().Handle()
 	body := stmt.Body()
 
@@ -257,10 +257,10 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	receiving.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	receiving.SetLocationAndResetNameAndCommentLocation(
 		rangeEnter.Location().Add(uppaal.Location{0, 136}))
-	trigger := ctx.proc.AddTrans(rangeEnter, receiving)
+	trigger := ctx.proc.AddTransition(rangeEnter, receiving)
 	trigger.SetSync("receiver_trigger[" + handle + "]!")
-	trigger.AddUpdate("chan_counter[" + handle + "]--")
-	trigger.AddUpdate("ok = chan_counter[" + handle + "] >= 0")
+	trigger.AddUpdate("chan_counter["+handle+"]--", usesGlobals)
+	trigger.AddUpdate("ok = chan_counter["+handle+"] >= 0", usesGlobals)
 	trigger.SetSyncLocation(rangeEnter.Location().Add(uppaal.Location{4, 48}))
 	trigger.SetUpdateLocation(rangeEnter.Location().Add(uppaal.Location{4, 64}))
 	received := ctx.proc.AddState("range_received_"+name+"_", uppaal.Renaming)
@@ -268,12 +268,12 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	received.SetType(uppaal.Committed)
 	received.SetLocationAndResetNameAndCommentLocation(
 		receiving.Location().Add(uppaal.Location{0, 136}))
-	confirm := ctx.proc.AddTrans(receiving, received)
+	confirm := ctx.proc.AddTransition(receiving, received)
 	confirm.SetSync("receiver_confirm[" + handle + "]?")
 	confirm.SetSyncLocation(
 		receiving.Location().Add(uppaal.Location{4, 60}))
 
-	ctx.proc.AddQuery(uppaal.MakeQuery(
+	ctx.proc.AddQuery(uppaal.NewQuery(
 		"A[] (not out_of_resources) imply (not (deadlock and $."+receiving.Name()+"))",
 		"check deadlock with pending channel operation unreachable",
 		t.program.FileSet().Position(stmt.Pos()).String(),
@@ -297,18 +297,18 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	loopExit.SetLocationAndResetNameAndCommentLocation(
 		uppaal.Location{ctx.currentState.Location()[0], bodyExitY})
 
-	trans1 := ctx.proc.AddTrans(ctx.currentState, rangeEnter)
+	trans1 := ctx.proc.AddTransition(ctx.currentState, rangeEnter)
 	trans1.AddNail(ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-	trans2 := ctx.proc.AddTrans(received, bodyEnter)
+	trans2 := ctx.proc.AddTransition(received, bodyEnter)
 	trans2.SetGuard("chan_buffer[" + handle + "] >= 0 || ok")
 	trans2.SetGuardLocation(
 		received.Location().Add(uppaal.Location{4, 48}))
-	trans3 := ctx.proc.AddTrans(received, loopExit)
+	trans3 := ctx.proc.AddTransition(received, loopExit)
 	trans3.SetGuard("chan_buffer[" + handle + "] < 0 && !ok")
 	trans3.AddNail(received.Location().Add(uppaal.Location{-136, 0}))
 	trans3.SetGuardLocation(
 		received.Location().Add(uppaal.Location{-132, 64}))
-	trans4 := ctx.proc.AddTrans(bodyExit, rangeEnter)
+	trans4 := ctx.proc.AddTransition(bodyExit, rangeEnter)
 	trans4.AddNail(bodyExit.Location().Add(uppaal.Location{-68, 0}))
 	trans4.AddNail(rangeEnter.Location().Add(uppaal.Location{-68, 0}))
 
@@ -337,6 +337,6 @@ func (t *translator) translateBranchStmt(stmt *ir.BranchStmt, ctx *context) {
 		panic(fmt.Errorf("did not find target state for branch stmt: %v", stmt))
 	}
 
-	ctx.proc.AddTrans(ctx.currentState, target)
+	ctx.proc.AddTransition(ctx.currentState, target)
 	ctx.currentState = target
 }

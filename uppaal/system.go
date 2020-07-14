@@ -16,7 +16,7 @@ type System struct {
 
 	progressMeasures []string
 
-	queries []Query
+	queries []*Query
 }
 
 // NewSystem creates a new system.
@@ -34,8 +34,17 @@ func (s *System) Declarations() *Declarations {
 	return &s.decls
 }
 
-// AddProcess adds a process with the given name (after possible renaming to
-// avoid naming conflicts) to the system and returns the new process.
+// Processes returns all processes in the system.
+func (s *System) Processes() []*Process {
+	processes := make([]*Process, 0, len(s.processes))
+	for _, proc := range s.processes {
+		processes = append(processes, proc)
+	}
+	return processes
+}
+
+// AddProcess adds a process with the given name to the system and returns the
+// new process.
 func (s *System) AddProcess(name string) *Process {
 	if _, ok := s.processes[name]; ok {
 		panic("naming collision when adding process")
@@ -49,20 +58,34 @@ func (s *System) AddProcess(name string) *Process {
 	return proc
 }
 
+// ProcessInstances returns all processes in the system.
+func (s *System) ProcessInstances() []*ProcessInstance {
+	instances := make([]*ProcessInstance, 0, len(s.instances))
+	for _, inst := range s.instances {
+		instances = append(instances, inst)
+	}
+	return instances
+}
+
 // AddProcessInstance adds an instance of a process with the given name (after
 // possible renaming to avoid naming conflicts) to the system and returns the
 // new instance.
-func (s *System) AddProcessInstance(procName, instName string) *ProcessInstance {
-	if _, ok := s.instances[instName]; ok {
+func (s *System) AddProcessInstance(proc *Process, name string) *ProcessInstance {
+	if _, ok := s.instances[name]; ok {
 		panic("naming collision when adding process instance")
 	}
-	if _, ok := s.processes[procName]; !ok {
+	if _, ok := s.processes[proc.Name()]; !ok {
 		panic("tried to instantiate non-existent process")
 	}
 
-	inst := newProcessInstance(procName, instName)
-	s.instances[instName] = inst
+	inst := newProcessInstance(proc, name)
+	s.instances[name] = inst
 	return inst
+}
+
+// ProgressMeasures returns all progress measures of the system.
+func (s *System) ProgressMeasures() []string {
+	return s.progressMeasures
 }
 
 // AddProgressMeasure adds a progress measure expression to the system. The
@@ -71,8 +94,13 @@ func (s *System) AddProgressMeasure(measure string) {
 	s.progressMeasures = append(s.progressMeasures, measure)
 }
 
+// Queries returns all system queries (excluding process specific queries).
+func (s *System) Queries() []*Query {
+	return s.queries
+}
+
 // AddQuery adds a query to be associated with the system.
-func (s *System) AddQuery(query Query) {
+func (s *System) AddQuery(query *Query) {
 	s.queries = append(s.queries, query)
 }
 
@@ -100,7 +128,7 @@ func (s *System) AsXTA() string {
 			} else {
 				str += ", "
 			}
-			str += inst.instName
+			str += inst.Name()
 		}
 		str += ";\n"
 	}
@@ -134,10 +162,10 @@ func (s *System) AsQ() string {
 
 	sortedInstances := s.sortedInstances()
 	for _, inst := range sortedInstances {
-		proc := s.processes[inst.procName]
+		proc := s.processes[inst.Process().Name()]
 
 		for _, procQuery := range proc.queries {
-			instQuery := procQuery.Substitute(inst.instName)
+			instQuery := procQuery.Substitute(inst.Name())
 			str += instQuery.AsQ()
 		}
 	}
@@ -179,7 +207,7 @@ func (s *System) AsXML() string {
 			} else {
 				b.WriteString(", ")
 			}
-			b.WriteString(inst.instName)
+			b.WriteString(inst.Name())
 		}
 		b.WriteString(";\n")
 	}
@@ -194,19 +222,13 @@ func (s *System) AsXML() string {
 
 	b.WriteString("    <queries>\n")
 	for _, query := range s.queries {
-		xml := query.AsXML()
-		b.WriteString("        ")
-		b.WriteString(strings.ReplaceAll(xml, "\n<", "\n        <"))
+		query.asXML(&b, "        ")
 		b.WriteString("\n")
 	}
 	for _, inst := range sortedInstances {
-		proc := s.processes[inst.procName]
-
-		for _, procQuery := range proc.queries {
-			instQuery := procQuery.Substitute(inst.instName)
-			xml := instQuery.AsXML()
-			b.WriteString("        ")
-			b.WriteString(strings.ReplaceAll(xml, "\n<", "\n        <"))
+		for _, procQuery := range inst.Process().Queries() {
+			instQuery := procQuery.Substitute(inst.Name())
+			instQuery.asXML(&b, "        ")
 			b.WriteString("\n")
 		}
 	}
@@ -233,7 +255,7 @@ func (s *System) sortedInstances() []*ProcessInstance {
 		sortedInstances = append(sortedInstances, inst)
 	}
 	sort.Slice(sortedInstances, func(i, j int) bool {
-		return sortedInstances[i].instName < sortedInstances[j].instName
+		return sortedInstances[i].Name() < sortedInstances[j].Name()
 	})
 	return sortedInstances
 }

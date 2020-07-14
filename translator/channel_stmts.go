@@ -8,7 +8,7 @@ import (
 )
 
 func (t *translator) translateMakeChanStmt(stmt *ir.MakeChanStmt, ctx *context) {
-	handle := t.translateLValue(stmt.Channel(), ctx)
+	handle, usesGlobals := t.translateLValue(stmt.Channel(), ctx)
 	name := stmt.Channel().Name()
 	b := stmt.BufferSize()
 
@@ -16,8 +16,8 @@ func (t *translator) translateMakeChanStmt(stmt *ir.MakeChanStmt, ctx *context) 
 	made.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	made.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-	make := ctx.proc.AddTrans(ctx.currentState, made)
-	make.AddUpdate(fmt.Sprintf("%s = make_chan(%d)", handle, b))
+	make := ctx.proc.AddTransition(ctx.currentState, made)
+	make.AddUpdate(fmt.Sprintf("%s = make_chan(%d)", handle, b), usesGlobals)
 	make.SetUpdateLocation(
 		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
 
@@ -26,7 +26,7 @@ func (t *translator) translateMakeChanStmt(stmt *ir.MakeChanStmt, ctx *context) 
 }
 
 func (t *translator) translateChanCommOpStmt(stmt *ir.ChanCommOpStmt, ctx *context) {
-	handle := t.translateLValue(stmt.Channel(), ctx)
+	handle, _ := t.translateLValue(stmt.Channel(), ctx)
 	name := stmt.Channel().Name()
 	var pendingName, confirmedName, triggerChan, confirmChan, counterOp string
 
@@ -52,9 +52,9 @@ func (t *translator) translateChanCommOpStmt(stmt *ir.ChanCommOpStmt, ctx *conte
 	pending.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
-	trigger := ctx.proc.AddTrans(ctx.currentState, pending)
+	trigger := ctx.proc.AddTransition(ctx.currentState, pending)
 	trigger.SetSync(triggerChan + "[" + handle + "]!")
-	trigger.AddUpdate("chan_counter[" + handle + "]" + counterOp)
+	trigger.AddUpdate("chan_counter["+handle+"]"+counterOp, true)
 	trigger.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
 	trigger.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
 
@@ -63,12 +63,12 @@ func (t *translator) translateChanCommOpStmt(stmt *ir.ChanCommOpStmt, ctx *conte
 	confirmed.SetLocationAndResetNameAndCommentLocation(
 		pending.Location().Add(uppaal.Location{0, 136}))
 
-	confirm := ctx.proc.AddTrans(pending, confirmed)
+	confirm := ctx.proc.AddTransition(pending, confirmed)
 	confirm.SetSync(confirmChan + "[" + handle + "]?")
 	confirm.SetSyncLocation(
 		pending.Location().Add(uppaal.Location{4, 60}))
 
-	ctx.proc.AddQuery(uppaal.MakeQuery(
+	ctx.proc.AddQuery(uppaal.NewQuery(
 		"A[] (not out_of_resources) imply (not (deadlock and $."+pending.Name()+"))",
 		"check deadlock with pending channel operation unreachable",
 		t.program.FileSet().Position(stmt.Pos()).String(),
@@ -80,7 +80,7 @@ func (t *translator) translateChanCommOpStmt(stmt *ir.ChanCommOpStmt, ctx *conte
 }
 
 func (t *translator) translateCloseChanStmt(stmt *ir.CloseChanStmt, ctx *context) {
-	handle := t.translateLValue(stmt.Channel(), ctx)
+	handle, _ := t.translateLValue(stmt.Channel(), ctx)
 	name := stmt.Channel().Name()
 
 	closed := ctx.proc.AddState("closed_"+name+"_", uppaal.Renaming)
@@ -88,7 +88,7 @@ func (t *translator) translateCloseChanStmt(stmt *ir.CloseChanStmt, ctx *context
 	closed.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
-	close := ctx.proc.AddTrans(ctx.currentState, closed)
+	close := ctx.proc.AddTransition(ctx.currentState, closed)
 	close.SetSync("close[" + handle + "]!")
 	close.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 60}))
 
@@ -106,7 +106,7 @@ type selectCaseInfo struct {
 
 func (t *translator) infoForSelectCase(selectCase *ir.SelectCase, ctx *context) selectCaseInfo {
 	var info selectCaseInfo
-	handle := t.translateLValue(selectCase.OpStmt().Channel(), ctx)
+	handle, _ := t.translateLValue(selectCase.OpStmt().Channel(), ctx)
 
 	var rangeGuard string
 	switch selectCase.OpStmt().Op() {
@@ -170,7 +170,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		pass2.SetLocationAndResetNameAndCommentLocation(
 			ctx.currentState.Location().Add(uppaal.Location{0, 272}))
 
-		ctx.proc.AddQuery(uppaal.MakeQuery(
+		ctx.proc.AddQuery(uppaal.NewQuery(
 			"A[] (not out_of_resources) imply (not (deadlock and $."+pass2.Name()+"))",
 			"check deadlock with blocked select statement unreachable",
 			t.program.FileSet().Position(stmt.Pos()).String(),
@@ -195,13 +195,13 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 
 		// Add queries for reachability:
 		if c.ReachReq() == ir.Reachable {
-			ctx.proc.AddQuery(uppaal.MakeQuery(
+			ctx.proc.AddQuery(uppaal.NewQuery(
 				"E<> (not out_of_resources) and $."+caseEnter.Name(),
 				"check reachable: "+ctx.proc.Name()+"."+caseEnter.Name(),
 				t.program.FileSet().Position(c.Pos()).String(),
 				uppaal.ReachabilityRequirements))
 		} else if c.ReachReq() == ir.Unreachable {
-			ctx.proc.AddQuery(uppaal.MakeQuery(
+			ctx.proc.AddQuery(uppaal.NewQuery(
 				"A[] (not out_of_resources) imply (not $."+caseEnter.Name()+")",
 				"check unreachable: "+ctx.proc.Name()+"."+caseEnter.Name(),
 				t.program.FileSet().Position(c.Pos()).String(),
@@ -247,10 +247,10 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 	pass1.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
-	enteringPass1 := ctx.proc.AddTrans(ctx.currentState, pass1)
+	enteringPass1 := ctx.proc.AddTransition(ctx.currentState, pass1)
 	// Update all counters when entering pass1:
 	for i := range stmt.Cases() {
-		enteringPass1.AddUpdate(caseInfos[i].counterForwardUpdate)
+		enteringPass1.AddUpdate(caseInfos[i].counterForwardUpdate, true)
 	}
 	enteringPass1.SetUpdateLocation(
 		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
@@ -262,7 +262,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		triggeredCase.SetLocationAndResetNameAndCommentLocation(
 			uppaal.Location{caseXs[i], ctx.currentState.Location()[1] + 272})
 
-		triggeringCase := ctx.proc.AddTrans(pass1, triggeredCase)
+		triggeringCase := ctx.proc.AddTransition(pass1, triggeredCase)
 		triggeringCase.SetGuard(caseInfos[i].possibleGuard)
 		triggeringCase.SetGuardLocation(
 			triggeredCase.Location().Sub(uppaal.Location{
@@ -272,7 +272,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 			triggeredCase.Location().Sub(uppaal.Location{
 				32 * (len(stmt.Cases()) - i), 32*(len(stmt.Cases())-i) - 16}))
 
-		enteringCase := ctx.proc.AddTrans(triggeredCase, caseEnters[i])
+		enteringCase := ctx.proc.AddTransition(triggeredCase, caseEnters[i])
 		enteringCase.SetSync(caseInfos[i].confirmChanSync)
 		enteringCase.SetSyncLocation(
 			caseEnters[i].Location().Sub(uppaal.Location{
@@ -280,7 +280,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		// Revert all other counters when entering case:
 		for j := range stmt.Cases() {
 			if i != j {
-				enteringCase.AddUpdate(caseInfos[j].counterReverseUpdate)
+				enteringCase.AddUpdate(caseInfos[j].counterReverseUpdate, true)
 			}
 		}
 		enteringCase.SetUpdateLocation(
@@ -288,7 +288,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 				-4, 32*(len(stmt.Cases())-i) - 16}))
 	}
 
-	exitingPass1Unsuccessful := ctx.proc.AddTrans(pass1, exitPass1Unsuccessful)
+	exitingPass1Unsuccessful := ctx.proc.AddTransition(pass1, exitPass1Unsuccessful)
 	exitingPass1Unsuccessful.SetGuard(nonePossibleGuard)
 	exitingPass1Unsuccessful.SetGuardLocation(
 		exitPass1Unsuccessful.Location().Sub(uppaal.Location{-4, len(stmt.Cases())*32 + 32}))
@@ -296,7 +296,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		defaultEnter := exitPass1Unsuccessful
 		// Revert all counters when entering default case:
 		for i := range stmt.Cases() {
-			exitingPass1Unsuccessful.AddUpdate(caseInfos[i].counterReverseUpdate)
+			exitingPass1Unsuccessful.AddUpdate(caseInfos[i].counterReverseUpdate, true)
 		}
 		exitingPass1Unsuccessful.SetUpdateLocation(
 			defaultEnter.Location().Sub(uppaal.Location{-4, len(stmt.Cases())*32 + 16}))
@@ -305,7 +305,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		// Wait for channel (pass 2):
 		pass2 := exitPass1Unsuccessful
 		for i := range stmt.Cases() {
-			enteringCase := ctx.proc.AddTrans(pass2, caseEnters[i])
+			enteringCase := ctx.proc.AddTransition(pass2, caseEnters[i])
 			enteringCase.SetSync(caseInfos[i].confirmChanSync)
 			enteringCase.SetSyncLocation(
 				caseEnters[i].Location().Sub(uppaal.Location{
@@ -313,7 +313,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 			// Revert all other counters when entering case:
 			for j := range stmt.Cases() {
 				if i != j {
-					enteringCase.AddUpdate(caseInfos[j].counterReverseUpdate)
+					enteringCase.AddUpdate(caseInfos[j].counterReverseUpdate, true)
 				}
 			}
 			enteringCase.SetUpdateLocation(

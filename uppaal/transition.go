@@ -4,13 +4,13 @@ import "fmt"
 
 // Trans represents a transition between two states in a process.
 type Trans struct {
-	start, end string
-	index      int
+	start, end *State
 
-	selectStmts string
-	guardExpr   string
-	syncStmt    string
-	updateStmts string
+	selectStmts       string
+	guardExpr         string
+	syncStmt          string
+	updateStmts       string
+	updateUsesGlobals bool
 
 	// All locations are absolute. AsUGI() translates to relative coordinates.
 	nails          []Location
@@ -20,21 +20,31 @@ type Trans struct {
 	updateLocation Location
 }
 
-func newTrans(start, end string, index int) *Trans {
+func newTrans(start, end *State) *Trans {
 	t := new(Trans)
 	t.start = start
 	t.end = end
-	t.index = index
 
 	t.selectStmts = ""
 	t.guardExpr = ""
 	t.syncStmt = ""
 	t.updateStmts = ""
+	t.updateUsesGlobals = false
 
 	t.nails = nil
 	t.selectLocation = Location{}
 
 	return t
+}
+
+// Start returns the start state of the transition.
+func (t *Trans) Start() *State {
+	return t.start
+}
+
+// End returns the end state of the transition.
+func (t *Trans) End() *State {
+	return t.end
 }
 
 // Select returns all select statements of the transition.
@@ -73,6 +83,22 @@ func (t *Trans) SetSync(syncStmt string) {
 // gets taken.
 func (t *Trans) Update() string {
 	return t.updateStmts
+}
+
+// AddUpdate adds an update statement to the transition that gets executed when
+// the transition gets taken.
+func (t *Trans) AddUpdate(updateStmt string, usesGlobals bool) {
+	if t.updateStmts == "" {
+		t.updateStmts = updateStmt
+	} else {
+		t.updateStmts += ", " + updateStmt
+	}
+	t.updateUsesGlobals = t.updateUsesGlobals || usesGlobals
+}
+
+// UpdateUsesGlobals returns if any update statement uses global variables.
+func (t *Trans) UpdateUsesGlobals() bool {
+	return t.updateUsesGlobals
 }
 
 // NailLocations returns the locations of all nails used by the transition in
@@ -126,19 +152,9 @@ func (t *Trans) SetUpdateLocation(updateLocation Location) {
 	t.updateLocation = updateLocation
 }
 
-// AddUpdate adds an update statement to the transition that gets executed when
-// the transition gets taken.
-func (t *Trans) AddUpdate(updateStmt string) {
-	if t.updateStmts == "" {
-		t.updateStmts = updateStmt
-	} else {
-		t.updateStmts += ", " + updateStmt
-	}
-}
-
 // AsXTA returns the xta (file format) representation of the transition.
 func (t *Trans) AsXTA() string {
-	s := t.start + " -> " + t.end
+	s := t.start.Name() + " -> " + t.end.Name()
 	s += " { "
 	if t.selectStmts != "" {
 		s += "select " + t.selectStmts + "; "
@@ -159,8 +175,8 @@ func (t *Trans) AsXTA() string {
 // AsUGI returns the ugi (file format) representation of the transition, given
 // the locations of the start and end state of the transition. The locations
 // are necessary to compute relative locations.
-func (t *Trans) AsUGI(startLocation, endLocation Location) string {
-	id := fmt.Sprintf("%s %s %d", t.start, t.end, t.index)
+func (t *Trans) AsUGI(startLocation, endLocation Location, index int) string {
+	id := fmt.Sprintf("%s %s %d", t.start.name, t.end.name, index)
 	var s string
 	for _, nail := range t.nails {
 		p := absoluteToTransRelative(nail, startLocation, endLocation)

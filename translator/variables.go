@@ -20,7 +20,7 @@ func (t *translator) translateGlobalScope() {
 		t.system.Declarations().AddVariable(v.Handle(), typ, initialValue)
 	}
 	if addedVar {
-		t.system.Declarations().AddSpace()
+		t.system.Declarations().AddSpaceBetweenVariables()
 	}
 }
 
@@ -47,10 +47,10 @@ func (t *translator) translateScope(ctx *context) {
 		}
 	}
 	if addedLocalVar {
-		ctx.proc.Declarations().AddSpace()
+		ctx.proc.Declarations().AddSpaceBetweenVariables()
 	}
 	if addedGlobalVar {
-		t.system.Declarations().AddSpace()
+		t.system.Declarations().AddSpaceBetweenVariables()
 	}
 }
 
@@ -74,9 +74,9 @@ func (t *translator) translateResult(f *ir.Func, index int, pidStr string) strin
 	return fmt.Sprintf("%s[%s]", name, pidStr)
 }
 
-func (t *translator) translateVariable(v *ir.Variable, ctx *context) string {
+func (t *translator) translateVariable(v *ir.Variable, ctx *context) (handle string, usesGlobals bool) {
 	if !v.IsCaptured() {
-		return v.Handle()
+		return v.Handle(), v.Scope() == t.program.Scope()
 	}
 
 	f := ctx.f
@@ -89,5 +89,5 @@ func (t *translator) translateVariable(v *ir.Variable, ctx *context) string {
 	if f == nil {
 		panic("attempted to translate variable not defined in function super scopes")
 	}
-	return v.Handle() + "[" + arg + "]"
+	return v.Handle() + "[" + arg + "]", true
 }

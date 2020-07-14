@@ -1,6 +1,7 @@
 package uppaal
 
 import (
+	"encoding/xml"
 	"fmt"
 	"strings"
 )
@@ -67,25 +68,48 @@ type Query struct {
 	category       QueryCategory
 }
 
-// MakeQuery returns a query with the given query string and comment.
-func MakeQuery(query, description, sourceLocation string, category QueryCategory) Query {
-	return Query{
-		query:          query,
-		description:    description,
-		sourceLocation: sourceLocation,
-		category:       category,
-	}
+// NewQuery returns a query with the given query string and comment.
+func NewQuery(query, description, sourceLocation string, category QueryCategory) *Query {
+	q := new(Query)
+	q.query = query
+	q.description = description
+	q.sourceLocation = sourceLocation
+	q.category = category
+
+	return q
+}
+
+// Query returns the actual query expression.
+func (q *Query) Query() string {
+	return q.query
+}
+
+// Description returns a more detailed description of the query.
+func (q *Query) Description() string {
+	return q.description
+}
+
+// SourceLocation returns the source location associated with the query, if
+// any.
+func (q *Query) SourceLocation() string {
+	return q.sourceLocation
+}
+
+// Category returns the QueryCategory of the query.
+func (q *Query) Category() QueryCategory {
+	return q.category
 }
 
 // Substitute returns a query with all placeholders in the query string
 // replaced by the given replacement.
-func (q Query) Substitute(replacement string) Query {
-	return Query{
-		query:          strings.ReplaceAll(q.query, "$", replacement),
-		description:    q.description,
-		sourceLocation: q.sourceLocation,
-		category:       q.category,
-	}
+func (q *Query) Substitute(replacement string) *Query {
+	s := new(Query)
+	s.query = strings.ReplaceAll(q.query, "$", replacement)
+	s.description = q.description
+	s.sourceLocation = q.sourceLocation
+	s.category = q.category
+
+	return s
 }
 
 // AsQ returns the q (file format) representation of the query.
@@ -102,16 +126,22 @@ func (q Query) AsQ() string {
 	return str
 }
 
-// AsXML returns the xml (file format) representation of the query.
-func (q Query) AsXML() string {
-	comment := "description: " + escapeForXML(q.description) + "\n"
+func (q Query) asXML(b *strings.Builder, indent string) {
+	b.WriteString(indent + "<query>\n")
+	b.WriteString(indent + "    <formula>")
+	xml.EscapeText(b, []byte(q.query))
+	b.WriteString("</formula>\n")
+	b.WriteString(indent + "    <comment>")
+	b.WriteString("description: ")
+	xml.EscapeText(b, []byte(q.description))
+	b.WriteString("\n")
 	if q.sourceLocation != "" {
-		comment += "location: " + escapeForXML(q.sourceLocation) + "\n"
+		b.WriteString("location: ")
+		xml.EscapeText(b, []byte(q.sourceLocation))
+		b.WriteString("\n")
 	}
-	comment += "category: " + q.category.String()
-	str := "<query>\n"
-	str += "    <formula>" + escapeForXML(q.query) + "</formula>\n"
-	str += "    <comment>" + comment + "</comment>\n"
-	str += "</query>\n"
-	return str
+	b.WriteString("category: ")
+	xml.EscapeText(b, []byte(q.category.String()))
+	b.WriteString("</comment>\n")
+	b.WriteString(indent + "</query>")
 }

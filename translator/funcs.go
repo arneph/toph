@@ -27,11 +27,11 @@ func (t translator) deferCount(f *ir.Func) int {
 }
 
 func (t *translator) addFuncProcess(f *ir.Func) {
-	name := f.Handle()
-	proc := t.system.AddProcess(name)
+	procName := f.Handle()
+	proc := t.system.AddProcess(procName)
 	t.funcToProcess[f] = proc
 	if f == t.program.InitFunc() {
-		t.system.AddProcessInstance(proc.Name(), name)
+		t.system.AddProcessInstance(proc, procName)
 	} else {
 		c := t.callCount(f)
 		if c > 1 {
@@ -39,8 +39,8 @@ func (t *translator) addFuncProcess(f *ir.Func) {
 		}
 		d := fmt.Sprintf("%d", int(math.Log10(float64(c))+1))
 		for i := 0; i < t.callCount(f); i++ {
-			instName := fmt.Sprintf("%s_%0"+d+"d", name, i)
-			inst := t.system.AddProcessInstance(name, instName)
+			instName := fmt.Sprintf("%s_%0"+d+"d", procName, i)
+			inst := t.system.AddProcessInstance(proc, instName)
 			inst.AddParameter(fmt.Sprintf("%d", i))
 		}
 	}
@@ -82,7 +82,7 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 		t.system.Declarations().AddArray(name, t.callCount(f), typStr)
 	}
 
-	t.system.Declarations().AddSpace()
+	t.system.Declarations().AddSpaceBetweenVariables()
 
 	if f.EnclosingFunc() == nil {
 		t.system.Declarations().AddFunc(
@@ -136,7 +136,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 	}
 	proc.Declarations().AddVariable("p", "int", "-1")
 	proc.Declarations().AddVariable("ok", "bool", "false")
-	proc.Declarations().AddSpace()
+	proc.Declarations().AddSpaceBetweenVariables()
 
 	starting := proc.AddState("starting", uppaal.NoRenaming)
 	starting.SetComment(t.program.FileSet().Position(f.Pos()).String())
@@ -158,7 +158,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 	if f == t.program.InitFunc() {
 		sourceLocation = ""
 	}
-	proc.AddQuery(uppaal.MakeQuery(
+	proc.AddQuery(uppaal.NewQuery(
 		"A[] (not out_of_resources) imply (not ($.ending and !$.is_sync and $.internal_panic))",
 		"check goroutine does not exit with panic",
 		sourceLocation,
@@ -194,74 +194,74 @@ func (t *translator) translateFunc(f *ir.Func) {
 
 	for _, arg := range f.Args() {
 		argStr := t.translateArg(arg, "pid")
-		varStr := t.translateVariable(arg, bodyCtx)
+		varStr, _ := t.translateVariable(arg, bodyCtx)
 		proc.Declarations().AddInitFuncStmt(
 			fmt.Sprintf("%s = %s;", varStr, argStr))
 	}
 
 	if deferCount > 0 {
-		reachEnd := proc.AddTrans(deferred, finalizing)
+		reachEnd := proc.AddTransition(deferred, finalizing)
 		reachEnd.SetGuard("deferred_count == 0")
 		reachEnd.SetGuardLocation(deferred.Location().Add(uppaal.Location{4, 226}))
 
 		t.translateDeferredCalls(proc, deferred, f)
 	}
 
-	finalize := proc.AddTrans(finalizing, ending)
+	finalize := proc.AddTransition(finalizing, ending)
 	if f != t.program.InitFunc() {
-		finalize.AddUpdate(fmt.Sprintf("external_panic_%s[pid] |= internal_panic", proc.Name()))
+		finalize.AddUpdate(fmt.Sprintf("external_panic_%s[pid] |= internal_panic", proc.Name()), false)
 		finalize.SetUpdateLocation(uppaal.Location{4, endingY + 60})
 	}
 
 	endingY += 136
 
 	if f == t.program.InitFunc() {
-		start := proc.AddTrans(starting, started)
+		start := proc.AddTransition(starting, started)
 		if t.system.Declarations().RequiresInitFunc() {
-			start.AddUpdate("global_initialize()")
+			start.AddUpdate("global_initialize()", true)
 		}
 		if proc.Declarations().RequiresInitFunc() {
-			start.AddUpdate("initialize()")
+			start.AddUpdate("initialize()", true)
 		}
 		start.SetUpdateLocation(uppaal.Location{0, 60})
 
-		end := proc.AddTrans(ending, ended)
+		end := proc.AddTransition(ending, ended)
 		end.SetGuard("active_go_routines == 1")
 		end.SetGuardLocation(uppaal.Location{4, endingY + 64})
 
 	} else {
-		startAsync := proc.AddTrans(starting, started)
+		startAsync := proc.AddTransition(starting, started)
 		startAsync.SetSync("async_" + proc.Name() + "[pid]?")
-		startAsync.AddUpdate("is_sync = false")
-		startAsync.AddUpdate("\nactive_go_routines++")
+		startAsync.AddUpdate("is_sync = false", false)
+		startAsync.AddUpdate("\nactive_go_routines++", true)
 		if proc.Declarations().RequiresInitFunc() {
-			startAsync.AddUpdate("\ninitialize()")
+			startAsync.AddUpdate("\ninitialize()", true)
 		}
 		startAsync.AddNail(uppaal.Location{-34, 34})
 		startAsync.AddNail(uppaal.Location{-34, 102})
 		startAsync.SetSyncLocation(uppaal.Location{-160, 48})
 		startAsync.SetUpdateLocation(uppaal.Location{-160, 64})
 
-		startSync := proc.AddTrans(starting, started)
+		startSync := proc.AddTransition(starting, started)
 		startSync.SetSync("sync_" + proc.Name() + "[pid]?")
-		startSync.AddUpdate("is_sync = true")
+		startSync.AddUpdate("is_sync = true", false)
 		if proc.Declarations().RequiresInitFunc() {
-			startSync.AddUpdate("initialize()")
+			startSync.AddUpdate("initialize()", true)
 		}
 		startSync.AddNail(uppaal.Location{34, 34})
 		startSync.AddNail(uppaal.Location{34, 104})
 		startSync.SetSyncLocation(uppaal.Location{38, 48})
 		startSync.SetUpdateLocation(uppaal.Location{38, 64})
 
-		endAsync := proc.AddTrans(ending, ended)
+		endAsync := proc.AddTransition(ending, ended)
 		endAsync.SetGuard("is_sync == false")
-		endAsync.AddUpdate("active_go_routines--")
+		endAsync.AddUpdate("active_go_routines--", true)
 		endAsync.AddNail(uppaal.Location{-34, endingY + 34})
 		endAsync.AddNail(uppaal.Location{-34, endingY + 102})
 		endAsync.SetGuardLocation(uppaal.Location{-160, endingY + 48})
 		endAsync.SetUpdateLocation(uppaal.Location{-194, endingY + 64})
 
-		endSync := proc.AddTrans(ending, ended)
+		endSync := proc.AddTransition(ending, ended)
 		endSync.SetGuard("is_sync == true")
 		endSync.SetSync("sync_" + proc.Name() + "[pid]!")
 

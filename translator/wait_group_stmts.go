@@ -8,15 +8,15 @@ import (
 )
 
 func (t *translator) translateMakeWaitGroupStmt(stmt *ir.MakeWaitGroupStmt, ctx *context) {
-	handle := t.translateLValue(stmt.WaitGroup(), ctx)
+	handle, usesGlobals := t.translateLValue(stmt.WaitGroup(), ctx)
 	name := stmt.WaitGroup().Name()
 
 	made := ctx.proc.AddState("made_"+name+"_", uppaal.Renaming)
 	made.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	made.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-	make := ctx.proc.AddTrans(ctx.currentState, made)
-	make.AddUpdate(fmt.Sprintf("%s = make_wait_group()", handle))
+	make := ctx.proc.AddTransition(ctx.currentState, made)
+	make.AddUpdate(fmt.Sprintf("%s = make_wait_group()", handle), usesGlobals)
 	make.SetUpdateLocation(
 		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
 	ctx.currentState = made
@@ -24,14 +24,14 @@ func (t *translator) translateMakeWaitGroupStmt(stmt *ir.MakeWaitGroupStmt, ctx 
 }
 
 func (t *translator) translateWaitGroupOpSmt(stmt *ir.WaitGroupOpStmt, ctx *context) {
-	handle := t.translateLValue(stmt.WaitGroup(), ctx)
+	handle, _ := t.translateLValue(stmt.WaitGroup(), ctx)
 	name := stmt.WaitGroup().Name()
 	var isWait bool
 	var registeredName, completedName, registerUpdate, sync, completeUpdate string
 
 	switch stmt.Op() {
 	case ir.Add:
-		delta := t.translateRValue(stmt.Delta(), ir.IntType, ctx)
+		delta, _ := t.translateRValue(stmt.Delta(), ir.IntType, ctx)
 		completedName = "added_to_wait_group"
 		sync = fmt.Sprintf("add[%s]!", handle)
 		completeUpdate = fmt.Sprintf("wait_group_counter[%s] += %s", handle, delta)
@@ -52,11 +52,11 @@ func (t *translator) translateWaitGroupOpSmt(stmt *ir.WaitGroupOpStmt, ctx *cont
 		registered.SetLocationAndResetNameAndCommentLocation(
 			ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
-		register := ctx.proc.AddTrans(ctx.currentState, registered)
-		register.AddUpdate(registerUpdate)
+		register := ctx.proc.AddTransition(ctx.currentState, registered)
+		register.AddUpdate(registerUpdate, true)
 		register.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 60}))
 
-		ctx.proc.AddQuery(uppaal.MakeQuery(
+		ctx.proc.AddQuery(uppaal.NewQuery(
 			"A[] (not out_of_resources) imply (not (deadlock and $."+registered.Name()+"))",
 			"check deadlock with pending wait group operation unreachable",
 			t.program.FileSet().Position(stmt.Pos()).String(),
@@ -70,10 +70,10 @@ func (t *translator) translateWaitGroupOpSmt(stmt *ir.WaitGroupOpStmt, ctx *cont
 	completed.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	completed.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-	complete := ctx.proc.AddTrans(ctx.currentState, completed)
+	complete := ctx.proc.AddTransition(ctx.currentState, completed)
 	complete.SetSync(sync)
 	complete.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
-	complete.AddUpdate(completeUpdate)
+	complete.AddUpdate(completeUpdate, true)
 	complete.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
 
 	ctx.currentState = completed

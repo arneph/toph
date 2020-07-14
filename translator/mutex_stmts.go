@@ -8,15 +8,15 @@ import (
 )
 
 func (t *translator) translateMakeMutexStmt(stmt *ir.MakeMutexStmt, ctx *context) {
-	handle := t.translateLValue(stmt.Mutex(), ctx)
+	handle, usesGlobals := t.translateLValue(stmt.Mutex(), ctx)
 	name := stmt.Mutex().Name()
 
 	made := ctx.proc.AddState("made_"+name+"_", uppaal.Renaming)
 	made.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	made.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-	make := ctx.proc.AddTrans(ctx.currentState, made)
-	make.AddUpdate(fmt.Sprintf("%s = make_mutex()", handle))
+	make := ctx.proc.AddTransition(ctx.currentState, made)
+	make.AddUpdate(fmt.Sprintf("%s = make_mutex()", handle), usesGlobals)
 	make.SetUpdateLocation(
 		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
 	ctx.currentState = made
@@ -24,7 +24,7 @@ func (t *translator) translateMakeMutexStmt(stmt *ir.MakeMutexStmt, ctx *context
 }
 
 func (t *translator) translateMutexOpStmt(stmt *ir.MutexOpStmt, ctx *context) {
-	handle := t.translateLValue(stmt.Mutex(), ctx)
+	handle, _ := t.translateLValue(stmt.Mutex(), ctx)
 	name := stmt.Mutex().Name()
 	var isLock bool
 	var registeredName, completedName, registerUpdate, sync, completeUpdate string
@@ -60,11 +60,11 @@ func (t *translator) translateMutexOpStmt(stmt *ir.MutexOpStmt, ctx *context) {
 		registered.SetLocationAndResetNameAndCommentLocation(
 			ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
-		register := ctx.proc.AddTrans(ctx.currentState, registered)
-		register.AddUpdate(registerUpdate)
+		register := ctx.proc.AddTransition(ctx.currentState, registered)
+		register.AddUpdate(registerUpdate, true)
 		register.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 60}))
 
-		ctx.proc.AddQuery(uppaal.MakeQuery(
+		ctx.proc.AddQuery(uppaal.NewQuery(
 			"A[] (not out_of_resources) imply (not (deadlock and $."+registered.Name()+"))",
 			"check deadlock with pending mutex operation unreachable",
 			t.program.FileSet().Position(stmt.Pos()).String(),
@@ -78,11 +78,11 @@ func (t *translator) translateMutexOpStmt(stmt *ir.MutexOpStmt, ctx *context) {
 	completed.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	completed.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-	complete := ctx.proc.AddTrans(ctx.currentState, completed)
+	complete := ctx.proc.AddTransition(ctx.currentState, completed)
 	complete.SetSync(sync)
 	complete.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
 	if isLock {
-		complete.AddUpdate(completeUpdate)
+		complete.AddUpdate(completeUpdate, true)
 		complete.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
 	}
 
