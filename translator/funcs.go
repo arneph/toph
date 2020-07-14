@@ -165,15 +165,17 @@ func (t *translator) translateFunc(f *ir.Func) {
 		uppaal.NoGoroutineExitWithPanic))
 
 	var deferred *uppaal.State
-	var bodyCtx *context
+	var exitFuncState *uppaal.State
 	if deferCount > 0 {
 		deferred = proc.AddState("deferred", uppaal.NoRenaming)
 		deferred.SetComment(t.program.FileSet().Position(f.End()).String())
 
-		bodyCtx = newContext(f, proc, started, deferred)
+		exitFuncState = deferred
 	} else {
-		bodyCtx = newContext(f, proc, started, finalizing)
+		exitFuncState = finalizing
 	}
+
+	bodyCtx := newContext(f, proc, started, exitFuncState)
 
 	t.translateBody(f.Body(), bodyCtx)
 
@@ -190,6 +192,10 @@ func (t *translator) translateFunc(f *ir.Func) {
 		finalizing.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 136})
 		ending.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 272})
 		ended.SetLocationAndResetNameAndCommentLocation(uppaal.Location{0, bodyEndY + 408})
+	}
+
+	for returnTrans := range bodyCtx.returnTransitions {
+		returnTrans.AddNail(exitFuncState.Location().Sub(uppaal.Location{68, 0}))
 	}
 
 	for _, arg := range f.Args() {

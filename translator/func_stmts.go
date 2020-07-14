@@ -152,12 +152,15 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 			waitForPanic.SetSyncLocation(started.Location().Add(uppaal.Location{4, 64}))
 			waitForPanic.AddUpdate(fmt.Sprintf("internal_panic = true"), false)
 			waitForPanic.SetUpdateLocation(started.Location().Add(uppaal.Location{4, 80}))
+			waitForPanic.AddNail(started.Location().Add(uppaal.Location{0, 68}))
+			waitForPanic.AddNail(uppaal.Location{-68, started.Location().Y() + 68})
 
 			if info.endState == nil {
 				ctx.currentState = awaited
 			} else {
 				ctx.proc.AddTransition(awaited, info.endState)
 			}
+			ctx.returnTransitions[waitForPanic] = struct{}{}
 			ctx.addLocation(created.Location())
 			ctx.addLocation(started.Location())
 			ctx.addLocation(awaited.Location())
@@ -242,8 +245,11 @@ func (t *translator) translateReturnStmt(stmt *ir.ReturnStmt, ctx *context) {
 	}
 	ret.SetUpdateLocation(
 		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
+	ret.AddNail(ctx.currentState.Location().Add(uppaal.Location{0, 68}))
+	ret.AddNail(uppaal.Location{-68, ctx.currentState.Location().Y() + 68})
 
 	ctx.currentState = ctx.exitFuncState
+	ctx.returnTransitions[ret] = struct{}{}
 }
 
 func (t *translator) translateRecoverStmt(stmt *ir.RecoverStmt, ctx *context) {

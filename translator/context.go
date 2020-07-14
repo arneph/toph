@@ -16,6 +16,8 @@ type context struct {
 	breakStates    map[ir.Stmt]*uppaal.State
 	continueStates map[ir.Stmt]*uppaal.State
 
+	returnTransitions map[*uppaal.Trans]struct{}
+
 	minLoc, maxLoc uppaal.Location
 }
 
@@ -30,6 +32,8 @@ func newContext(f *ir.Func, p *uppaal.Process, currentState, exitFuncState *uppa
 	ctx.exitFuncState = exitFuncState
 	ctx.breakStates = make(map[ir.Stmt]*uppaal.State)
 	ctx.continueStates = make(map[ir.Stmt]*uppaal.State)
+
+	ctx.returnTransitions = make(map[*uppaal.Trans]struct{})
 
 	ctx.minLoc = currentState.Location()
 	ctx.maxLoc = currentState.Location()
@@ -74,24 +78,7 @@ func (c *context) subContextForStmt(stmt ir.Stmt, body *ir.Body, currentState, b
 	}
 	ctx.breakStates[stmt] = breakState
 
-	ctx.minLoc = currentState.Location()
-	ctx.maxLoc = currentState.Location()
-
-	return ctx
-}
-
-func (c *context) subContextForInlinedCallBody(body *ir.Body, currentState, exitState *uppaal.State) *context {
-	ctx := new(context)
-
-	ctx.f = c.f
-	ctx.body = body
-	ctx.proc = c.proc
-
-	ctx.currentState = currentState
-	ctx.exitBodyState = exitState
-	ctx.exitFuncState = exitState
-	ctx.continueStates = c.continueStates
-	ctx.breakStates = c.breakStates
+	ctx.returnTransitions = c.returnTransitions
 
 	ctx.minLoc = currentState.Location()
 	ctx.maxLoc = currentState.Location()
