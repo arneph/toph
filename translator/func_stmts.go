@@ -87,6 +87,7 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 	calleeProc := t.funcToProcess[calleeFunc]
 
 	created := ctx.proc.AddState("created_"+calleeProc.Name()+"_", uppaal.Renaming)
+	created.SetType(uppaal.Committed)
 	created.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	created.SetLocationAndResetNameAndCommentLocation(
 		info.startState.Location().Add(uppaal.Location{0, 136}))
