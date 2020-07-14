@@ -59,17 +59,18 @@ func main() {
 					BuildContext: &buildContext,
 				},
 				TranslatorConfig: api.TranslatorConfig{
-					MaxProcessCount:   10,
+					MaxProcessCount:   5,
 					MaxDeferCount:     10,
 					MaxChannelCount:   100,
 					MaxMutexCount:     100,
 					MaxWaitGroupCount: 100,
 					MaxStructCount:    100,
-					Optimize:          true,
+					OptimizeIR:        true,
 				},
-				Debug:      true,
-				OutName:    testPath + test.Name(),
-				OutFormats: map[string]bool{"xml": true},
+				OptimizeUppaalSystem: true,
+				Debug:                true,
+				OutName:              testPath + test.Name(),
+				OutFormats:           map[string]bool{"xml": true},
 			}
 			result := api.Run(testPath, config)
 			perfect := result == api.RunSuccessful

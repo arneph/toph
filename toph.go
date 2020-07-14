@@ -23,7 +23,8 @@ var (
 	maxWaitGroupCount = flag.Int("max-wait-groups", 100, "set maximum number of sync.WaitGroups in Uppaal")
 	maxStructCount    = flag.Int("max-structs", 100, "set maximum number of struct instances (per defined struct) in Uppaal")
 
-	optimize = flag.Bool("optimize", true, "optimize program")
+	optimizeIR     = flag.Bool("optimize-ir", true, "optimize intermediate representation of program")
+	optimizeSystem = flag.Bool("optimize-sys", true, "optimize uppaal system")
 
 	outName    = flag.String("out", "a", "set name out output files")
 	outFormats = flag.String("out-formats", "xml", "set comma separated, generated output file formats, supports: xml, xta, ugi, q")
@@ -58,11 +59,12 @@ func main() {
 			MaxMutexCount:     *maxMutexCount,
 			MaxWaitGroupCount: *maxWaitGroupCount,
 			MaxStructCount:    *maxStructCount,
-			Optimize:          *optimize,
+			OptimizeIR:        *optimizeIR,
 		},
-		Debug:      *debug,
-		OutName:    *outName,
-		OutFormats: ffmts,
+		OptimizeUppaalSystem: *optimizeSystem,
+		Debug:                *debug,
+		OutName:              *outName,
+		OutFormats:           ffmts,
 	}
 	result := api.Run(path, config)
 

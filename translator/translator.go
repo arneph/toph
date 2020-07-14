@@ -15,7 +15,7 @@ type Config struct {
 	MaxWaitGroupCount int
 	MaxStructCount    int
 
-	Optimize bool
+	OptimizeIR bool
 }
 
 // TranslateProg translates an ir.Prog to a uppaal.System.
@@ -87,7 +87,7 @@ fid make_fid(int id, int par_pid) {
 		t.addType(u)
 	}
 	for _, f := range t.program.Funcs() {
-		if t.config.Optimize && t.completeFCG.CalleeCount(f) == 0 {
+		if t.config.OptimizeIR && t.completeFCG.CalleeCount(f) == 0 {
 			continue
 		}
 		t.addFuncProcess(f)
@@ -97,7 +97,7 @@ fid make_fid(int id, int par_pid) {
 		t.addFuncDeclarations(f)
 	}
 	for _, f := range t.program.Funcs() {
-		if t.config.Optimize && t.completeFCG.CalleeCount(f) == 0 {
+		if t.config.OptimizeIR && t.completeFCG.CalleeCount(f) == 0 {
 			continue
 		}
 		t.translateFunc(f)

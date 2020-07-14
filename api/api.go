@@ -10,6 +10,7 @@ import (
 	irAnalyzer "github.com/arneph/toph/ir/analyzer"
 	irOptimizer "github.com/arneph/toph/ir/optimizer"
 	"github.com/arneph/toph/translator"
+	"github.com/arneph/toph/uppaal"
 	uppaalOptimizer "github.com/arneph/toph/uppaal/optimizer"
 )
 
@@ -23,6 +24,10 @@ type TranslatorConfig = translator.Config
 type Config struct {
 	BuilderConfig
 	TranslatorConfig
+
+	// OptimizeUppaalSystem indicates if the Uppaal optimizer should be run
+	// before the final output gets generated.
+	OptimizeUppaalSystem bool
 
 	// Debug indicates if debug output files should be generated.
 	Debug bool
@@ -72,15 +77,15 @@ func Run(path string, config Config) Result {
 	}
 
 	if config.Debug {
-		outputProgram(program, config.OutName, "init")
+		outputIRProgram(program, config.OutName, "init")
 	}
 
-	if config.TranslatorConfig.Optimize {
+	if config.TranslatorConfig.OptimizeIR {
 		// Dead Code Eliminator
 		irOptimizer.EliminateDeadCode(program)
 
 		if config.Debug {
-			outputProgram(program, config.OutName, "opt")
+			outputIRProgram(program, config.OutName, "opt")
 		}
 	}
 
@@ -100,34 +105,27 @@ func Run(path string, config Config) Result {
 			return RunFailedWithTranslator
 		}
 
-		uppaalOptimizer.ReduceStates(sys)
+		outName := config.OutName
+		if len(entryFuncs) > 0 {
+			outName += "_" + entryFunc.Handle()
+		}
 
-		// Output files
-		for _, ffmt := range []string{"xml", "xta", "ugi", "q"} {
-			if !config.OutFormats[ffmt] {
-				continue
-			}
-
-			name := config.OutName
-			if len(entryFuncs) > 1 {
-				name += "_" + entryFunc.Handle()
-			}
-			sysFile, err := os.Create(name + "." + ffmt)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "could not write %s file: %v\n", ffmt, err)
+		if config.OptimizeUppaalSystem {
+			ok := outputUppaalSystem(sys, outName+".init", config.OutFormats)
+			if !ok {
 				return RunFailedWritingOutputFiles
 			}
-			defer sysFile.Close()
 
-			switch ffmt {
-			case "xml":
-				fmt.Fprintln(sysFile, sys.AsXML())
-			case "xta":
-				fmt.Fprintln(sysFile, sys.AsXTA())
-			case "ugi":
-				fmt.Fprintln(sysFile, sys.AsUGI())
-			case "q":
-				fmt.Fprintln(sysFile, sys.AsQ())
+			uppaalOptimizer.ReduceStates(sys)
+
+			ok = outputUppaalSystem(sys, outName+".opt", config.OutFormats)
+			if !ok {
+				return RunFailedWritingOutputFiles
+			}
+		} else {
+			ok := outputUppaalSystem(sys, outName, config.OutFormats)
+			if !ok {
+				return RunFailedWritingOutputFiles
 			}
 		}
 	}
@@ -138,9 +136,7 @@ func Run(path string, config Config) Result {
 	return RunSuccessful
 }
 
-// outputProgram generates debug output files showing the IR at a certain
-// point during the process.
-func outputProgram(program *ir.Program, outName string, stepName string) {
+func outputIRProgram(program *ir.Program, outName string, stepName string) {
 	fcg := irAnalyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
 	tg := irAnalyzer.BuildTypeGraph(program)
 
@@ -155,7 +151,7 @@ func outputProgram(program *ir.Program, outName string, stepName string) {
 
 	programFile.WriteString(program.Tree())
 
-	// FCG files
+	// FCG file
 	fcgPath := fmt.Sprintf("./%s.%s.fcg.txt", outName, stepName)
 	fcgFile, err := os.Create(fcgPath)
 	if err != nil {
@@ -166,7 +162,7 @@ func outputProgram(program *ir.Program, outName string, stepName string) {
 
 	fcgFile.WriteString(fcg.String())
 
-	// TG files
+	// TG file
 	tgPath := fmt.Sprintf("./%s.%s.tg.txt", outName, stepName)
 	tgFile, err := os.Create(tgPath)
 	if err != nil {
@@ -176,4 +172,32 @@ func outputProgram(program *ir.Program, outName string, stepName string) {
 	defer tgFile.Close()
 
 	tgFile.WriteString(tg.String())
+}
+
+func outputUppaalSystem(sys *uppaal.System, outName string, outFormats map[string]bool) bool {
+	for _, ffmt := range []string{"xml", "xta", "ugi", "q"} {
+		if !outFormats[ffmt] {
+			continue
+		}
+
+		sysFile, err := os.Create(outName + "." + ffmt)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not write %s file: %v\n", ffmt, err)
+			return false
+		}
+		defer sysFile.Close()
+
+		switch ffmt {
+		case "xml":
+			fmt.Fprintln(sysFile, sys.AsXML())
+		case "xta":
+			fmt.Fprintln(sysFile, sys.AsXTA())
+		case "ugi":
+			fmt.Fprintln(sysFile, sys.AsUGI())
+		case "q":
+			fmt.Fprintln(sysFile, sys.AsQ())
+		}
+	}
+
+	return true
 }
