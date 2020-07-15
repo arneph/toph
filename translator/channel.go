@@ -92,23 +92,23 @@ func (t *translator) addChannelProcess() {
 	trans1.SetSyncLocation(uppaal.Location{129, 306})
 
 	trans2 := proc.AddTransition(newSender, idle)
-	trans2.SetGuard("chan_counter[i] > \nchan_buffer[i]")
+	trans2.SetGuard("chan_counter[i] > \nchan_buffer[i]", true)
 	trans2.AddNail(uppaal.Location{136, 238})
 	trans2.AddNail(uppaal.Location{238, 238})
 	trans2.SetGuardLocation(uppaal.Location{129, 206})
 
 	trans3 := proc.AddTransition(newSender, confirmingA)
-	trans3.SetGuard("chan_counter[i] <= \nchan_buffer[i]")
+	trans3.SetGuard("chan_counter[i] <= \nchan_buffer[i]", true)
 	trans3.SetSync("sender_confirm[i]!")
 	trans3.SetGuardLocation(uppaal.Location{-42, 342})
 	trans3.SetSyncLocation(uppaal.Location{-42, 374})
 
 	trans4 := proc.AddTransition(confirmingA, idle)
-	trans4.SetGuard("chan_counter[i] > 0")
+	trans4.SetGuard("chan_counter[i] > 0", true)
 	trans4.SetGuardLocation(uppaal.Location{107, 358})
 
 	trans5 := proc.AddTransition(confirmingA, idle)
-	trans5.SetGuard("chan_counter[i] <= 0")
+	trans5.SetGuard("chan_counter[i] <= 0", true)
 	trans5.SetSync("receiver_confirm[i]!")
 	trans5.AddNail(uppaal.Location{204, 442})
 	trans5.SetGuardLocation(uppaal.Location{118, 442})
@@ -120,23 +120,23 @@ func (t *translator) addChannelProcess() {
 	trans6.SetSyncLocation(uppaal.Location{298, 306})
 
 	trans7 := proc.AddTransition(newReceiver, idle)
-	trans7.SetGuard("chan_counter[i] < 0")
+	trans7.SetGuard("chan_counter[i] < 0", true)
 	trans7.AddNail(uppaal.Location{408, 238})
 	trans7.AddNail(uppaal.Location{306, 238})
 	trans7.SetGuardLocation(uppaal.Location{298, 222})
 
 	trans8 := proc.AddTransition(newReceiver, confirmingB)
-	trans8.SetGuard("chan_counter[i] >= 0")
+	trans8.SetGuard("chan_counter[i] >= 0", true)
 	trans8.SetSync("receiver_confirm[i]!")
 	trans8.SetGuardLocation(uppaal.Location{446, 358})
 	trans8.SetSyncLocation(uppaal.Location{446, 374})
 
 	trans9 := proc.AddTransition(confirmingB, idle)
-	trans9.SetGuard("chan_counter[i] < \nchan_buffer[i]")
+	trans9.SetGuard("chan_counter[i] < \nchan_buffer[i]", true)
 	trans9.SetGuardLocation(uppaal.Location{306, 342})
 
 	trans10 := proc.AddTransition(confirmingB, idle)
-	trans10.SetGuard("chan_counter[i] >= \nchan_buffer[i]")
+	trans10.SetGuard("chan_counter[i] >= \nchan_buffer[i]", true)
 	trans10.SetSync("sender_confirm[i]!")
 	trans10.AddNail(uppaal.Location{340, 442})
 	trans10.SetGuardLocation(uppaal.Location{306, 442})
@@ -144,7 +144,7 @@ func (t *translator) addChannelProcess() {
 
 	// Closing
 	trans11 := proc.AddTransition(idle, closing)
-	trans11.SetGuard("chan_counter[i] <= chan_buffer[i]")
+	trans11.SetGuard("chan_counter[i] <= chan_buffer[i]", true)
 	trans11.SetSync("close[i]?")
 	trans11.AddUpdate("chan_buffer[i] = -1", true)
 	trans11.SetGuardLocation(uppaal.Location{276, 126})
@@ -152,7 +152,7 @@ func (t *translator) addChannelProcess() {
 	trans11.SetUpdateLocation(uppaal.Location{276, 158})
 
 	trans12 := proc.AddTransition(closing, closing)
-	trans12.SetGuard("chan_counter[i] < 0")
+	trans12.SetGuard("chan_counter[i] < 0", true)
 	trans12.SetSync("receiver_confirm[i]!")
 	trans12.AddUpdate("chan_counter[i]++", true)
 	trans12.AddNail(uppaal.Location{340, 51})
@@ -162,12 +162,12 @@ func (t *translator) addChannelProcess() {
 	trans12.SetUpdateLocation(uppaal.Location{344, 100})
 
 	trans13 := proc.AddTransition(closing, closed)
-	trans13.SetGuard("chan_counter[i] >= 0")
+	trans13.SetGuard("chan_counter[i] >= 0", true)
 	trans13.SetGuardLocation(uppaal.Location{276, -2})
 	trans13.SetUpdateLocation(uppaal.Location{276, 14})
 
 	trans14 := proc.AddTransition(idle, bad)
-	trans14.SetGuard("chan_counter[i] > \nchan_buffer[i]")
+	trans14.SetGuard("chan_counter[i] > \nchan_buffer[i]", true)
 	trans14.SetSync("close[i]?")
 	trans14.AddUpdate("chan_buffer[i] = -1", true)
 	trans14.AddNail(uppaal.Location{272, 170})

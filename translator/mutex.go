@@ -102,12 +102,12 @@ func (t *translator) addMutexProcess() {
 	trans4.AddNail(uppaal.Location{306, 289})
 
 	trans5 := proc.AddTransition(readLocking, readLocked)
-	trans5.SetGuard("mutex_pending_readers[i] == 0")
+	trans5.SetGuard("mutex_pending_readers[i] == 0", true)
 	trans5.SetGuardLocation(uppaal.Location{357, 222})
 	trans5.AddNail(uppaal.Location{510, 238})
 
 	trans6 := proc.AddTransition(readLocked, idle)
-	trans6.SetGuard("active_readers == 1 && \nmutex_pending_writers[i] == 0")
+	trans6.SetGuard("active_readers == 1 && \nmutex_pending_writers[i] == 0", true)
 	trans6.SetGuardLocation(uppaal.Location{208, 342})
 	trans6.SetSync("read_unlock[i]?")
 	trans6.SetSyncLocation(uppaal.Location{208, 374})
@@ -118,7 +118,7 @@ func (t *translator) addMutexProcess() {
 
 	// Read locked:
 	trans7 := proc.AddTransition(readLocked, readLocked)
-	trans7.SetGuard("mutex_pending_writers[i] == 0")
+	trans7.SetGuard("mutex_pending_writers[i] == 0", true)
 	trans7.SetGuardLocation(uppaal.Location{650, 206})
 	trans7.SetSync("read_lock[i]?")
 	trans7.SetSyncLocation(uppaal.Location{650, 222})
@@ -129,7 +129,7 @@ func (t *translator) addMutexProcess() {
 	trans7.AddNail(uppaal.Location{646, 272})
 
 	trans8 := proc.AddTransition(readLocked, readLocked)
-	trans8.SetGuard("active_readers > 1")
+	trans8.SetGuard("active_readers > 1", false)
 	trans8.SetGuardLocation(uppaal.Location{650, 358})
 	trans8.SetSync("read_unlock[i]?")
 	trans8.SetSyncLocation(uppaal.Location{650, 374})
@@ -141,7 +141,7 @@ func (t *translator) addMutexProcess() {
 
 	// Read locked, Write locked:
 	trans9 := proc.AddTransition(readLocked, readToWriteLocked)
-	trans9.SetGuard("active_readers == 1 && \nmutex_pending_writers[i] > 0")
+	trans9.SetGuard("active_readers == 1 && \nmutex_pending_writers[i] > 0", true)
 	trans9.SetGuardLocation(uppaal.Location{208, 444})
 	trans9.SetSync("read_unlock[i]?")
 	trans9.SetSyncLocation(uppaal.Location{208, 476})

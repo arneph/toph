@@ -17,7 +17,7 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 			endState:   nil,
 		}, ctx)
 	case ir.LValue:
-		handle, _ := t.translateLValue(callee, ctx)
+		handle, usesGlobals := t.translateLValue(callee, ctx)
 
 		nilState := ctx.proc.AddState(callee.Handle()+"_is_nil_", uppaal.Renaming)
 		nilState.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
@@ -29,7 +29,7 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 			t.program.FileSet().Position(stmt.Pos()).String(),
 			uppaal.NoFunctionCallsWithNilVariable))
 		nilTrans := ctx.proc.AddTransition(ctx.currentState, nilState)
-		nilTrans.SetGuard(handle + ".id == -1")
+		nilTrans.SetGuard(handle+".id == -1", usesGlobals)
 		nilTrans.SetGuardLocation(
 			ctx.currentState.Location().Add(uppaal.Location{4, 28}))
 
@@ -56,7 +56,7 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 			startState.SetLocationAndResetNameAndCommentLocation(
 				ctx.currentState.Location().Add(uppaal.Location{(i + 1) * 136, 136}))
 			startTrans := ctx.proc.AddTransition(ctx.currentState, startState)
-			startTrans.SetGuard(handle + ".id == " + calleeFunc.FuncValue().String())
+			startTrans.SetGuard(handle+".id == "+calleeFunc.FuncValue().String(), usesGlobals)
 			startTrans.SetGuardLocation(
 				ctx.currentState.Location().Add(uppaal.Location{(i+1)*136 + 4, 44 + i*16}))
 
@@ -87,7 +87,6 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 	calleeProc := t.funcToProcess[calleeFunc]
 
 	created := ctx.proc.AddState("created_"+calleeProc.Name()+"_", uppaal.Renaming)
-	created.SetType(uppaal.Committed)
 	created.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	created.SetLocationAndResetNameAndCommentLocation(
 		info.startState.Location().Add(uppaal.Location{0, 136}))
@@ -128,7 +127,7 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 			awaited.SetLocationAndResetNameAndCommentLocation(
 				started.Location().Add(uppaal.Location{0, 136}))
 			waitForRegularReturn := ctx.proc.AddTransition(started, awaited)
-			waitForRegularReturn.SetGuard(fmt.Sprintf("!external_panic_%s[p]", calleeProc.Name()))
+			waitForRegularReturn.SetGuard(fmt.Sprintf("!external_panic_%s[p]", calleeProc.Name()), false)
 			waitForRegularReturn.SetGuardLocation(started.Location().Add(uppaal.Location{4, 48}))
 			waitForRegularReturn.SetSync(fmt.Sprintf("sync_%s[p]?", calleeProc.Name()))
 			waitForRegularReturn.SetSyncLocation(started.Location().Add(uppaal.Location{4, 64}))
@@ -146,7 +145,7 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 			waitForRegularReturn.SetUpdateLocation(started.Location().Add(uppaal.Location{4, 96}))
 
 			waitForPanic := ctx.proc.AddTransition(started, ctx.exitFuncState)
-			waitForPanic.SetGuard(fmt.Sprintf("external_panic_%s[p]", calleeProc.Name()))
+			waitForPanic.SetGuard(fmt.Sprintf("external_panic_%s[p]", calleeProc.Name()), false)
 			waitForPanic.SetGuardLocation(started.Location().Add(uppaal.Location{4, 32}))
 			waitForPanic.SetSync(fmt.Sprintf("sync_%s[p]?", calleeProc.Name()))
 			waitForPanic.SetSyncLocation(started.Location().Add(uppaal.Location{4, 64}))
@@ -207,7 +206,7 @@ func (t *translator) translateDeferredCalls(proc *uppaal.Process, deferred *uppa
 			deferred.Location().Add(uppaal.Location{136 * (i + 1), 136}))
 
 		start := proc.AddTransition(deferred, started)
-		start.SetGuard("deferred_count > 0 && deferred_fid[deferred_count-1] == " + calleeFunc.FuncValue().String())
+		start.SetGuard("deferred_count > 0 && deferred_fid[deferred_count-1] == "+calleeFunc.FuncValue().String(), false)
 		start.SetGuardLocation(
 			deferred.Location().Add(uppaal.Location{136 * (i + 1), 0 + 48*(i+1)}))
 		start.SetSync(fmt.Sprintf("sync_%s[deferred_pid[deferred_count-1]]!", calleeProc.Name()))

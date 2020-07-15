@@ -213,14 +213,14 @@ func (t *translator) translateForStmt(stmt *ir.ForStmt, ctx *context) {
 
 	trans2 := ctx.proc.AddTransition(condExit, bodyEnter)
 	if stmt.HasMaxIterations() {
-		trans2.SetGuard(fmt.Sprintf("%s < %d", counterVar, stmt.MaxIterations()))
+		trans2.SetGuard(fmt.Sprintf("%s < %d", counterVar, stmt.MaxIterations()), false)
 		trans2.SetGuardLocation(condExit.Location().Add(uppaal.Location{4, 60}))
 	}
 
 	if !stmt.IsInfinite() {
 		trans3 := ctx.proc.AddTransition(condExit, loopExit)
 		if stmt.HasMinIterations() {
-			trans3.SetGuard(fmt.Sprintf("%s >= %d", counterVar, stmt.MinIterations()))
+			trans3.SetGuard(fmt.Sprintf("%s >= %d", counterVar, stmt.MinIterations()), false)
 			trans3.SetGuardLocation(condExit.Location().Add(uppaal.Location{-132, 60}))
 		}
 
@@ -300,11 +300,11 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	trans1 := ctx.proc.AddTransition(ctx.currentState, rangeEnter)
 	trans1.AddNail(ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	trans2 := ctx.proc.AddTransition(received, bodyEnter)
-	trans2.SetGuard("chan_buffer[" + handle + "] >= 0 || ok")
+	trans2.SetGuard("chan_buffer["+handle+"] >= 0 || ok", true)
 	trans2.SetGuardLocation(
 		received.Location().Add(uppaal.Location{4, 48}))
 	trans3 := ctx.proc.AddTransition(received, loopExit)
-	trans3.SetGuard("chan_buffer[" + handle + "] < 0 && !ok")
+	trans3.SetGuard("chan_buffer["+handle+"] < 0 && !ok", true)
 	trans3.AddNail(received.Location().Add(uppaal.Location{-136, 0}))
 	trans3.SetGuardLocation(
 		received.Location().Add(uppaal.Location{-132, 64}))

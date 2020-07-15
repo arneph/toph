@@ -8,6 +8,7 @@ type Trans struct {
 
 	selectStmts       string
 	guardExpr         string
+	guardUsesGlobals  bool
 	syncStmt          string
 	updateStmts       string
 	updateUsesGlobals bool
@@ -27,6 +28,7 @@ func newTrans(start, end *State) *Trans {
 
 	t.selectStmts = ""
 	t.guardExpr = ""
+	t.guardUsesGlobals = false
 	t.syncStmt = ""
 	t.updateStmts = ""
 	t.updateUsesGlobals = false
@@ -65,8 +67,14 @@ func (t *Trans) Guard() string {
 
 // SetGuard sets the guard of the transition that has to be fulfilled to enable
 // the transition.
-func (t *Trans) SetGuard(guardExpr string) {
+func (t *Trans) SetGuard(guardExpr string, usesGlobals bool) {
 	t.guardExpr = guardExpr
+	t.guardUsesGlobals = usesGlobals
+}
+
+// GuardUsesGlobals returns if the guard expression uses global variables.
+func (t *Trans) GuardUsesGlobals() bool {
+	return t.guardUsesGlobals
 }
 
 // Sync returns the sync statement (on a Uppaal channel) of the transition.
@@ -99,6 +107,11 @@ func (t *Trans) AddUpdate(updateStmt string, usesGlobals bool) {
 // UpdateUsesGlobals returns if any update statement uses global variables.
 func (t *Trans) UpdateUsesGlobals() bool {
 	return t.updateUsesGlobals
+}
+
+// UsesGlobals returns if the transition uses global variables.
+func (t *Trans) UsesGlobals() bool {
+	return t.guardUsesGlobals || t.syncStmt != "" || t.updateUsesGlobals
 }
 
 // NailLocations returns the locations of all nails used by the transition in

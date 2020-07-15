@@ -62,7 +62,7 @@ func (t *translator) addWaitGroupProcess() {
 	// Transitions:
 	// Idle:
 	trans1 := proc.AddTransition(idle, idle)
-	trans1.SetGuard("wait_group_waiters[i] > 0")
+	trans1.SetGuard("wait_group_waiters[i] > 0", true)
 	trans1.SetGuardLocation(uppaal.Location{-248, -16})
 	trans1.SetSync("wait[i]!")
 	trans1.SetSyncLocation(uppaal.Location{-120, 0})
@@ -71,7 +71,7 @@ func (t *translator) addWaitGroupProcess() {
 
 	// Idle, Adding:
 	trans2 := proc.AddTransition(idle, adding)
-	trans2.SetGuard("wait_group_waiters[i] == 0")
+	trans2.SetGuard("wait_group_waiters[i] == 0", true)
 	trans2.SetGuardLocation(uppaal.Location{38, -84})
 	trans2.SetSync("add[i]?")
 	trans2.SetSyncLocation(uppaal.Location{38, -68})
@@ -79,14 +79,14 @@ func (t *translator) addWaitGroupProcess() {
 	trans2.AddNail(uppaal.Location{204, -68})
 
 	trans3 := proc.AddTransition(adding, idle)
-	trans3.SetGuard("wait_group_counter[i] == 0")
+	trans3.SetGuard("wait_group_counter[i] == 0", true)
 	trans3.SetGuardLocation(uppaal.Location{38, 52})
 	trans3.AddNail(uppaal.Location{204, 68})
 	trans3.AddNail(uppaal.Location{34, 68})
 
 	// Adding, Active:
 	trans4 := proc.AddTransition(adding, active)
-	trans4.SetGuard("wait_group_counter[i] > 0")
+	trans4.SetGuard("wait_group_counter[i] > 0", true)
 	trans4.SetGuardLocation(uppaal.Location{276, -84})
 	trans4.AddNail(uppaal.Location{272, -68})
 	trans4.AddNail(uppaal.Location{408, -68})
@@ -99,14 +99,14 @@ func (t *translator) addWaitGroupProcess() {
 
 	// Bad:
 	trans6 := proc.AddTransition(idle, bad)
-	trans6.SetGuard("wait_group_waiters[i] > 0")
+	trans6.SetGuard("wait_group_waiters[i] > 0", true)
 	trans6.SetGuardLocation(uppaal.Location{38, -152})
 	trans6.SetSync("add[i]?")
 	trans6.SetSyncLocation(uppaal.Location{38, -136})
 	trans6.AddNail(uppaal.Location{0, -136})
 
 	trans7 := proc.AddTransition(adding, bad)
-	trans7.SetGuard("wait_group_counter[i] < 0")
+	trans7.SetGuard("wait_group_counter[i] < 0", true)
 	trans7.SetGuardLocation(uppaal.Location{242, -110})
 }
 

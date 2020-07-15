@@ -263,7 +263,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 			uppaal.Location{caseXs[i], ctx.currentState.Location()[1] + 272})
 
 		triggeringCase := ctx.proc.AddTransition(pass1, triggeredCase)
-		triggeringCase.SetGuard(caseInfos[i].possibleGuard)
+		triggeringCase.SetGuard(caseInfos[i].possibleGuard, true)
 		triggeringCase.SetGuardLocation(
 			triggeredCase.Location().Sub(uppaal.Location{
 				32 * (len(stmt.Cases()) - i), 32 * (len(stmt.Cases()) - i)}))
@@ -289,7 +289,7 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 	}
 
 	exitingPass1Unsuccessful := ctx.proc.AddTransition(pass1, exitPass1Unsuccessful)
-	exitingPass1Unsuccessful.SetGuard(nonePossibleGuard)
+	exitingPass1Unsuccessful.SetGuard(nonePossibleGuard, true)
 	exitingPass1Unsuccessful.SetGuardLocation(
 		exitPass1Unsuccessful.Location().Sub(uppaal.Location{-4, len(stmt.Cases())*32 + 32}))
 	if stmt.HasDefault() {

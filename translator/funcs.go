@@ -207,7 +207,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 
 	if deferCount > 0 {
 		reachEnd := proc.AddTransition(deferred, finalizing)
-		reachEnd.SetGuard("deferred_count == 0")
+		reachEnd.SetGuard("deferred_count == 0", false)
 		reachEnd.SetGuardLocation(deferred.Location().Add(uppaal.Location{4, 226}))
 
 		t.translateDeferredCalls(proc, deferred, f)
@@ -232,7 +232,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 		start.SetUpdateLocation(uppaal.Location{0, 60})
 
 		end := proc.AddTransition(ending, ended)
-		end.SetGuard("active_go_routines == 1")
+		end.SetGuard("active_go_routines == 1", true)
 		end.SetGuardLocation(uppaal.Location{4, endingY + 64})
 
 	} else {
@@ -260,7 +260,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 		startSync.SetUpdateLocation(uppaal.Location{38, 64})
 
 		endAsync := proc.AddTransition(ending, ended)
-		endAsync.SetGuard("is_sync == false")
+		endAsync.SetGuard("is_sync == false", false)
 		endAsync.AddUpdate("active_go_routines--", true)
 		endAsync.AddNail(uppaal.Location{-34, endingY + 34})
 		endAsync.AddNail(uppaal.Location{-34, endingY + 102})
@@ -268,7 +268,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 		endAsync.SetUpdateLocation(uppaal.Location{-194, endingY + 64})
 
 		endSync := proc.AddTransition(ending, ended)
-		endSync.SetGuard("is_sync == true")
+		endSync.SetGuard("is_sync == true", false)
 		endSync.SetSync("sync_" + proc.Name() + "[pid]!")
 
 		endSync.AddNail(uppaal.Location{34, endingY + 34})
