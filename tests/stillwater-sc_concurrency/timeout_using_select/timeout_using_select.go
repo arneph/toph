@@ -9,7 +9,6 @@ import (
 func timed_process(msg string) <-chan string {
 	c := make(chan string)
 	go func() {
-		// toph: max_iter=3
 		for i := 0; ; i++ {
 			delay := rand.Intn(1.1e3)
 			c <- fmt.Sprintf("%s produced value #%d, delaying %dmsec", msg, i, delay)
@@ -21,7 +20,6 @@ func timed_process(msg string) <-chan string {
 
 func main() {
 	c := timed_process("Message Generator")
-	// toph: max_iter=3
 	for {
 		select {
 		case s := <-c:

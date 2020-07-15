@@ -21,13 +21,11 @@ func flip(b int) int {
 
 func tx(snd chan<- int, ack <-chan int) {
 	b := 0
-	// toph: max_iter=3
 	for {
 		fmt.Printf("tx[%d]: accept\n", b)
 		fmt.Printf("tx[%d]: send[%d]\n", b, b)
 		snd <- b
 	SENDING:
-		// toph: max_iter=3
 		for { // SENDING[b]
 			select {
 			case x := <-ack:
@@ -52,13 +50,11 @@ func tx(snd chan<- int, ack <-chan int) {
 
 func rx(reply chan<- int, trans <-chan int) {
 	b := 1
-	// toph: max_iter=3
 	for {
 		fmt.Printf("rx[%d]: deliver\n", b)
 		fmt.Printf("rx[%d]: reply[%d]\n", b, b)
 		reply <- b
 	REPLYING:
-		// toph: max_iter=3
 		for {
 			select { // REPLYING[b]
 			case x := <-trans:

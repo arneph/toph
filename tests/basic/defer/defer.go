@@ -49,7 +49,7 @@ func i(chA, chB chan int) {
 		defer f(chA)
 	}
 	defer close(chB)
-	// toph: max_iter=20
+	// toph: max_iter=5
 	for i := 0; i < rand.Int(); i++ {
 		defer func() {
 			g(chB)

@@ -18,7 +18,6 @@ func findFilesInFolder(root string,
 		close(filesChan)
 		return
 	}
-	// toph: max_iter=3
 	for _, file := range files {
 		if file.IsDir() {
 			continue

@@ -25,7 +25,6 @@ func morejob() bool {
 }
 
 func producer(q chan int, done chan struct{}) {
-	// toph: min_iter=10, max_iter=10
 	for morejob() {
 		q <- i
 	}

@@ -16,7 +16,6 @@ func main() {
 	chOne := make(chan int)
 	chOut := chOne
 	chIn := chOne
-	// toph: min_iter=3, max_iter=3
 	for i := 0; i < numprocs(); i++ {
 		chOut = make(chan int)
 		go adder(chIn, chOut)

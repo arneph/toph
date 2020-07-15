@@ -72,7 +72,6 @@ func ConcurrentSearchWithCutOff(query string) (results []Result) {
 func First(query string, replicas ...Search) Result {
 	c := make(chan Result)
 	searchReplica := func(i int) { c <- replicas[i](query) }
-	// toph: min_iter=3, max_iter=3
 	for i := range replicas {
 		go searchReplica(i)
 	}
