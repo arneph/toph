@@ -106,23 +106,28 @@ func Run(path string, config Config) Result {
 		}
 
 		outName := config.OutName
-		if len(entryFuncs) > 0 {
+		if len(entryFuncs) > 1 {
 			outName += "_" + entryFunc.Handle()
 		}
 
 		if config.OptimizeUppaalSystem {
-			ok := outputUppaalSystem(sys, outName+".init", config.OutFormats)
-			if !ok {
-				return RunFailedWritingOutputFiles
+			if config.Debug {
+				ok := outputUppaalSystem(sys, outName+".init", config.OutFormats)
+				if !ok {
+					return RunFailedWritingOutputFiles
+				}
 			}
 
 			uppaalOptimizer.ReduceStates(sys)
 
-			ok = outputUppaalSystem(sys, outName+".opt", config.OutFormats)
-			if !ok {
-				return RunFailedWritingOutputFiles
+			if config.Debug {
+				ok := outputUppaalSystem(sys, outName+".opt", config.OutFormats)
+				if !ok {
+					return RunFailedWritingOutputFiles
+				}
 			}
-		} else {
+		}
+		if !config.Debug {
 			ok := outputUppaalSystem(sys, outName, config.OutFormats)
 			if !ok {
 				return RunFailedWritingOutputFiles
