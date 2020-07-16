@@ -15,6 +15,7 @@ func BuildFuncCallGraph(program *ir.Program, callKinds ir.CallKind) *FuncCallGra
 	addFuncsToFuncCallGraph(program, fcg)
 	addCallsToFuncCallGraph(program, callKinds, fcg)
 	addCallCountsToFuncCallGraph(program, callKinds, fcg)
+	removeCallsToClosuresInsideUncalledFunctionsFromFuncCallGraph(program, fcg)
 
 	return fcg
 }
@@ -90,6 +91,16 @@ func addCallCountsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fc
 				fcg.addTotalStructAllocations(structType, count*sccCallCounts[currentSCC])
 			}
 		}
+	}
+}
+
+func removeCallsToClosuresInsideUncalledFunctionsFromFuncCallGraph(program *ir.Program, fcg *FuncCallGraph) {
+	for _, f := range program.Funcs() {
+		g := f.EnclosingFunc()
+		if g == nil || fcg.CalleeCount(g) > 0 {
+			continue
+		}
+		fcg.zeroCalleeCounts(f)
 	}
 }
 

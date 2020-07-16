@@ -253,6 +253,22 @@ func (fcg *FuncCallGraph) addDynamicCall(caller *ir.Func, calleeSignature *types
 	fcg.sccsOk = false
 }
 
+func (fcg *FuncCallGraph) zeroCalleeCounts(callee *ir.Func) {
+	for caller := range fcg.calleeToCallers[callee] {
+		delete(fcg.callerToCallees[caller], callee)
+	}
+	fcg.calleeToCallers[callee] = make(map[*ir.Func]struct{})
+
+	calleeSignature := callee.Signature()
+	if dynInfo := fcg.dynamicCallInfoForSignature(calleeSignature); dynInfo != nil {
+		delete(dynInfo.callees, callee)
+	}
+
+	fcg.isCalleeCounts[callee] = 0
+
+	fcg.sccsOk = false
+}
+
 func (fcg *FuncCallGraph) addCallerCount(caller *ir.Func, count int) {
 	fcg.isCallerCounts[caller] += count
 	if fcg.isCallerCounts[caller] > MaxCallCounts {
