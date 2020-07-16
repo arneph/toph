@@ -15,7 +15,7 @@ func EliminateDeadCode(program *ir.Program) {
 	for i := 1; i < fcg.SCCCount(); i++ {
 		scc := analyzer.SCC(i)
 		for _, f := range fcg.FuncsInSCC(scc) {
-			eliminateDeadCodeInBody(f.Body())
+			eliminateDeadCodeInBody(f.Body(), true)
 			eliminateFuncCallsInBody(f.Body(), emptyFuncs, fcg)
 		}
 		for _, f := range fcg.FuncsInSCC(scc) {
@@ -26,25 +26,29 @@ func EliminateDeadCode(program *ir.Program) {
 	}
 }
 
-func eliminateDeadCodeInBody(body *ir.Body) {
+func eliminateDeadCodeInBody(body *ir.Body, isFuncBody bool) {
 	stmts := make([]ir.Stmt, 0, len(body.Stmts()))
 
 stmtsLoop:
 	for _, stmt := range body.Stmts() {
 		switch stmt := stmt.(type) {
 		case *ir.IfStmt:
-			eliminateDeadCodeInBody(stmt.IfBranch())
-			eliminateDeadCodeInBody(stmt.ElseBranch())
+			eliminateDeadCodeInBody(stmt.IfBranch(), false)
+			eliminateDeadCodeInBody(stmt.ElseBranch(), false)
 
 			if isBodyEmpty(stmt.IfBranch()) && isBodyEmpty(stmt.ElseBranch()) {
 				continue stmtsLoop
 			}
 		case *ir.ForStmt:
-			eliminateDeadCodeInBody(stmt.Cond())
-			eliminateDeadCodeInBody(stmt.Body())
+			eliminateDeadCodeInBody(stmt.Cond(), false)
+			eliminateDeadCodeInBody(stmt.Body(), false)
 
 			if !stmt.IsInfinite() &&
 				isBodyEmpty(stmt.Cond()) && isBodyEmpty(stmt.Body()) {
+				continue stmtsLoop
+			}
+		case *ir.ReturnStmt:
+			if isFuncBody && !stmt.IsPanic() && len(stmt.Results()) == 0 {
 				continue stmtsLoop
 			}
 		}
