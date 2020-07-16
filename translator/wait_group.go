@@ -10,7 +10,9 @@ import (
 
 func (t *translator) waitGroupCount() int {
 	waitGroupCount := t.completeFCG.TotalSpecialOpCount(ir.MakeWaitGroup)
-	if waitGroupCount > t.config.MaxWaitGroupCount {
+	if waitGroupCount < 1 {
+		waitGroupCount = 1
+	} else if waitGroupCount > t.config.MaxWaitGroupCount {
 		waitGroupCount = t.config.MaxWaitGroupCount
 	}
 	return waitGroupCount

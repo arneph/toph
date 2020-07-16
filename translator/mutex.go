@@ -10,7 +10,9 @@ import (
 
 func (t *translator) mutexCount() int {
 	mutexCount := t.completeFCG.TotalSpecialOpCount(ir.MakeMutex)
-	if mutexCount > t.config.MaxMutexCount {
+	if mutexCount < 1 {
+		mutexCount = 1
+	} else if mutexCount > t.config.MaxMutexCount {
 		mutexCount = t.config.MaxMutexCount
 	}
 	return mutexCount

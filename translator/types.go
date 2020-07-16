@@ -9,7 +9,9 @@ import (
 
 func (t *translator) structTypeCount(structType *ir.StructType) int {
 	structTypeCount := t.completeFCG.TotalStructAllocations(structType)
-	if structTypeCount > t.config.MaxStructCount {
+	if structTypeCount < 1 {
+		structTypeCount = 1
+	} else if structTypeCount > t.config.MaxStructCount {
 		structTypeCount = t.config.MaxStructCount
 	}
 	return structTypeCount
