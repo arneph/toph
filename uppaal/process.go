@@ -153,6 +153,12 @@ func (p *Process) RemoveState(state *State) {
 	delete(p.transitionLookup, state)
 }
 
+// TransitionLookup returns a double map from start and end states to the
+// transitions between them.
+func (p *Process) TransitionLookup() map[*State]map[*State][]*Trans {
+	return p.transitionLookup
+}
+
 // AddTransition adds a transition betweent the given start and end state to
 // the process and returns the new transition.
 func (p *Process) AddTransition(start, end *State) *Trans {

@@ -119,6 +119,7 @@ func Run(path string, config Config) Result {
 			}
 
 			uppaalOptimizer.ReduceStates(sys)
+			uppaalOptimizer.ReduceTransitions(sys)
 
 			if config.Debug {
 				ok := outputUppaalSystem(sys, outName+".opt", config.OutFormats)
