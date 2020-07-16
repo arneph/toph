@@ -11,6 +11,7 @@ import (
 	"go/types"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/arneph/toph/ir"
@@ -113,7 +114,23 @@ func BuildProgram(path string, config *Config) (program *ir.Program, entryFuncs 
 			if astPackage.Name != buildPackage.Name {
 				continue
 			}
+			type tuple struct {
+				path string
+				file *ast.File
+			}
+			tuples := make([]tuple, 0, len(astPackage.Files))
+			for path, astFile := range astPackage.Files {
+				tuples = append(tuples, tuple{path, astFile})
+			}
+			sort.Slice(tuples, func(i, j int) bool {
+				return tuples[i].path < tuples[j].path
+			})
+			astFiles := make([]*ast.File, 0, len(astPackage.Files))
+			for _, t := range tuples {
+				astFiles = append(astFiles, t.file)
+			}
 			b.pkgs[absPath].astPackage = astPackage
+			b.pkgs[absPath].astFiles = astFiles
 		}
 	}
 	if len(b.pkgs) < 1 {
@@ -129,6 +146,7 @@ func BuildProgram(path string, config *Config) (program *ir.Program, entryFuncs 
 	subsAstPackage.Files = map[string]*ast.File{"substitutes.go": subsFile}
 	b.pkgs["subs"] = new(pkg)
 	b.pkgs["subs"].astPackage = subsAstPackage
+	b.pkgs["subs"].astFiles = []*ast.File{subsFile}
 
 	// Type check:
 	orderedPkgPaths, err := b.packageProcessingOrder()
@@ -154,18 +172,14 @@ func BuildProgram(path string, config *Config) (program *ir.Program, entryFuncs 
 	}
 
 	for _, path := range orderedPkgPaths {
+		astFiles := b.pkgs[path].astFiles
 		buildPackage := b.pkgs[path].buildPackage
-		astPackage := b.pkgs[path].astPackage
 
 		var importPath string
-		var astFiles []*ast.File
 		if path == "subs" {
 			importPath = "subs"
 		} else {
 			importPath = buildPackage.ImportPath
-		}
-		for _, file := range astPackage.Files {
-			astFiles = append(astFiles, file)
 		}
 
 		typesPackage, err := typesConfig.Check(importPath, b.fset, astFiles, b.typesInfo)
@@ -181,7 +195,7 @@ func BuildProgram(path string, config *Config) (program *ir.Program, entryFuncs 
 	// Comment maps:
 	b.cmaps = make(map[*ast.File]ast.CommentMap)
 	for _, pkg := range b.pkgs {
-		for _, astFile := range pkg.astPackage.Files {
+		for _, astFile := range pkg.astFiles {
 			b.cmaps[astFile] = ast.NewCommentMap(b.fset, astFile, astFile.Comments)
 		}
 	}
@@ -192,15 +206,13 @@ func BuildProgram(path string, config *Config) (program *ir.Program, entryFuncs 
 
 	// AST processing:
 	for _, path := range orderedPkgPaths {
-		astPackage := b.pkgs[path].astPackage
-		for _, astFile := range astPackage.Files {
+		for _, astFile := range b.pkgs[path].astFiles {
 			b.processFuncDeclsInFile(astFile)
 		}
 	}
 
 	for _, path := range orderedPkgPaths {
-		astPackage := b.pkgs[path].astPackage
-		for _, astFile := range astPackage.Files {
+		for _, astFile := range b.pkgs[path].astFiles {
 			b.processGenDeclsInFile(astFile)
 		}
 	}
@@ -211,7 +223,7 @@ func BuildProgram(path string, config *Config) (program *ir.Program, entryFuncs 
 		for _, init := range initOrder {
 			b.processInitializer(astPackage, init)
 		}
-		for _, astFile := range astPackage.Files {
+		for _, astFile := range b.pkgs[path].astFiles {
 			for _, decl := range astFile.Decls {
 				funcDecl, ok := decl.(*ast.FuncDecl)
 				if !ok || funcDecl.Name.Name != "init" {
@@ -231,8 +243,7 @@ func BuildProgram(path string, config *Config) (program *ir.Program, entryFuncs 
 	}
 
 	for _, path := range orderedPkgPaths {
-		astPackage := b.pkgs[path].astPackage
-		for _, astFile := range astPackage.Files {
+		for _, astFile := range b.pkgs[path].astFiles {
 			b.processFuncDefsInFile(astFile)
 		}
 	}
@@ -258,9 +269,9 @@ type pkg struct {
 	buildPackage *build.Package
 	typesPackage *types.Package
 
+	astFiles       []*ast.File
 	absImportPaths []string
-
-	initOrder []*types.Initializer
+	initOrder      []*types.Initializer
 }
 
 type builder struct {

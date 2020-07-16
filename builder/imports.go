@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/types"
 	"path/filepath"
+	"sort"
 )
 
 func (b *builder) Import(importPath string) (*types.Package, error) {
@@ -35,23 +36,28 @@ func (b *builder) ImportFrom(importPath, absPath string, mode types.ImportMode) 
 }
 
 func (b *builder) packageProcessingOrder() ([]string, error) {
-	orderedPaths := make([]string, 0, len(b.pkgs))
+	nameOrderedPaths := make([]string, 0, len(b.pkgs))
+	for absPath := range b.pkgs {
+		nameOrderedPaths = append(nameOrderedPaths, absPath)
+	}
+	sort.Strings(nameOrderedPaths)
+	topoOrderedPaths := make([]string, 0, len(b.pkgs))
 	addedPaths := make(map[string]bool)
 
-	for len(orderedPaths) < len(b.pkgs) {
+	for len(topoOrderedPaths) < len(nameOrderedPaths) {
 		addedCount := 0
 	pkgLoop:
-		for absPath, pkg := range b.pkgs {
+		for _, absPath := range nameOrderedPaths {
 			if addedPaths[absPath] {
 				continue
 			}
-			for _, absImportPath := range pkg.absImportPaths {
+			for _, absImportPath := range b.pkgs[absPath].absImportPaths {
 				if !addedPaths[absImportPath] {
 					continue pkgLoop
 				}
 			}
 
-			orderedPaths = append(orderedPaths, absPath)
+			topoOrderedPaths = append(topoOrderedPaths, absPath)
 			addedPaths[absPath] = true
 			addedCount++
 		}
@@ -60,5 +66,5 @@ func (b *builder) packageProcessingOrder() ([]string, error) {
 		}
 	}
 
-	return orderedPaths, nil
+	return topoOrderedPaths, nil
 }
