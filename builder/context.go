@@ -36,7 +36,7 @@ func (c *context) findBreakable(label string) ir.Stmt {
 	if label != "" {
 		stmt := c.enclosingStmtLabels[label]
 		switch stmt.(type) {
-		case *ir.ForStmt, *ir.RangeStmt, *ir.SwitchStmt:
+		case *ir.ForStmt, *ir.ChanRangeStmt, *ir.ContainerRangeStmt, *ir.SwitchStmt:
 			return stmt
 		default:
 			return nil
@@ -48,7 +48,7 @@ func (c *context) findBreakable(label string) ir.Stmt {
 	for i := len(c.enclosingStmts) - 1; i >= 0; i-- {
 		stmt := c.enclosingStmts[i]
 		switch stmt.(type) {
-		case *ir.ForStmt, *ir.RangeStmt, *ir.SwitchStmt:
+		case *ir.ForStmt, *ir.ChanRangeStmt, *ir.ContainerRangeStmt, *ir.SwitchStmt:
 			return stmt
 		}
 	}
@@ -59,7 +59,7 @@ func (c *context) findContinuable(label string) ir.Stmt {
 	if label != "" {
 		stmt := c.enclosingStmtLabels[label]
 		switch stmt.(type) {
-		case *ir.ForStmt, *ir.RangeStmt:
+		case *ir.ForStmt, *ir.ChanRangeStmt, *ir.ContainerRangeStmt:
 			return stmt
 		default:
 			return nil
@@ -71,7 +71,7 @@ func (c *context) findContinuable(label string) ir.Stmt {
 	for i := len(c.enclosingStmts) - 1; i >= 0; i-- {
 		stmt := c.enclosingStmts[i]
 		switch stmt.(type) {
-		case *ir.ForStmt, *ir.RangeStmt:
+		case *ir.ForStmt, *ir.ChanRangeStmt, *ir.ContainerRangeStmt:
 			return stmt
 		}
 	}

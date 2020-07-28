@@ -9,15 +9,12 @@ import (
 func (t *translator) translateGlobalScope() {
 	addedVar := false
 	for _, v := range t.program.Scope().Variables() {
-		var typ, initialValue string
-		switch v.Type() {
-		case ir.FuncType:
-			typ = "fid"
-		default:
-			typ = "int"
-		}
-		initialValue = t.translateValue(v.InitialValue(), v.Type())
-		t.system.Declarations().AddVariable(v.Handle(), typ, initialValue)
+		typ := t.uppaalReferenceTypeForIrType(v.Type())
+		initialValue := t.translateValue(v.InitialValue(), v.Type())
+		t.system.Declarations().AddVariable(v.Handle(), typ, "")
+		t.system.Declarations().AddInitFuncStmt(fmt.Sprintf("%s = %s;",
+			v.Handle(), initialValue))
+		addedVar = true
 	}
 	if addedVar {
 		t.system.Declarations().AddSpaceBetweenVariables()
@@ -28,21 +25,17 @@ func (t *translator) translateScope(ctx *context) {
 	addedLocalVar := false
 	addedGlobalVar := false
 	for _, v := range ctx.body.Scope().Variables() {
-		var typ, initialValue string
-		switch v.Type() {
-		case ir.FuncType:
-			typ = "fid"
-		default:
-			typ = "int"
-		}
-		initialValue = t.translateValue(v.InitialValue(), v.Type())
+		typ := t.uppaalReferenceTypeForIrType(v.Type())
+		initialValue := t.translateValue(v.InitialValue(), v.Type())
 		if !v.IsCaptured() {
 			ctx.proc.Declarations().AddVariable(v.Handle(), typ, "")
-			ctx.proc.Declarations().AddInitFuncStmt(v.Handle() + " = " + initialValue + ";")
+			ctx.proc.Declarations().AddInitFuncStmt(fmt.Sprintf("%s = %s;",
+				v.Handle(), initialValue))
 			addedLocalVar = true
 		} else {
-			t.system.Declarations().AddArray(v.Handle(), t.callCount(ctx.f), typ)
-			ctx.proc.Declarations().AddInitFuncStmt(v.Handle() + "[pid] = " + initialValue + ";")
+			t.system.Declarations().AddArray(v.Handle(), []int{t.callCount(ctx.f)}, typ)
+			ctx.proc.Declarations().AddInitFuncStmt(fmt.Sprintf("%s[pid] = %s;",
+				v.Handle(), initialValue))
 			addedGlobalVar = true
 		}
 	}

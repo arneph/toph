@@ -50,7 +50,15 @@ func addCallCountsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fc
 	// Find calleeInfos for each function independently.
 	callerToCalleesInfos := make(map[*ir.Func]callsInfo, len(program.Funcs()))
 	for _, caller := range program.Funcs() {
-		callerToCalleesInfos[caller] = findCalleesInfoForBody(caller.Body(), callKinds, fcg)
+		res := findCalleesInfoForBody(caller.Body(), callKinds, fcg)
+		if caller == program.InitFunc() {
+			for _, v := range program.Scope().Variables() {
+				if v.InitialValue() == v.Type().InitializedValue() {
+					res.add(findCalleesForInitializedType(v.Type()))
+				}
+			}
+		}
+		callerToCalleesInfos[caller] = res
 	}
 
 	// Process all SCCs in topological order (starting from entry):
@@ -86,9 +94,9 @@ func addCallCountsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fc
 				fcg.addSpecialOpCount(caller, op, count)
 				fcg.addTotalSpecialOpCount(op, count*sccCallCounts[currentSCC])
 			}
-			for structType, count := range info.structAllocations {
-				fcg.addStructAllocations(caller, structType, count)
-				fcg.addTotalStructAllocations(structType, count*sccCallCounts[currentSCC])
+			for irType, count := range info.typeAllocations {
+				fcg.addTypeAllocations(caller, irType, count)
+				fcg.addTotalTypeAllocations(irType, count*sccCallCounts[currentSCC])
 			}
 		}
 	}
@@ -105,17 +113,17 @@ func removeCallsToClosuresInsideUncalledFunctionsFromFuncCallGraph(program *ir.P
 }
 
 type callsInfo struct {
-	callCount         int
-	calleeCounts      map[*ir.Func]int
-	specialOpCounts   map[ir.SpecialOp]int
-	structAllocations map[*ir.StructType]int
+	callCount       int
+	calleeCounts    map[*ir.Func]int
+	specialOpCounts map[ir.SpecialOp]int
+	typeAllocations map[ir.Type]int
 }
 
 func (info *callsInfo) init() {
 	info.callCount = 0
 	info.calleeCounts = make(map[*ir.Func]int)
 	info.specialOpCounts = make(map[ir.SpecialOp]int)
-	info.structAllocations = make(map[*ir.StructType]int)
+	info.typeAllocations = make(map[ir.Type]int)
 }
 
 func (info *callsInfo) enforceMaxCallCounts() {
@@ -132,9 +140,9 @@ func (info *callsInfo) enforceMaxCallCounts() {
 			info.specialOpCounts[op] = MaxCallCounts
 		}
 	}
-	for structType := range info.structAllocations {
-		if info.structAllocations[structType] > MaxCallCounts {
-			info.structAllocations[structType] = MaxCallCounts
+	for irType := range info.typeAllocations {
+		if info.typeAllocations[irType] > MaxCallCounts {
+			info.typeAllocations[irType] = MaxCallCounts
 		}
 	}
 }
@@ -160,10 +168,10 @@ func (info *callsInfo) addSpecialOpCount(op ir.SpecialOp, count int) {
 	}
 }
 
-func (info *callsInfo) addStructAllocations(structType *ir.StructType, count int) {
-	info.structAllocations[structType] += count
-	if info.structAllocations[structType] > MaxCallCounts {
-		info.structAllocations[structType] = MaxCallCounts
+func (info *callsInfo) addTypeAllocations(irType ir.Type, count int) {
+	info.typeAllocations[irType] += count
+	if info.typeAllocations[irType] > MaxCallCounts {
+		info.typeAllocations[irType] = MaxCallCounts
 	}
 }
 
@@ -175,8 +183,8 @@ func (info *callsInfo) multiply(factor int) {
 	for op := range info.specialOpCounts {
 		info.specialOpCounts[op] *= factor
 	}
-	for structType := range info.structAllocations {
-		info.structAllocations[structType] *= factor
+	for irType := range info.typeAllocations {
+		info.typeAllocations[irType] *= factor
 	}
 	info.enforceMaxCallCounts()
 }
@@ -189,8 +197,8 @@ func (info *callsInfo) add(other callsInfo) {
 	for op, count := range other.specialOpCounts {
 		info.specialOpCounts[op] += count
 	}
-	for structType, count := range other.structAllocations {
-		info.structAllocations[structType] += count
+	for irType, count := range other.typeAllocations {
+		info.typeAllocations[irType] += count
 	}
 	info.enforceMaxCallCounts()
 }
@@ -209,15 +217,21 @@ func (info *callsInfo) mergeFrom(other callsInfo) {
 			info.specialOpCounts[op] = count
 		}
 	}
-	for structType, count := range other.structAllocations {
-		if info.structAllocations[structType] < count {
-			info.structAllocations[structType] = count
+	for irType, count := range other.typeAllocations {
+		if info.typeAllocations[irType] < count {
+			info.typeAllocations[irType] = count
 		}
 	}
 }
 
 func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
 	res.init()
+
+	for _, v := range body.Scope().Variables() {
+		if v.InitialValue() == v.Type().InitializedValue() {
+			res.add(findCalleesForInitializedType(v.Type()))
+		}
+	}
 
 	for _, stmt := range body.Stmts() {
 		switch stmt := stmt.(type) {
@@ -228,7 +242,9 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 		case ir.SpecialOpStmt:
 			res.addSpecialOpCount(stmt.SpecialOp(), 1)
 		case *ir.MakeStructStmt:
-			res.addStructAllocations(stmt.StructType(), 1)
+			res.addTypeAllocations(stmt.StructType(), 1)
+		case *ir.MakeContainerStmt:
+			res.addTypeAllocations(stmt.ContainerType(), 1)
 		case *ir.IfStmt:
 			res.add(findCalleesInfoForIfStmt(stmt, callKinds, fcg))
 		case *ir.SwitchStmt:
@@ -237,8 +253,10 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 			res.add(findCalleesInfoForSelectStmt(stmt, callKinds, fcg))
 		case *ir.ForStmt:
 			res.add(findCalleesInfoForForStmt(stmt, callKinds, fcg))
-		case *ir.RangeStmt:
-			res.add(findCalleesInfoForRangeStmt(stmt, callKinds, fcg))
+		case *ir.ChanRangeStmt:
+			res.add(findCalleesInfoForChanRangeStmt(stmt, callKinds, fcg))
+		case *ir.ContainerRangeStmt:
+			res.add(findCalleesInfoForContainerRangeStmt(stmt, callKinds, fcg))
 		case *ir.BranchStmt, *ir.ChanCommOpStmt, *ir.ReturnStmt, *ir.RecoverStmt:
 			continue
 		default:
@@ -250,14 +268,14 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 }
 
 func findCalleesInfoForAssignStmt(assignStmt *ir.AssignStmt) (res callsInfo) {
-	structType, ok := assignStmt.Destination().Type().(*ir.StructType)
-	if !ok {
-		return
+	containerAccess, ok := assignStmt.Source().(*ir.ContainerAccess)
+	if ok && containerAccess.IsMapRead() && containerAccess.Index() == ir.RandomIndex {
+		return findCalleesForInitializedType(containerAccess.ContainerType().ElementType())
 	}
 	if !assignStmt.RequiresCopy() {
 		return
 	}
-	return findCalleesForStructTypeCopy(structType)
+	return findCalleesForTypeCopy(assignStmt.Destination().Type())
 }
 
 func findCalleesInfoForCallStmt(callStmt *ir.CallStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
@@ -282,46 +300,82 @@ func findCalleesInfoForCallStmt(callStmt *ir.CallStmt, callKinds ir.CallKind, fc
 		if !ok {
 			continue
 		}
-		structType, ok := argLV.Type().(*ir.StructType)
-		if !ok {
-			continue
-		}
 		if !callStmt.ArgRequiresCopy(i) {
 			continue
 		}
-		res.add(findCalleesForStructTypeCopy(structType))
+		res.add(findCalleesForTypeCopy(argLV.Type()))
 	}
 	for i, resLV := range callStmt.Results() {
-		structType, ok := resLV.Type().(*ir.StructType)
-		if !ok {
-			continue
-		}
 		if !callStmt.ResultRequiresCopy(i) {
 			continue
 		}
-		res.add(findCalleesForStructTypeCopy(structType))
+		res.add(findCalleesForTypeCopy(resLV.Type()))
 	}
 	return
 }
 
+func findCalleesForInitializedType(irType ir.Type) (res callsInfo) {
+	res.init()
+	switch irType.InitializedValue() {
+	case ir.InitializedMutex, ir.InitializedWaitGroup:
+		res.addTypeAllocations(irType, 1)
+	case ir.InitializedStruct:
+		structType := irType.(*ir.StructType)
+
+		res.addTypeAllocations(irType, 1)
+		for _, field := range structType.Fields() {
+			if field.IsPointer() {
+				continue
+			}
+			res.add(findCalleesForInitializedType(field.Type()))
+		}
+	case ir.InitializedArray:
+		arrayType := irType.(*ir.ContainerType)
+
+		res.addTypeAllocations(irType, 1)
+		if arrayType.HoldsPointers() {
+			elemRes := findCalleesForInitializedType(arrayType.ElementType())
+			elemRes.multiply(arrayType.Len())
+
+			res.add(elemRes)
+		}
+	}
+	return res
+}
+
+func findCalleesForTypeCopy(irType ir.Type) (res callsInfo) {
+	switch irType := irType.(type) {
+	case *ir.StructType:
+		return findCalleesForStructTypeCopy(irType)
+	case *ir.ContainerType:
+		return findCalleesForContainerTypeCopy(irType)
+	default:
+		return
+	}
+}
+
 func findCalleesForStructTypeCopy(structType *ir.StructType) (res callsInfo) {
 	res.init()
-	res.addStructAllocations(structType, 1)
-	queue := []*ir.Field{}
+	res.addTypeAllocations(structType, 1)
 	for _, field := range structType.Fields() {
-		queue = append(queue, field)
+		if field.RequiresDeepCopy() {
+			res.add(findCalleesForTypeCopy(field.Type()))
+		}
 	}
-	for len(queue) > 0 {
-		field := queue[0]
-		queue = queue[1:]
-		structType, ok := field.Type().(*ir.StructType)
-		if !ok || field.IsPointer() {
-			continue
+	return res
+}
+
+func findCalleesForContainerTypeCopy(containerType *ir.ContainerType) (res callsInfo) {
+	res.init()
+	res.addTypeAllocations(containerType, 1)
+	if containerType.RequiresDeepCopies() {
+		subRes := findCalleesForTypeCopy(containerType.ElementType())
+		if containerType.Kind() == ir.Array {
+			subRes.multiply(containerType.Len())
+		} else {
+			subRes.multiply(MaxCallCounts)
 		}
-		res.addStructAllocations(structType, 1)
-		for _, field := range structType.Fields() {
-			queue = append(queue, field)
-		}
+		res.add(subRes)
 	}
 	return res
 }
@@ -416,8 +470,22 @@ func findCalleesInfoForForStmt(forStmt *ir.ForStmt, callKinds ir.CallKind, fcg *
 	return
 }
 
-func findCalleesInfoForRangeStmt(rangeStmt *ir.RangeStmt, callKinds ir.CallKind, fcg *FuncCallGraph) callsInfo {
+func findCalleesInfoForChanRangeStmt(rangeStmt *ir.ChanRangeStmt, callKinds ir.CallKind, fcg *FuncCallGraph) callsInfo {
 	res := findCalleesInfoForBody(rangeStmt.Body(), callKinds, fcg)
 	res.multiply(MaxCallCounts)
+	return res
+}
+
+func findCalleesInfoForContainerRangeStmt(rangeStmt *ir.ContainerRangeStmt, callKinds ir.CallKind, fcg *FuncCallGraph) callsInfo {
+	res := findCalleesInfoForBody(rangeStmt.Body(), callKinds, fcg)
+	containerType := rangeStmt.Container().Type().(*ir.ContainerType)
+	switch containerType.Kind() {
+	case ir.Array:
+		res.multiply(containerType.Len())
+	case ir.Slice, ir.Map:
+		res.multiply(MaxCallCounts)
+	default:
+		panic("unexpected container kind")
+	}
 	return res
 }

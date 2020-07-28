@@ -16,7 +16,7 @@ func (b *builder) processAssignStmt(stmt *ast.AssignStmt, ctx *context) {
 			if !ok {
 				continue
 			}
-			b.processVarDefinition(ident, ctx)
+			b.processVarDefinition(ident, false, ctx)
 		}
 	}
 
@@ -29,9 +29,9 @@ func (b *builder) processAssignments(lhsExprs []ast.Expr, rhsExprs []ast.Expr, c
 	callExpr, ok := rhsExprs[0].(*ast.CallExpr)
 	if ok && len(rhsExprs) == 1 {
 		rhs = make(map[int]ir.RValue)
-		resultVals := b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
-		for i, resultVal := range resultVals {
-			rhs[i] = resultVal.(ir.RValue)
+		resultVars := b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
+		for i, resultVar := range resultVars {
+			rhs[i] = resultVar
 		}
 	} else {
 		rhs = b.processExprs(rhsExprs, ctx)
@@ -44,6 +44,8 @@ func (b *builder) processAssignments(lhsExprs []ast.Expr, rhsExprs []ast.Expr, c
 		irVal := b.processExpr(expr, ctx)
 		if irVal == nil {
 			continue
+		} else if irContainerAccess, ok := irVal.(*ir.ContainerAccess); ok {
+			irContainerAccess.SetKind(ir.Write)
 		}
 		irVar := irVal.(ir.LValue)
 		irType := irVar.Type()

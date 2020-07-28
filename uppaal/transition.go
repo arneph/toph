@@ -54,9 +54,13 @@ func (t *Trans) Select() string {
 	return t.selectStmts
 }
 
-// SetSelect sets the select statements of the transition.
-func (t *Trans) SetSelect(selectStmts string) {
-	t.selectStmts = selectStmts
+// AddSelect adds the select statement to the transition.
+func (t *Trans) AddSelect(selectStmt string) {
+	if t.selectStmts == "" {
+		t.selectStmts = selectStmt
+	} else {
+		t.selectStmts += ", " + selectStmt
+	}
 }
 
 // Guard returns the guard of the transition that has to be fulfilled to enable

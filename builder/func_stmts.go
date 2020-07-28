@@ -59,7 +59,7 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callabl
 	return callee, calleeSignature
 }
 
-func (b *builder) processCallExpr(callExpr *ast.CallExpr, ctx *context) map[int]ir.LValue {
+func (b *builder) processCallExpr(callExpr *ast.CallExpr, ctx *context) map[int]*ir.Variable {
 	return b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
 }
 
@@ -83,7 +83,7 @@ func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
 		}
 		for i, t := range ctx.currentFunc().ResultTypes() {
 			if resultVars[i] == nil {
-				returnStmt.AddResult(i, b.initialValueForIrType(t))
+				returnStmt.AddResult(i, t.UninitializedValue())
 
 				p := b.fset.Position(stmt.Pos())
 				resultExpr := stmt.Results[i]
@@ -108,7 +108,7 @@ func (b *builder) processPanicCall(callExpr *ast.CallExpr, ctx *context) {
 		if ok {
 			returnStmt.AddResult(i, v)
 		} else {
-			returnStmt.AddResult(i, b.initialValueForIrType(t))
+			returnStmt.AddResult(i, t.UninitializedValue())
 		}
 	}
 }
@@ -118,10 +118,10 @@ func (b *builder) processRecoverCall(callExpr *ast.CallExpr, ctx *context) {
 	ctx.body.AddStmt(recoverStmt)
 }
 
-func (b *builder) processCallExprWithCallKind(callExpr *ast.CallExpr, callKind ir.CallKind, ctx *context) map[int]ir.LValue {
+func (b *builder) processCallExprWithCallKind(callExpr *ast.CallExpr, callKind ir.CallKind, ctx *context) map[int]*ir.Variable {
 	if b.canIgnoreCall(callExpr) {
 		b.processExprs(callExpr.Args, ctx)
-		return map[int]ir.LValue{}
+		return map[int]*ir.Variable{}
 	}
 
 	if name, ok := b.isKnownBuiltin(callExpr); ok {
@@ -131,25 +131,35 @@ func (b *builder) processCallExprWithCallKind(callExpr *ast.CallExpr, callKind i
 			return nil
 		}
 		switch name {
+		case "append":
+			resultVar := b.processSliceAppendExpr(callExpr, ctx)
+			if resultVar != nil {
+				return map[int]*ir.Variable{0: resultVar}
+			}
+		case "make":
+			resultVar := b.processMakeContainerExpr(callExpr, ctx)
+			if resultVar != nil {
+				return map[int]*ir.Variable{0: resultVar}
+			}
 		case "new":
 			resultVar := b.processNewExpr(callExpr, ctx)
 			if resultVar != nil {
-				return map[int]ir.LValue{0: resultVar}
+				return map[int]*ir.Variable{0: resultVar}
 			}
 		case "panic":
 			b.processPanicCall(callExpr, ctx)
 		case "recover":
 			b.processRecoverCall(callExpr, ctx)
 		}
-		return map[int]ir.LValue{}
+		return map[int]*ir.Variable{}
 	}
 
 	if specialOp, ok := b.specialOpForCall(callExpr); ok {
 		resultVar := b.processSpecialOpCallExprWithCallKind(callExpr, callKind, specialOp, ctx)
 		if resultVar != nil {
-			return map[int]ir.LValue{0: resultVar}
+			return map[int]*ir.Variable{0: resultVar}
 		}
-		return map[int]ir.LValue{}
+		return map[int]*ir.Variable{}
 	}
 
 	return b.processRegularCallExprWithCallKind(callExpr, callKind, ctx)
@@ -189,6 +199,8 @@ func (b *builder) processCallReceiverVal(callExpr *ast.CallExpr, calleeSignature
 	}
 	if _, ok := irType.(*ir.StructType); ok {
 		requiresCopy = !b.isPointer(recvTypesType)
+	} else if irContainerType, ok := irType.(*ir.ContainerType); ok && irContainerType.Kind() == ir.Array {
+		requiresCopy = !b.isPointer(recvTypesType)
 	} else {
 		requiresCopy = false
 	}
@@ -198,7 +210,11 @@ func (b *builder) processCallReceiverVal(callExpr *ast.CallExpr, calleeSignature
 func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *types.Signature, ctx *context) (argVals map[int]ir.RValue, requiresCopy map[int]bool, ok bool) {
 	argVals = b.processExprs(callExpr.Args, ctx)
 	requiresCopy = make(map[int]bool)
-	for i := 0; i < calleeSignature.Params().Len(); i++ {
+	regularParamN := calleeSignature.Params().Len()
+	if calleeSignature.Variadic() {
+		regularParamN--
+	}
+	for i := 0; i < regularParamN; i++ {
 		param := calleeSignature.Params().At(i)
 		paramTypesType := param.Type()
 		irType := b.typesTypeToIrType(paramTypesType)
@@ -214,15 +230,57 @@ func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *ty
 		}
 		if _, ok := irType.(*ir.StructType); ok {
 			requiresCopy[i] = !b.isPointer(paramTypesType)
+		} else if irContainerType, ok := irType.(*ir.ContainerType); ok && irContainerType.Kind() == ir.Array {
+			requiresCopy[i] = !b.isPointer(paramTypesType)
 		} else {
 			requiresCopy[i] = false
+		}
+	}
+	if calleeSignature.Variadic() {
+		typesSlice := calleeSignature.Params().At(regularParamN).Type().(*types.Slice)
+		irType := b.typesTypeToIrType(typesSlice)
+		if irType != nil {
+			length := len(callExpr.Args) - regularParamN
+			irSliceType := irType.(*ir.ContainerType)
+			irElemVals := make([]ir.RValue, length)
+			for i := regularParamN; i < len(callExpr.Args); i++ {
+				val, ok := argVals[i]
+				if !ok {
+					argExpr := callExpr.Args[i]
+					argExprStr := b.nodeToString(argExpr)
+					p := b.fset.Position(argExpr.Pos())
+					b.addWarning(fmt.Errorf("%v: could not resolve argument: %s", p, argExprStr))
+					return nil, nil, false
+				}
+				delete(argVals, i)
+				irElemVals[i-regularParamN] = val
+			}
+
+			irSlice := b.program.NewVariable("", irSliceType, -1)
+			ctx.body.Scope().AddVariable(irSlice)
+
+			makeContainerStmt := ir.NewMakeContainerStmt(irSlice, length, false, callExpr.Pos(), callExpr.End())
+			ctx.body.AddStmt(makeContainerStmt)
+
+			for i := 0; i < length; i++ {
+				astElemExpr := callExpr.Args[regularParamN+i]
+				irElemVal := irElemVals[i]
+				requiresCopy := irSliceType.RequiresDeepCopies()
+				irContainerAccess := ir.NewContainerAccess(irSlice, ir.Value(i))
+				irContainerAccess.SetKind(ir.Write)
+				assignStmt := ir.NewAssignStmt(irElemVal, irContainerAccess, requiresCopy, astElemExpr.Pos(), astElemExpr.End())
+				ctx.body.AddStmt(assignStmt)
+			}
+
+			argVals[regularParamN] = irSlice
+			requiresCopy[regularParamN] = false
 		}
 	}
 	return argVals, requiresCopy, true
 }
 
-func (b *builder) processCallResultVars(calleeSignature *types.Signature, ctx *context) (resultVals map[int]ir.LValue, requiresCopy map[int]bool) {
-	resultVals = make(map[int]ir.LValue)
+func (b *builder) processCallResultVars(calleeSignature *types.Signature, ctx *context) (resultVars map[int]*ir.Variable, requiresCopy map[int]bool) {
+	resultVars = make(map[int]*ir.Variable)
 	requiresCopy = make(map[int]bool)
 	for i := 0; i < calleeSignature.Results().Len(); i++ {
 		result := calleeSignature.Results().At(i)
@@ -231,31 +289,31 @@ func (b *builder) processCallResultVars(calleeSignature *types.Signature, ctx *c
 		if irType == nil {
 			continue
 		}
-		initialValue := b.initialValueForIrType(irType)
+		initialValue := irType.UninitializedValue()
 		irVar := b.program.NewVariable("", irType, initialValue)
 		ctx.body.Scope().AddVariable(irVar)
-		resultVals[i] = irVar
+		resultVars[i] = irVar
 		if _, ok := irType.(*ir.StructType); ok {
 			requiresCopy[i] = !b.isPointer(resultTypesType)
 		} else {
 			requiresCopy[i] = false
 		}
 	}
-	return resultVals, requiresCopy
+	return resultVars, requiresCopy
 }
 
-func (b *builder) processRegularCallExprWithCallKind(callExpr *ast.CallExpr, callKind ir.CallKind, ctx *context) map[int]ir.LValue {
+func (b *builder) processRegularCallExprWithCallKind(callExpr *ast.CallExpr, callKind ir.CallKind, ctx *context) map[int]*ir.Variable {
 	callee, calleeSignature := b.findCallee(callExpr.Fun, ctx)
 	if callee == nil {
-		return map[int]ir.LValue{}
+		return map[int]*ir.Variable{}
 	}
 	recvVal, recvRequiresCopy, ok := b.processCallReceiverVal(callExpr, calleeSignature, ctx)
 	if !ok {
-		return map[int]ir.LValue{}
+		return map[int]*ir.Variable{}
 	}
 	argVals, argRequiresCopy, ok := b.processCallArgVals(callExpr, calleeSignature, ctx)
 	if !ok {
-		return map[int]ir.LValue{}
+		return map[int]*ir.Variable{}
 	}
 
 	callStmt := ir.NewCallStmt(callee, calleeSignature, callKind, callExpr.Pos(), callExpr.End())
@@ -269,15 +327,15 @@ func (b *builder) processRegularCallExprWithCallKind(callExpr *ast.CallExpr, cal
 	}
 
 	if callKind != ir.Call {
-		return map[int]ir.LValue{}
+		return map[int]*ir.Variable{}
 	}
 
-	resultVals, resultRequiresCopy := b.processCallResultVars(calleeSignature, ctx)
-	for i, v := range resultVals {
+	resultVars, resultRequiresCopy := b.processCallResultVars(calleeSignature, ctx)
+	for i, v := range resultVars {
 		callStmt.AddResult(i, v, resultRequiresCopy[i])
 	}
 
-	return resultVals
+	return resultVars
 }
 
 func (b *builder) liftedSpecialOpFunc(specialOp ir.SpecialOp) *ir.Func {
@@ -332,8 +390,7 @@ func (b *builder) processSpecialOpCallExprWithCallKind(callExpr *ast.CallExpr, c
 		if callKind != ir.Call {
 			return nil
 		}
-
-		return b.processMakeExpr(callExpr, ctx)
+		return b.processMakeChanExpr(callExpr, ctx)
 
 	case ir.Close:
 		chanVal := b.findChannel(callExpr.Args[0], ctx)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+	"go/types"
 
 	"github.com/arneph/toph/ir"
 )
@@ -119,19 +120,42 @@ func (b *builder) processForStmt(stmt *ast.ForStmt, label string, ctx *context) 
 }
 
 func (b *builder) processRangeStmt(stmt *ast.RangeStmt, label string, ctx *context) {
-	typeAndValue, ok := b.typesInfo.Types[stmt.X]
-	if !ok {
-		p := b.fset.Position(stmt.X.Pos())
-		b.addWarning(
-			fmt.Errorf("%v: could not determine type of value to range over", p))
-	}
+	typesType := b.typesInfo.TypeOf(stmt.X)
+	irType := b.typesTypeToIrType(typesType)
 
-	irType := b.typesTypeToIrType(typeAndValue.Type)
 	if irType == ir.ChanType {
 		chanVar := b.findChannel(stmt.X, ctx)
 		if chanVar != nil {
-			// Range over channel:
-			rangeStmt := ir.NewRangeStmt(chanVar, ctx.body.Scope(), stmt.Pos(), stmt.End())
+			rangeStmt := ir.NewChanRangeStmt(chanVar, ctx.body.Scope(), stmt.Pos(), stmt.End())
+			ctx.body.AddStmt(rangeStmt)
+
+			b.processStmt(stmt.Body, ctx.subContextForBody(rangeStmt, label, rangeStmt.Body()))
+			return
+		}
+	} else if containerType, ok := irType.(*ir.ContainerType); ok {
+		containerVar := b.findContainer(stmt.X, ctx)
+		if containerVar != nil {
+			var counterVar *ir.Variable
+			var valueVal ir.LValue
+			keyIdent, ok := stmt.Key.(*ast.Ident)
+			if stmt.Key != nil && ok && keyIdent.Name != "_" && stmt.Tok == token.DEFINE && containerType.Kind() != ir.Map {
+				typesVar, ok := b.typesInfo.Defs[keyIdent].(*types.Var)
+				if ok && b.basicVarIsReadOnlyInBody(stmt.Body, typesVar) {
+					counterVar = b.program.NewVariable(keyIdent.Name, ir.IntType, ir.Value(0))
+					ctx.body.Scope().AddVariable(counterVar)
+					b.vars[typesVar] = counterVar
+				}
+			}
+			if stmt.Value != nil {
+				if valueVarIdent, ok := stmt.Value.(*ast.Ident); ok {
+					b.processVarDefinitionInScope(valueVarIdent, ctx.body.Scope(), false, ctx)
+				}
+				rv := b.processExpr(stmt.Value, ctx)
+				if lv, ok := rv.(ir.LValue); ok {
+					valueVal = lv
+				}
+			}
+			rangeStmt := ir.NewContainerRangeStmt(containerVar, counterVar, valueVal, ctx.body.Scope(), stmt.Pos(), stmt.End())
 			ctx.body.AddStmt(rangeStmt)
 
 			b.processStmt(stmt.Body, ctx.subContextForBody(rangeStmt, label, rangeStmt.Body()))

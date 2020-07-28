@@ -7,7 +7,7 @@ import (
 
 type variableInfo struct {
 	name         string
-	arraySize    int
+	dimensions   []int
 	_type        string
 	initialValue string
 }
@@ -34,7 +34,7 @@ func (d *Declarations) initDeclarations(comment string) {
 
 // AddSpaceBetweenTypes adds space between variable declarations.
 func (d *Declarations) AddSpaceBetweenTypes() {
-	d.types = append(d.types, "\n")
+	d.types = append(d.types, "")
 }
 
 // AddType adds a type declaration to the list of declarations.
@@ -60,13 +60,13 @@ func (d *Declarations) AddVariable(name, _type, initialValue string) {
 		d.variableLookup[name] = i
 	}
 
-	d.variables[i].arraySize = -1
+	d.variables[i].dimensions = nil
 	d.variables[i]._type = _type
 	d.variables[i].initialValue = initialValue
 }
 
 // AddArray adds an array declaration to the list of declarations.
-func (d *Declarations) AddArray(name string, size int, _type string) {
+func (d *Declarations) AddArray(name string, dimensions []int, _type string) {
 	i, ok := d.variableLookup[name]
 	if !ok {
 		i = len(d.variables)
@@ -76,7 +76,7 @@ func (d *Declarations) AddArray(name string, size int, _type string) {
 		d.variableLookup[name] = i
 	}
 
-	d.variables[i].arraySize = size
+	d.variables[i].dimensions = dimensions
 	d.variables[i]._type = _type
 	d.variables[i].initialValue = ""
 }
@@ -117,18 +117,21 @@ func (d *Declarations) AsXTA() string {
 		b.WriteString("\n" + t)
 	}
 	for _, info := range d.variables {
+		b.WriteString("\n")
 		if info.name == "" {
-			b.WriteString("\n")
-		} else if info.arraySize < 0 && info.initialValue == "" {
-			fmt.Fprintf(&b, "\n%s %s;",
-				info._type, info.name)
-		} else if info.arraySize < 0 && info.initialValue != "" {
-			fmt.Fprintf(&b, "\n%s %s = %s;",
-				info._type, info.name, info.initialValue)
-		} else {
-			fmt.Fprintf(&b, "\n%s %s[%d];",
-				info._type, info.name, info.arraySize)
+			continue
 		}
+		fmt.Fprintf(&b, "%s %s", info._type, info.name)
+		for _, dim := range info.dimensions {
+			fmt.Fprintf(&b, "[%d]", dim)
+		}
+		if info.initialValue != "" {
+			fmt.Fprintf(&b, " = %s", info.initialValue)
+		}
+		b.WriteString(";")
+	}
+	for _, f := range d.funcs {
+		b.WriteString("\n" + f + "\n")
 	}
 	if d.RequiresInitFunc() {
 		fmt.Fprintf(&b, "\nvoid %s() {\n", d.initFuncName)
@@ -136,9 +139,6 @@ func (d *Declarations) AsXTA() string {
 			b.WriteString("    " + stmt + "\n")
 		}
 		b.WriteString("}")
-	}
-	for _, f := range d.funcs {
-		b.WriteString("\n\n" + f)
 	}
 	return b.String()
 }

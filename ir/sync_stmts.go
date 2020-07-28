@@ -41,13 +41,13 @@ func (o MutexOp) String() string {
 
 // MakeMutexStmt is a mutex creation statement, executed for every variable declaration.
 type MakeMutexStmt struct {
-	mutex LValue
+	mutex *Variable
 
 	Node
 }
 
 // NewMakeMutexStmt creates a new MakeMutexStmt for the given mutex.
-func NewMakeMutexStmt(mutex LValue, pos, end token.Pos) *MakeMutexStmt {
+func NewMakeMutexStmt(mutex *Variable, pos, end token.Pos) *MakeMutexStmt {
 	s := new(MakeMutexStmt)
 	s.mutex = mutex
 	s.pos = pos
@@ -57,7 +57,7 @@ func NewMakeMutexStmt(mutex LValue, pos, end token.Pos) *MakeMutexStmt {
 }
 
 // Mutex returns the lvalue holding the newly created mutex.
-func (s *MakeMutexStmt) Mutex() LValue {
+func (s *MakeMutexStmt) Mutex() *Variable {
 	return s.mutex
 }
 
@@ -142,13 +142,13 @@ func (o WaitGroupOp) String() string {
 
 // MakeWaitGroupStmt is a wait group creation statement, executed for every variable declaration.
 type MakeWaitGroupStmt struct {
-	waitGroup LValue
+	waitGroup *Variable
 
 	Node
 }
 
 // NewMakeWaitGroupStmt creates a new MakeWaitGroupStmt for the given wait group.
-func NewMakeWaitGroupStmt(waitGroup LValue, pos, end token.Pos) *MakeWaitGroupStmt {
+func NewMakeWaitGroupStmt(waitGroup *Variable, pos, end token.Pos) *MakeWaitGroupStmt {
 	s := new(MakeWaitGroupStmt)
 	s.waitGroup = waitGroup
 	s.pos = pos
@@ -158,7 +158,7 @@ func NewMakeWaitGroupStmt(waitGroup LValue, pos, end token.Pos) *MakeWaitGroupSt
 }
 
 // WaitGroup returns the lvalue holding the newly created wait group.
-func (s *MakeWaitGroupStmt) WaitGroup() LValue {
+func (s *MakeWaitGroupStmt) WaitGroup() *Variable {
 	return s.waitGroup
 }
 

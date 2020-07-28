@@ -204,13 +204,13 @@ func (t *translator) addChannelProcess() {
 
 func (t *translator) addChannelDeclarations() {
 	t.system.Declarations().AddVariable("chan_count", "int", "0")
-	t.system.Declarations().AddArray("chan_counter", t.channelCount(), "int")
-	t.system.Declarations().AddArray("chan_buffer", t.channelCount(), "int")
-	t.system.Declarations().AddArray("sender_trigger", t.channelCount(), "chan")
-	t.system.Declarations().AddArray("sender_confirm", t.channelCount(), "chan")
-	t.system.Declarations().AddArray("receiver_trigger", t.channelCount(), "chan")
-	t.system.Declarations().AddArray("receiver_confirm", t.channelCount(), "chan")
-	t.system.Declarations().AddArray("close", t.channelCount(), "chan")
+	t.system.Declarations().AddArray("chan_counter", []int{t.channelCount()}, "int")
+	t.system.Declarations().AddArray("chan_buffer", []int{t.channelCount()}, "int")
+	t.system.Declarations().AddArray("sender_trigger", []int{t.channelCount()}, "chan")
+	t.system.Declarations().AddArray("sender_confirm", []int{t.channelCount()}, "chan")
+	t.system.Declarations().AddArray("receiver_trigger", []int{t.channelCount()}, "chan")
+	t.system.Declarations().AddArray("receiver_confirm", []int{t.channelCount()}, "chan")
+	t.system.Declarations().AddArray("close", []int{t.channelCount()}, "chan")
 	t.system.Declarations().AddSpaceBetweenVariables()
 
 	t.system.Declarations().AddFunc(fmt.Sprintf(

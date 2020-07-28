@@ -24,7 +24,7 @@ func (b *builder) processFuncReceiver(recv *ast.FieldList, ctx *context) {
 	if irType == nil {
 		return
 	}
-	initialValue := b.initialValueForIrType(irType)
+	initialValue := irType.UninitializedValue()
 	typesVar := b.typesInfo.ObjectOf(fieldNameIdent).(*types.Var)
 	irVar := b.program.NewVariable(fieldNameIdent.Name, irType, initialValue)
 	irFunc.AddArg(-1, irVar)
@@ -42,7 +42,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 			argIndex += len(field.Names)
 			continue
 		}
-		initialValue := b.initialValueForIrType(irType)
+		initialValue := irType.UninitializedValue()
 		for _, fieldNameIdent := range field.Names {
 			typesVar := b.typesInfo.Defs[fieldNameIdent].(*types.Var)
 			irVar := b.program.NewVariable(fieldNameIdent.Name, irType, initialValue)
@@ -67,7 +67,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 			}
 			continue
 		}
-		initialValue := b.initialValueForIrType(irType)
+		initialValue := irType.InitializedValue()
 
 		if len(field.Names) == 0 {
 			irFunc.AddResultType(resultIndex, irType)
@@ -111,11 +111,8 @@ func (b *builder) canIgnoreCall(callExpr *ast.CallExpr) bool {
 			switch used := used.(type) {
 			case *types.Builtin:
 				switch used.Name() {
-				case "append",
-					"cap",
+				case "cap",
 					"complex",
-					"copy",
-					"delete",
 					"imag",
 					"len",
 					"print",
@@ -126,7 +123,7 @@ func (b *builder) canIgnoreCall(callExpr *ast.CallExpr) bool {
 					astType := callExpr.Args[0]
 					typesType := b.typesInfo.TypeOf(astType)
 					irType := b.typesTypeToIrType(typesType)
-					return irType != ir.ChanType
+					return irType == nil
 				}
 			case *types.TypeName:
 				return true
@@ -283,11 +280,17 @@ func (b *builder) isKnownBuiltin(callExpr *ast.CallExpr) (string, bool) {
 	switch usedTypesObj := usedTypesObj.(type) {
 	case *types.Builtin:
 		switch name := usedTypesObj.Name(); name {
-		case "new", "panic", "recover":
+		case "append", "new", "panic", "recover":
 			return name, true
-		default:
-			return "", false
+		case "make":
+			astTypeArg := callExpr.Args[0]
+			typesTypeArg := b.typesInfo.TypeOf(astTypeArg)
+			switch typesTypeArg.(type) {
+			case *types.Slice, *types.Map:
+				return "make", true
+			}
 		}
+		return "", false
 	case *types.Func:
 		switch usedTypesObj.FullName() {
 		case "(*testing.common).FailNow",

@@ -1,7 +1,6 @@
 package builder
 
 import (
-	"fmt"
 	"go/types"
 
 	"github.com/arneph/toph/ir"
@@ -43,13 +42,36 @@ func (b *builder) typesTypeToIrType(typesType types.Type) ir.Type {
 
 	case *types.Pointer:
 		elementTypesType := underlyingTypesType.Elem()
-		switch elementTypesType.(type) {
+		underlyingElementTypesType := elementTypesType.Underlying()
+		switch underlyingElementTypesType.(type) {
 		case *types.Pointer:
 			return nil
 		default:
-			return b.typesTypeToIrType(elementTypesType)
+			elementIrType := b.typesTypeToIrType(elementTypesType)
+			switch elementIrType := elementIrType.(type) {
+			case *ir.StructType:
+				return elementIrType
+			case *ir.ContainerType:
+				if elementIrType.Kind() == ir.Array {
+					return elementIrType
+				}
+				return nil
+			default:
+				return nil
+			}
 		}
-
+	case *types.Array, *types.Slice, *types.Map:
+		info, ok := b.types.At(typesType).(*typeInfo)
+		if ok {
+			return info.irType
+		}
+		if !shouldModelType(typesType, nil) {
+			info = new(typeInfo)
+			info.irType = nil
+			b.types.Set(typesType, info)
+			return nil
+		}
+		return b.typesContainerToIrType(typesType)
 	default:
 		return nil
 	}
@@ -74,11 +96,39 @@ func (b *builder) typesStructToIrType(typesType types.Type, typesStruct *types.S
 		}
 		isPointer := b.isPointer(fieldTypesType)
 		isEmbedded := fieldTypesVar.Embedded()
-		initialValue := b.initialValueForIrType(fieldIrType)
-		irField := irStructType.AddField(i, fieldTypesVar.Name(), fieldIrType, isPointer, isEmbedded, initialValue)
+		irField := irStructType.AddField(i, fieldTypesVar.Name(), fieldIrType, isPointer, isEmbedded)
 		b.fields[fieldTypesVar] = irField
 	}
 	return irStructType
+}
+
+func (b *builder) typesContainerToIrType(typesType types.Type) ir.Type {
+	var kind ir.ContainerKind
+	var len int
+	var elementTypesType types.Type
+	switch underlyingTypesType := typesType.Underlying().(type) {
+	case *types.Array:
+		kind = ir.Array
+		len = int(underlyingTypesType.Len())
+		elementTypesType = underlyingTypesType.Elem()
+	case *types.Slice:
+		kind = ir.Slice
+		elementTypesType = underlyingTypesType.Elem()
+	case *types.Map:
+		kind = ir.Map
+		elementTypesType = underlyingTypesType.Elem()
+	}
+	elementIrType := b.typesTypeToIrType(elementTypesType)
+	if elementIrType == nil {
+		return nil
+	}
+	isPointer := b.isPointer(elementTypesType)
+	irContainerType := b.program.AddContainerType(kind, len, elementIrType, isPointer)
+	info := new(typeInfo)
+	info.irType = irContainerType
+	b.types.Set(typesType, info)
+
+	return irContainerType
 }
 
 func shouldModelType(typesType types.Type, seen []types.Type) bool {
@@ -94,13 +144,14 @@ func shouldModelType(typesType types.Type, seen []types.Type) bool {
 	case *types.Signature:
 		return true
 	case *types.Pointer:
-		if i := len(seen) - 1; i >= 0 {
-			_, ok := seen[i].(*types.Pointer)
-			if ok {
-				return false
-			}
+		switch elementType := typesType.Elem().Underlying().(type) {
+		case *types.Struct:
+			return shouldModelType(elementType, append(seen, typesType))
+		case *types.Array:
+			return shouldModelType(elementType, append(seen, typesType))
+		default:
+			return false
 		}
-		return shouldModelType(typesType.Elem(), append(seen, typesType))
 	case *types.Struct:
 		for i := 0; i < typesType.NumFields(); i++ {
 			typesVar := typesType.Field(i)
@@ -109,6 +160,12 @@ func shouldModelType(typesType types.Type, seen []types.Type) bool {
 			}
 		}
 		return false
+	case *types.Array:
+		return shouldModelType(typesType.Elem(), append(seen, typesType))
+	case *types.Slice:
+		return shouldModelType(typesType.Elem(), append(seen, typesType))
+	case *types.Map:
+		return shouldModelType(typesType.Elem(), append(seen, typesType))
 	default:
 		return false
 	}
@@ -118,33 +175,21 @@ func (b *builder) isPointer(typesType types.Type) bool {
 	switch typesType.Underlying().(type) {
 	case *types.Pointer:
 		irType := b.typesTypeToIrType(typesType)
-		_, ok := irType.(*ir.StructType)
-		return ok
+		switch irType := irType.(type) {
+		case *ir.StructType:
+			return true
+		case *ir.ContainerType:
+			return irType.Kind() == ir.Array
+		default:
+			return false
+		}
+	case *types.Array:
+		return false
+	case *types.Slice:
+		return true
+	case *types.Map:
+		return true
 	default:
 		return false
-	}
-}
-
-func (b *builder) initialValueForIrType(irType ir.Type) ir.Value {
-	switch irType := irType.(type) {
-	case ir.BasicType:
-		switch irType {
-		case ir.IntType:
-			return 0
-		case ir.FuncType:
-			return -1
-		case ir.ChanType:
-			return -1
-		case ir.MutexType:
-			return -1
-		case ir.WaitGroupType:
-			return -1
-		default:
-			panic(fmt.Errorf("unexpected ir.BaseType: %d", irType))
-		}
-	case *ir.StructType:
-		return -1
-	default:
-		panic(fmt.Errorf("unexpected ir.Type: %T", irType))
 	}
 }

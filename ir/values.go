@@ -2,13 +2,45 @@ package ir
 
 import (
 	"fmt"
+	"math"
 )
 
 // Value represents the value of a variable
 type Value int64
 
+const (
+	// InitializedMutex is a placeholder initial value for mutexes.
+	InitializedMutex Value = math.MinInt64 + iota
+	// InitializedWaitGroup is a placeholder initial value for wait groups.
+	InitializedWaitGroup
+	// InitializedStruct is a placeholder initial value for structures.
+	InitializedStruct
+	// InitializedArray is a placeholder initial value for arrays.
+	InitializedArray
+
+	// AppendIndex is the value used to indicate a slice append.
+	AppendIndex
+	// RandomIndex is fallback value for container accesses.
+	RandomIndex
+)
+
 func (v Value) String() string {
-	return fmt.Sprintf("%d", v)
+	switch v {
+	case InitializedMutex:
+		return "initialized mutex"
+	case InitializedWaitGroup:
+		return "initialized wait group"
+	case InitializedStruct:
+		return "initialized struct"
+	case InitializedArray:
+		return "initialied array"
+	case AppendIndex:
+		return "append index"
+	case RandomIndex:
+		return "random index"
+	default:
+		return fmt.Sprintf("%d", v)
+	}
 }
 
 // FieldSelection represents a read or write access to a structure field.
@@ -69,6 +101,100 @@ func (fs *FieldSelection) String() string {
 	return fs.Handle()
 }
 
+// AccessKind defines if a container access is a read or a write.
+type AccessKind int
+
+const (
+	// Read defines a read access of a container
+	Read AccessKind = iota
+	// Write defines a write access of a container
+	Write
+)
+
+// ContainerAccess represents a read or write access to a container.
+type ContainerAccess struct {
+	containerVal LValue
+	index        RValue
+	kind         AccessKind
+}
+
+// NewContainerAccess creates a new container access for the given container
+// variable.
+func NewContainerAccess(containerVal LValue, index RValue) *ContainerAccess {
+	if containerVal == nil {
+		panic("attempted to create ContainerAccess with nil struct variable")
+	}
+
+	ca := new(ContainerAccess)
+	ca.containerVal = containerVal
+	ca.index = index
+	ca.kind = Read
+
+	return ca
+}
+
+// ContainerVal returns the lvalue holding the accessed container.
+func (ca *ContainerAccess) ContainerVal() LValue {
+	return ca.containerVal
+}
+
+// ContainerType returns the type of the accessed container.
+func (ca *ContainerAccess) ContainerType() *ContainerType {
+	return ca.containerVal.Type().(*ContainerType)
+}
+
+// Index returns the accessed index value.
+func (ca *ContainerAccess) Index() RValue {
+	return ca.index
+}
+
+// Kind returns the access kind of the container access (read or write).
+func (ca *ContainerAccess) Kind() AccessKind {
+	return ca.kind
+}
+
+// SetKind rets the access kind of the container access (read or write).
+func (ca *ContainerAccess) SetKind(kind AccessKind) {
+	ca.kind = kind
+}
+
+// IsSliceAppend returns if the container access is a slice append. This is a
+// convenience method.
+func (ca *ContainerAccess) IsSliceAppend() bool {
+	return ca.Index() == AppendIndex
+}
+
+// IsMapRead returns if the container access is a map read. This is a
+// convenience method.
+func (ca *ContainerAccess) IsMapRead() bool {
+	return ca.ContainerType().Kind() == Map && ca.Kind() == Read
+}
+
+// IsMapWrite returns if the container access is a map write. This is a
+// convenience method.
+func (ca *ContainerAccess) IsMapWrite() bool {
+	return ca.ContainerType().Kind() == Map && ca.Kind() == Write
+}
+
+// Name returns the qualified name of the field.
+func (ca *ContainerAccess) Name() string {
+	return ca.containerVal.Name() + "_elem"
+}
+
+// Type returns the element type of the accessed container.
+func (ca *ContainerAccess) Type() Type {
+	return ca.ContainerType().ElementType()
+}
+
+// Handle returns a shorthand to uniquely reference the container access.
+func (ca *ContainerAccess) Handle() string {
+	return ca.containerVal.Handle() + "_elem"
+}
+
+func (ca *ContainerAccess) String() string {
+	return ca.Handle()
+}
+
 // RValue represents a value that can be assigned from.
 type RValue interface {
 	fmt.Stringer
@@ -76,9 +202,10 @@ type RValue interface {
 	rvalue()
 }
 
-func (v Value) rvalue()            {}
-func (v *Variable) rvalue()        {}
-func (fs *FieldSelection) rvalue() {}
+func (v Value) rvalue()             {}
+func (v *Variable) rvalue()         {}
+func (fs *FieldSelection) rvalue()  {}
+func (ca *ContainerAccess) rvalue() {}
 
 // LValue represents a storage location that can be assigned to.
 type LValue interface {
@@ -91,5 +218,6 @@ type LValue interface {
 	lvalue()
 }
 
-func (v *Variable) lvalue()        {}
-func (fs *FieldSelection) lvalue() {}
+func (v *Variable) lvalue()         {}
+func (fs *FieldSelection) lvalue()  {}
+func (ca *ContainerAccess) lvalue() {}

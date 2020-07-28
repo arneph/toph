@@ -142,6 +142,42 @@ func (b *builder) staticStmtEval(stmt ast.Stmt, vars []staticVarInfo, ctx *conte
 	}
 }
 
+func (b *builder) basicVarIsReadOnlyInBody(astBody *ast.BlockStmt, typesVar *types.Var) bool {
+	isReadOnly := true
+	ast.Inspect(astBody, func(node ast.Node) bool {
+		switch node := node.(type) {
+		case *ast.UnaryExpr:
+			if node.Op != token.AND {
+				break
+			}
+			xIdent, ok := node.X.(*ast.Ident)
+			if !ok || b.typesInfo.Uses[xIdent] != typesVar {
+				break
+			}
+			isReadOnly = false
+			return false
+		case *ast.AssignStmt:
+			for _, expr := range node.Lhs {
+				vIdent, ok := expr.(*ast.Ident)
+				if !ok || b.typesInfo.Uses[vIdent] != typesVar {
+					continue
+				}
+				isReadOnly = false
+				return false
+			}
+		case *ast.IncDecStmt:
+			xIdent, ok := node.X.(*ast.Ident)
+			if !ok || b.typesInfo.Uses[xIdent] != typesVar {
+				break
+			}
+			isReadOnly = false
+			return false
+		}
+		return true
+	})
+	return isReadOnly
+}
+
 func (b *builder) staticForLoopBoundsEval(forStmt *ast.ForStmt, ctx *context) int {
 	if forStmt.Init == nil || forStmt.Cond == nil || forStmt.Post == nil {
 		return -1
@@ -178,36 +214,10 @@ func (b *builder) staticForLoopBoundsEval(forStmt *ast.ForStmt, ctx *context) in
 		})
 	}
 
-	loopBodyOk := true
-	ast.Inspect(forStmt.Body, func(node ast.Node) bool {
-		switch node := node.(type) {
-		case *ast.UnaryExpr:
-			if node.Op == token.AND {
-				loopBodyOk = false
-				return false
-			}
-		case *ast.AssignStmt:
-			for _, expr := range node.Lhs {
-				vIdent, ok := expr.(*ast.Ident)
-				if !ok {
-					continue
-				}
-				v, ok := b.typesInfo.Uses[vIdent]
-				if !ok {
-					continue
-				}
-				for _, inf := range loopVars {
-					if v == inf.obj {
-						loopBodyOk = false
-						return false
-					}
-				}
-			}
+	for _, info := range loopVars {
+		if !b.basicVarIsReadOnlyInBody(forStmt.Body, info.obj) {
+			return -1
 		}
-		return true
-	})
-	if !loopBodyOk {
-		return -1
 	}
 
 	const MaxIterCount int = 1000000

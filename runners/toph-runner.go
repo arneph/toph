@@ -65,6 +65,8 @@ func main() {
 					MaxMutexCount:     100,
 					MaxWaitGroupCount: 100,
 					MaxStructCount:    100,
+					MaxContainerCount: 100,
+					ContainerCapacity: 5,
 					OptimizeIR:        true,
 				},
 				OptimizeUppaalSystem: true,

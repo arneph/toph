@@ -50,36 +50,24 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 	proc := t.funcToProcess[f]
 
 	t.system.Declarations().AddVariable(proc.Name()+"_count", "int", "0")
-	t.system.Declarations().AddArray("async_"+proc.Name(), t.callCount(f), "chan")
-	t.system.Declarations().AddArray("sync_"+proc.Name(), t.callCount(f), "chan")
+	t.system.Declarations().AddArray("async_"+proc.Name(), []int{t.callCount(f)}, "chan")
+	t.system.Declarations().AddArray("sync_"+proc.Name(), []int{t.callCount(f)}, "chan")
 
 	if f.EnclosingFunc() != nil {
-		t.system.Declarations().AddArray("par_pid_"+proc.Name(), t.callCount(f), "int")
+		t.system.Declarations().AddArray("par_pid_"+proc.Name(), []int{t.callCount(f)}, "int")
 	}
 
-	t.system.Declarations().AddArray("external_panic_"+proc.Name(), t.callCount(f), "bool")
+	t.system.Declarations().AddArray("external_panic_"+proc.Name(), []int{t.callCount(f)}, "bool")
 
 	for _, arg := range f.Args() {
 		name := t.translateArgName(arg)
-		var typStr string
-		switch arg.Type() {
-		case ir.FuncType:
-			typStr = "fid"
-		default:
-			typStr = "int"
-		}
-		t.system.Declarations().AddArray(name, t.callCount(f), typStr)
+		typStr := t.uppaalReferenceTypeForIrType(arg.Type())
+		t.system.Declarations().AddArray(name, []int{t.callCount(f)}, typStr)
 	}
 	for i, typ := range f.ResultTypes() {
 		name := t.translateResultName(f, i)
-		var typStr string
-		switch typ {
-		case ir.FuncType:
-			typStr = "fid"
-		default:
-			typStr = "int"
-		}
-		t.system.Declarations().AddArray(name, t.callCount(f), typStr)
+		typStr := t.uppaalReferenceTypeForIrType(typ)
+		t.system.Declarations().AddArray(name, []int{t.callCount(f)}, typStr)
 	}
 
 	t.system.Declarations().AddSpaceBetweenVariables()
@@ -131,8 +119,8 @@ func (t *translator) translateFunc(f *ir.Func) {
 	proc.Declarations().AddVariable("internal_panic", "bool", "false")
 	if deferCount > 0 {
 		proc.Declarations().AddVariable("deferred_count", "int", "0")
-		proc.Declarations().AddArray("deferred_fid", deferCount, "int")
-		proc.Declarations().AddArray("deferred_pid", deferCount, "int")
+		proc.Declarations().AddArray("deferred_fid", []int{deferCount}, "int")
+		proc.Declarations().AddArray("deferred_pid", []int{deferCount}, "int")
 	}
 	proc.Declarations().AddVariable("p", "int", "-1")
 	proc.Declarations().AddVariable("ok", "bool", "false")
@@ -252,7 +240,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 		startSync.SetSync("sync_" + proc.Name() + "[pid]?")
 		startSync.AddUpdate("is_sync = true", false)
 		if proc.Declarations().RequiresInitFunc() {
-			startSync.AddUpdate("initialize()", true)
+			startSync.AddUpdate("\ninitialize()", true)
 		}
 		startSync.AddNail(uppaal.Location{34, 34})
 		startSync.AddNail(uppaal.Location{34, 104})

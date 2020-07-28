@@ -11,13 +11,16 @@ type TypeIndex int
 type Type interface {
 	fmt.Stringer
 
+	UninitializedValue() Value
+	InitializedValue() Value
 	VariablePrefix() string
 
 	xType()
 }
 
-func (t BasicType) xType()  {}
-func (t StructType) xType() {}
+func (t BasicType) xType()     {}
+func (t StructType) xType()    {}
+func (t ContainerType) xType() {}
 
 // BasicType is an atomic types.
 type BasicType int
@@ -34,6 +37,42 @@ const (
 	// WaitGroupType is the type of a wait group variable.
 	WaitGroupType
 )
+
+// UninitializedValue returns the Uppaal zero value for the given type.
+func (t BasicType) UninitializedValue() Value {
+	switch t {
+	case IntType:
+		return 0
+	case FuncType:
+		return -1
+	case ChanType:
+		return -1
+	case MutexType:
+		return -1
+	case WaitGroupType:
+		return -1
+	default:
+		panic(fmt.Errorf("unknown Type: %d", t))
+	}
+}
+
+// InitializedValue returns the Go zero value for the given type.
+func (t BasicType) InitializedValue() Value {
+	switch t {
+	case IntType:
+		return 0
+	case FuncType:
+		return -1
+	case ChanType:
+		return -1
+	case MutexType:
+		return InitializedMutex
+	case WaitGroupType:
+		return InitializedWaitGroup
+	default:
+		panic(fmt.Errorf("unknown Type: %d", t))
+	}
+}
 
 // VariablePrefix returns the variable prefix for the given type.
 func (t BasicType) VariablePrefix() string {
@@ -72,12 +111,11 @@ func (t BasicType) String() string {
 
 // Field represents a field inside a StructType
 type Field struct {
-	index        int
-	name         string
-	t            Type
-	isPointer    bool
-	isEmbedded   bool
-	initialValue Value
+	index      int
+	name       string
+	t          Type
+	isPointer  bool
+	isEmbedded bool
 
 	structType *StructType
 }
@@ -97,8 +135,7 @@ func (f *Field) Type() Type {
 	return f.t
 }
 
-// IsPointer returns if the value is stored directly or as a pointer (only
-// relevant for structures).
+// IsPointer returns if the value is stored directly or as a pointer.
 func (f *Field) IsPointer() bool {
 	return f.isPointer
 }
@@ -109,15 +146,16 @@ func (f *Field) IsEmbedded() bool {
 	return f.isEmbedded
 }
 
-// InitialValue returns the value assigned to the field with its
-// declaration.
-func (f *Field) InitialValue() Value {
-	return f.initialValue
-}
-
 // StructType returns the enclosing structure type.
 func (f *Field) StructType() *StructType {
 	return f.structType
+}
+
+// RequiresDeepCopy returns if copying the field requires copying its field
+// deeply.
+func (f *Field) RequiresDeepCopy() bool {
+	_, ok := f.t.(BasicType)
+	return !ok && !f.isPointer
 }
 
 // Handle returns a shorthand to uniquely reference the field.
@@ -162,14 +200,13 @@ func (t *StructType) Fields() []*Field {
 }
 
 // AddField adds a new field with the given index, name, and type to the struct.
-func (t *StructType) AddField(index int, name string, fieldType Type, isPointer, isEmbedded bool, initialValue Value) *Field {
+func (t *StructType) AddField(index int, name string, fieldType Type, isPointer, isEmbedded bool) *Field {
 	f := new(Field)
 	f.index = index
 	f.name = name
 	f.t = fieldType
 	f.isPointer = isPointer
 	f.isEmbedded = isEmbedded
-	f.initialValue = initialValue
 	f.structType = t
 
 	t.fields = append(t.fields, f)
@@ -201,6 +238,16 @@ func (t *StructType) FindEmbeddedFieldOfType(embeddedFieldType Type) (embeddedFi
 	return nil, false
 }
 
+// UninitializedValue returns the Uppaal zeor value for the structure.
+func (t *StructType) UninitializedValue() Value {
+	return -1
+}
+
+// InitializedValue returns the Go zero value for the structure.
+func (t *StructType) InitializedValue() Value {
+	return InitializedStruct
+}
+
 // VariablePrefix returns the variable prefix for the given type.
 func (t *StructType) VariablePrefix() string {
 	if t.name != "" {
@@ -214,4 +261,109 @@ func (t *StructType) String() string {
 		return fmt.Sprintf("Struct{%d, %s}", t.index, t.name)
 	}
 	return fmt.Sprintf("Struct{%d}", t.index)
+}
+
+// ContainerKind defines if a container is an array, slice, or map.
+type ContainerKind int
+
+const (
+	// Array is the ContainerKind for an array.
+	Array ContainerKind = iota
+	// Slice is the ContainerKind for a slice.
+	Slice
+	// Map is the ContainerKind for a map.
+	Map
+)
+
+// ContainerType represents an array, slice, or map. Map keys are not modelled.
+// Arrays, slices are ordered, maps are unordered.
+type ContainerType struct {
+	index         TypeIndex
+	kind          ContainerKind
+	length        int
+	elementType   Type
+	holdsPointers bool
+}
+
+func newContainerType(index TypeIndex, kind ContainerKind, len int, elementType Type, holdsPointers bool) *ContainerType {
+	t := new(ContainerType)
+	t.index = index
+	t.kind = kind
+	t.length = len
+	t.elementType = elementType
+	t.holdsPointers = holdsPointers
+
+	return t
+}
+
+// Kind returns if the container represents an array, slice or map.
+func (t *ContainerType) Kind() ContainerKind {
+	return t.kind
+}
+
+// Len returns the static length of the container type (only applicable for
+// arrays).
+func (t *ContainerType) Len() int {
+	return t.length
+}
+
+// ElementType returns the type of elements stored in the container.
+func (t *ContainerType) ElementType() Type {
+	return t.elementType
+}
+
+// HoldsPointers returns if values are stored directly or as pointers.
+func (t *ContainerType) HoldsPointers() bool {
+	return t.holdsPointers
+}
+
+// RequiresDeepCopies returns if copying the container requires copying its
+// elements deeply.
+func (t *ContainerType) RequiresDeepCopies() bool {
+	_, ok := t.elementType.(BasicType)
+	return !ok && !t.holdsPointers
+}
+
+// UninitializedValue returns the Uppaal zero value for the container type.
+func (t *ContainerType) UninitializedValue() Value {
+	return -1
+}
+
+// InitializedValue returns the Go zero value for the container type.
+func (t *ContainerType) InitializedValue() Value {
+	switch t.kind {
+	case Array:
+		return InitializedArray
+	case Slice, Map:
+		return -1
+	default:
+		panic("unexpected container kind")
+	}
+}
+
+// VariablePrefix returns the variable prefix for the given type.
+func (t *ContainerType) VariablePrefix() string {
+	switch t.kind {
+	case Array:
+		return fmt.Sprintf("a%02d", t.index)
+	case Slice:
+		return fmt.Sprintf("b%02d", t.index)
+	case Map:
+		return fmt.Sprintf("m%02d", t.index)
+	default:
+		panic("unexpected container kind")
+	}
+}
+
+func (t *ContainerType) String() string {
+	switch t.kind {
+	case Array:
+		return fmt.Sprintf("Array{%d, %s}", t.index, t.elementType.String())
+	case Slice:
+		return fmt.Sprintf("Slice{%d, %s}", t.index, t.elementType.String())
+	case Map:
+		return fmt.Sprintf("Map{%d, %s}", t.index, t.elementType.String())
+	default:
+		panic("unexpected container kind")
+	}
 }

@@ -354,7 +354,7 @@ func (b *builder) processGenDecl(genDecl *ast.GenDecl, processInitializations bo
 	for _, spec := range genDecl.Specs {
 		valueSpec := spec.(*ast.ValueSpec)
 
-		b.processVarDefinitionsInScope(valueSpec.Names, scope, ctx)
+		b.processVarDefinitionsInScope(valueSpec.Names, scope, len(valueSpec.Values) == 0, ctx)
 
 		if !processInitializations || len(valueSpec.Values) == 0 {
 			continue

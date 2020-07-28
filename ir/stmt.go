@@ -15,25 +15,27 @@ type Stmt interface {
 	stmt()
 }
 
-func (s *AssignStmt) stmt()        {}
-func (s *BranchStmt) stmt()        {}
-func (s *CallStmt) stmt()          {}
-func (s *ChanCommOpStmt) stmt()    {}
-func (s *CloseChanStmt) stmt()     {}
-func (s *DeadEndStmt) stmt()       {}
-func (s *ForStmt) stmt()           {}
-func (s *IfStmt) stmt()            {}
-func (s *MakeChanStmt) stmt()      {}
-func (s *MakeMutexStmt) stmt()     {}
-func (s *MakeWaitGroupStmt) stmt() {}
-func (s *MakeStructStmt) stmt()    {}
-func (s *MutexOpStmt) stmt()       {}
-func (s *RangeStmt) stmt()         {}
-func (s *RecoverStmt) stmt()       {}
-func (s *ReturnStmt) stmt()        {}
-func (s *SelectStmt) stmt()        {}
-func (s *SwitchStmt) stmt()        {}
-func (s *WaitGroupOpStmt) stmt()   {}
+func (s *AssignStmt) stmt()         {}
+func (s *BranchStmt) stmt()         {}
+func (s *CallStmt) stmt()           {}
+func (s *ChanCommOpStmt) stmt()     {}
+func (s *ChanRangeStmt) stmt()      {}
+func (s *CloseChanStmt) stmt()      {}
+func (s *ContainerRangeStmt) stmt() {}
+func (s *DeadEndStmt) stmt()        {}
+func (s *ForStmt) stmt()            {}
+func (s *IfStmt) stmt()             {}
+func (s *MakeChanStmt) stmt()       {}
+func (s *MakeMutexStmt) stmt()      {}
+func (s *MakeWaitGroupStmt) stmt()  {}
+func (s *MakeStructStmt) stmt()     {}
+func (s *MakeContainerStmt) stmt()  {}
+func (s *MutexOpStmt) stmt()        {}
+func (s *RecoverStmt) stmt()        {}
+func (s *ReturnStmt) stmt()         {}
+func (s *SelectStmt) stmt()         {}
+func (s *SwitchStmt) stmt()         {}
+func (s *WaitGroupOpStmt) stmt()    {}
 
 // SpecialOp is the common interface for all operations representing specially
 // modeled function calls.

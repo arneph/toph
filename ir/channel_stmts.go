@@ -30,7 +30,7 @@ func (o ChanOp) String() string {
 
 // MakeChanStmt represents a make(chan ...) call.
 type MakeChanStmt struct {
-	channel    LValue
+	channel    *Variable
 	bufferSize int
 
 	Node
@@ -38,7 +38,7 @@ type MakeChanStmt struct {
 
 // NewMakeChanStmt creates a new MakeChanStmt for the given channel and buffer
 // size.
-func NewMakeChanStmt(channel LValue, bufferSize int, pos, end token.Pos) *MakeChanStmt {
+func NewMakeChanStmt(channel *Variable, bufferSize int, pos, end token.Pos) *MakeChanStmt {
 	s := new(MakeChanStmt)
 	s.channel = channel
 	s.bufferSize = bufferSize
@@ -48,8 +48,8 @@ func NewMakeChanStmt(channel LValue, bufferSize int, pos, end token.Pos) *MakeCh
 	return s
 }
 
-// Channel returns the lvalue holding the newly made channel.
-func (s *MakeChanStmt) Channel() LValue {
+// Channel returns the variable holding the newly made channel.
+func (s *MakeChanStmt) Channel() *Variable {
 	return s.channel
 }
 

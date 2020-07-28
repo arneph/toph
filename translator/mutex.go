@@ -184,12 +184,12 @@ func (t *translator) addMutexProcess() {
 
 func (t *translator) addMutexDeclarations() {
 	t.system.Declarations().AddVariable("mutex_count", "int", "0")
-	t.system.Declarations().AddArray("mutex_pending_readers", t.mutexCount(), "int")
-	t.system.Declarations().AddArray("mutex_pending_writers", t.mutexCount(), "int")
-	t.system.Declarations().AddArray("read_lock", t.mutexCount(), "chan")
-	t.system.Declarations().AddArray("read_unlock", t.mutexCount(), "chan")
-	t.system.Declarations().AddArray("write_lock", t.mutexCount(), "chan")
-	t.system.Declarations().AddArray("write_unlock", t.mutexCount(), "chan")
+	t.system.Declarations().AddArray("mutex_pending_readers", []int{t.mutexCount()}, "int")
+	t.system.Declarations().AddArray("mutex_pending_writers", []int{t.mutexCount()}, "int")
+	t.system.Declarations().AddArray("read_lock", []int{t.mutexCount()}, "chan")
+	t.system.Declarations().AddArray("read_unlock", []int{t.mutexCount()}, "chan")
+	t.system.Declarations().AddArray("write_lock", []int{t.mutexCount()}, "chan")
+	t.system.Declarations().AddArray("write_unlock", []int{t.mutexCount()}, "chan")
 	t.system.Declarations().AddSpaceBetweenVariables()
 
 	t.system.Declarations().AddFunc(fmt.Sprintf(

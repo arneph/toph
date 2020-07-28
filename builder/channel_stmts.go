@@ -10,17 +10,17 @@ import (
 
 func (b *builder) findChannel(chanExpr ast.Expr, ctx *context) ir.LValue {
 	rv := b.processExpr(chanExpr, ctx)
-	v, ok := rv.(ir.LValue)
-	if !ok || v == nil {
+	lv, ok := rv.(ir.LValue)
+	if !ok || lv == nil {
 		p := b.fset.Position(chanExpr.Pos())
 		chanExprStr := b.nodeToString(chanExpr)
 		b.addWarning(fmt.Errorf("%v: could not resolve channel expr: %s", p, chanExprStr))
 		return nil
 	}
-	return v
+	return lv
 }
 
-func (b *builder) processMakeExpr(callExpr *ast.CallExpr, ctx *context) *ir.Variable {
+func (b *builder) processMakeChanExpr(callExpr *ast.CallExpr, ctx *context) *ir.Variable {
 	bufferSize := 0
 	if len(callExpr.Args) > 1 {
 		a := callExpr.Args[1]
@@ -118,7 +118,7 @@ func (b *builder) processSelectStmt(stmt *ast.SelectStmt, label string, ctx *con
 					if !ok {
 						continue
 					}
-					b.processVarDefinition(ident, subCtx)
+					b.processVarDefinition(ident, true, subCtx)
 				}
 			}
 

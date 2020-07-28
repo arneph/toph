@@ -179,23 +179,7 @@ func (t *translator) translateForStmt(stmt *ir.ForStmt, ctx *context) {
 	condExit.SetLocationAndResetNameAndCommentLocation(
 		uppaal.Location{condEnter.Location()[0], condExitY})
 
-	bodyEnter := ctx.proc.AddState("loop_body_enter_", uppaal.Renaming)
-	bodyEnter.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
-	bodyEnter.SetLocationAndResetNameAndCommentLocation(
-		condExit.Location().Add(uppaal.Location{0, 136}))
-	bodyExit := ctx.proc.AddState("loop_body_exit_", uppaal.Renaming)
-	bodyExit.SetComment(t.program.FileSet().Position(stmt.End()).String())
-	loopExit := ctx.proc.AddState("loop_exit_", uppaal.Renaming)
-	loopExit.SetComment(t.program.FileSet().Position(stmt.End()).String())
-
-	bodySubCtx := ctx.subContextForStmt(stmt, body, bodyEnter, loopExit, bodyExit, bodyExit)
-	t.translateBody(body, bodySubCtx)
-
-	bodyExitY := bodySubCtx.maxLoc[1] + 136
-	bodyExit.SetLocationAndResetNameAndCommentLocation(
-		uppaal.Location{bodyEnter.Location()[0], bodyExitY})
-	loopExit.SetLocationAndResetNameAndCommentLocation(
-		uppaal.Location{ctx.currentState.Location()[0], bodyExitY})
+	bodyEnter, bodyExit, loopExit := t.translateLoopBody(stmt, body, condExit.Location().Add(uppaal.Location{0, 136}), ctx)
 
 	var counterVar string
 	if stmt.HasMinIterations() || stmt.HasMaxIterations() {
@@ -234,20 +218,22 @@ func (t *translator) translateForStmt(stmt *ir.ForStmt, ctx *context) {
 	}
 	trans4.AddNail(bodyExit.Location().Add(uppaal.Location{-68, 0}))
 	trans4.AddNail(condEnter.Location().Add(uppaal.Location{-68, 0}))
+
 	ctx.currentState = loopExit
 	ctx.addLocation(condEnter.Location())
 	ctx.addLocation(condExit.Location())
-	ctx.addLocation(bodyEnter.Location())
-	ctx.addLocation(bodyExit.Location())
-	ctx.addLocation(loopExit.Location())
 	ctx.addLocationsFromSubContext(condSubCtx)
-	ctx.addLocationsFromSubContext(bodySubCtx)
 }
 
-func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
-	handle, usesGlobals := t.translateLValue(stmt.Channel(), ctx)
+func (t *translator) translateChanRangeStmt(stmt *ir.ChanRangeStmt, ctx *context) {
+	var rvs randomVariableSupplier
+	handle, usesGlobals := t.translateLValue(stmt.Channel(), &rvs, ctx)
 	name := stmt.Channel().Handle()
 	body := stmt.Body()
+
+	loopCount := len(ctx.continueStates)
+	channelVar := fmt.Sprintf("range_chan%d", loopCount)
+	ctx.proc.Declarations().AddVariable(channelVar, "int", "0")
 
 	rangeEnter := ctx.proc.AddState("range_enter_", uppaal.Renaming)
 	rangeEnter.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
@@ -258,9 +244,9 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	receiving.SetLocationAndResetNameAndCommentLocation(
 		rangeEnter.Location().Add(uppaal.Location{0, 136}))
 	trigger := ctx.proc.AddTransition(rangeEnter, receiving)
-	trigger.SetSync("receiver_trigger[" + handle + "]!")
-	trigger.AddUpdate("chan_counter["+handle+"]--", usesGlobals)
-	trigger.AddUpdate("ok = chan_counter["+handle+"] >= 0", usesGlobals)
+	trigger.SetSync("receiver_trigger[" + channelVar + "]!")
+	trigger.AddUpdate("chan_counter["+channelVar+"]--", usesGlobals)
+	trigger.AddUpdate("ok = chan_counter["+channelVar+"] >= 0", usesGlobals)
 	trigger.SetSyncLocation(rangeEnter.Location().Add(uppaal.Location{4, 48}))
 	trigger.SetUpdateLocation(rangeEnter.Location().Add(uppaal.Location{4, 64}))
 	received := ctx.proc.AddState("range_received_"+name+"_", uppaal.Renaming)
@@ -269,7 +255,7 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	received.SetLocationAndResetNameAndCommentLocation(
 		receiving.Location().Add(uppaal.Location{0, 136}))
 	confirm := ctx.proc.AddTransition(receiving, received)
-	confirm.SetSync("receiver_confirm[" + handle + "]?")
+	confirm.SetSync("receiver_confirm[" + channelVar + "]?")
 	confirm.SetSyncLocation(
 		receiving.Location().Add(uppaal.Location{4, 60}))
 
@@ -279,32 +265,21 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 		t.program.FileSet().Position(stmt.Pos()).String(),
 		uppaal.NoChannelRelatedDeadlocks))
 
-	bodyEnter := ctx.proc.AddState("loop_body_enter_", uppaal.Renaming)
-	bodyEnter.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
-	bodyEnter.SetLocationAndResetNameAndCommentLocation(
-		received.Location().Add(uppaal.Location{0, 136}))
-	bodyExit := ctx.proc.AddState("loop_body_exit_", uppaal.Renaming)
-	bodyExit.SetComment(t.program.FileSet().Position(stmt.End()).String())
-	loopExit := ctx.proc.AddState("loop_exit_", uppaal.Renaming)
-	loopExit.SetComment(t.program.FileSet().Position(stmt.End()).String())
-
-	bodySubCtx := ctx.subContextForStmt(stmt, body, bodyEnter, loopExit, bodyExit, bodyExit)
-	t.translateBody(body, bodySubCtx)
-
-	bodyExitY := bodySubCtx.maxLoc[1] + 136
-	bodyExit.SetLocationAndResetNameAndCommentLocation(
-		uppaal.Location{bodyEnter.Location()[0], bodyExitY})
-	loopExit.SetLocationAndResetNameAndCommentLocation(
-		uppaal.Location{ctx.currentState.Location()[0], bodyExitY})
+	bodyEnter, bodyExit, loopExit := t.translateLoopBody(stmt, body, received.Location().Add(uppaal.Location{0, 136}), ctx)
 
 	trans1 := ctx.proc.AddTransition(ctx.currentState, rangeEnter)
+	rvs.addToTrans(trans1)
+	trans1.AddUpdate(fmt.Sprintf("%s = %s", channelVar, handle), usesGlobals)
+	trans1.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+	trans1.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+	trans1.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
 	trans1.AddNail(ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	trans2 := ctx.proc.AddTransition(received, bodyEnter)
-	trans2.SetGuard("chan_buffer["+handle+"] >= 0 || ok", true)
+	trans2.SetGuard("chan_buffer["+channelVar+"] >= 0 || ok", true)
 	trans2.SetGuardLocation(
 		received.Location().Add(uppaal.Location{4, 48}))
 	trans3 := ctx.proc.AddTransition(received, loopExit)
-	trans3.SetGuard("chan_buffer["+handle+"] < 0 && !ok", true)
+	trans3.SetGuard("chan_buffer["+channelVar+"] < 0 && !ok", true)
 	trans3.AddNail(received.Location().Add(uppaal.Location{-136, 0}))
 	trans3.SetGuardLocation(
 		received.Location().Add(uppaal.Location{-132, 64}))
@@ -316,10 +291,140 @@ func (t *translator) translateRangeStmt(stmt *ir.RangeStmt, ctx *context) {
 	ctx.addLocation(rangeEnter.Location())
 	ctx.addLocation(receiving.Location())
 	ctx.addLocation(received.Location())
+}
+
+func (t *translator) translateContainerRangeStmt(stmt *ir.ContainerRangeStmt, ctx *context) {
+	var containerRVS randomVariableSupplier
+	var valueValRVS randomVariableSupplier
+	containerType := stmt.Container().Type().(*ir.ContainerType)
+	containerHandle, containerUsesGlobals := t.translateLValue(stmt.Container(), &containerRVS, ctx)
+	var counterVarHandle string
+	if stmt.CounterVar() != nil {
+		counterVarHandle, _ = t.translateVariable(stmt.CounterVar(), ctx)
+	}
+	var valueValHandle string
+	var valueValUsesGlobals bool
+	if stmt.ValueVal() != nil {
+		valueValHandle, valueValUsesGlobals = t.translateLValue(stmt.ValueVal(), &valueValRVS, ctx)
+	}
+	usesGlobals := containerUsesGlobals || valueValUsesGlobals
+	body := stmt.Body()
+
+	var container string
+	switch containerType.Kind() {
+	case ir.Array:
+		container = "array"
+	case ir.Slice:
+		container = "slice"
+	case ir.Map:
+		container = "map"
+	default:
+		panic("unexpected container kind")
+	}
+
+	loopCount := len(ctx.continueStates)
+	counterVar := fmt.Sprintf("i%d", loopCount)
+	containerVar := fmt.Sprintf("range_%s%d", container, loopCount)
+	ctx.proc.Declarations().AddVariable(counterVar, "int", "0")
+	ctx.proc.Declarations().AddVariable(containerVar, "int", "0")
+
+	rangeEnter := ctx.proc.AddState("range_enter_", uppaal.Renaming)
+	rangeEnter.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+	rangeEnter.SetLocationAndResetNameAndCommentLocation(ctx.currentState.Location().Add(uppaal.Location{136, 136}))
+
+	assigning := ctx.proc.AddState("range_assigning_", uppaal.Renaming)
+	assigning.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+	assigning.SetLocationAndResetNameAndCommentLocation(ctx.currentState.Location().Add(uppaal.Location{136, 272}))
+
+	bodyEnter, bodyExit, loopExit := t.translateLoopBody(stmt, body, assigning.Location().Add(uppaal.Location{0, 136}), ctx)
+
+	trans1 := ctx.proc.AddTransition(ctx.currentState, rangeEnter)
+	containerRVS.addToTrans(trans1)
+	trans1.AddUpdate(fmt.Sprintf("%s = 0", counterVar), false)
+	trans1.AddUpdate(fmt.Sprintf("%s = %s", containerVar, containerHandle), containerUsesGlobals)
+	trans1.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+	trans1.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+	trans1.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
+	trans1.AddNail(ctx.currentState.Location().Add(uppaal.Location{0, 136}))
+	trans2 := ctx.proc.AddTransition(rangeEnter, loopExit)
+	trans2.SetGuard(fmt.Sprintf("%s >= %s_lengths[%s]",
+		counterVar,
+		containerType.VariablePrefix(),
+		containerVar),
+		containerUsesGlobals)
+	trans2.SetGuardLocation(
+		rangeEnter.Location().Add(uppaal.Location{4, 48}))
+	trans2.AddNail(rangeEnter.Location().Add(uppaal.Location{0, 68}))
+	trans2.AddNail(rangeEnter.Location().Add(uppaal.Location{-136, 136}))
+	trans3 := ctx.proc.AddTransition(rangeEnter, assigning)
+	trans3.SetGuard(fmt.Sprintf("%s < %s_lengths[%s]",
+		counterVar,
+		containerType.VariablePrefix(),
+		containerVar),
+		containerUsesGlobals)
+	trans3.SetGuardLocation(
+		rangeEnter.Location().Add(uppaal.Location{4, 64}))
+	trans4 := ctx.proc.AddTransition(assigning, bodyEnter)
+	if stmt.CounterVar() != nil {
+		trans4.AddUpdate(fmt.Sprintf("%s = %s", counterVarHandle, counterVar), false)
+	}
+	if stmt.ValueVal() != nil {
+		valueValRVS.addToTrans(trans4)
+		if containerType.Kind() != ir.Map {
+			trans4.AddUpdate(fmt.Sprintf("%s = %s_%ss[%s][%s]",
+				valueValHandle,
+				containerType.VariablePrefix(),
+				container,
+				containerVar,
+				counterVar),
+				usesGlobals)
+		} else {
+			trans4.AddUpdate(fmt.Sprintf("%s = read_%s(%s, %s)",
+				valueValHandle,
+				containerType.VariablePrefix(),
+				containerVar,
+				counterVar),
+				usesGlobals)
+		}
+	}
+	trans4.SetSelectLocation(assigning.Location().Add(uppaal.Location{4, 48}))
+	trans4.SetGuardLocation(assigning.Location().Add(uppaal.Location{4, 64}))
+	trans4.SetUpdateLocation(assigning.Location().Add(uppaal.Location{4, 80}))
+	trans5 := ctx.proc.AddTransition(bodyExit, rangeEnter)
+	trans5.AddUpdate(counterVar+"++", false)
+	trans5.SetUpdateLocation(rangeEnter.Location().Add(uppaal.Location{-64, 60}))
+	trans5.AddNail(bodyExit.Location().Add(uppaal.Location{-68, 0}))
+	trans5.AddNail(rangeEnter.Location().Add(uppaal.Location{-68, 0}))
+
+	ctx.currentState = loopExit
+	ctx.addLocation(rangeEnter.Location())
+	ctx.addLocation(assigning.Location())
+}
+
+func (t *translator) translateLoopBody(stmt ir.Stmt, body *ir.Body, loc uppaal.Location, ctx *context) (bodyEnter, bodyExit, loopExit *uppaal.State) {
+	bodyEnter = ctx.proc.AddState("loop_body_enter_", uppaal.Renaming)
+	bodyEnter.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+	bodyEnter.SetLocationAndResetNameAndCommentLocation(loc)
+	bodyExit = ctx.proc.AddState("loop_body_exit_", uppaal.Renaming)
+	bodyExit.SetComment(t.program.FileSet().Position(stmt.End()).String())
+	loopExit = ctx.proc.AddState("loop_exit_", uppaal.Renaming)
+	loopExit.SetComment(t.program.FileSet().Position(stmt.End()).String())
+
+	bodySubCtx := ctx.subContextForStmt(stmt, body, bodyEnter, loopExit, bodyExit, bodyExit)
+	t.translateBody(body, bodySubCtx)
+
+	bodyExitY := bodySubCtx.maxLoc[1] + 136
+	bodyExit.SetLocationAndResetNameAndCommentLocation(
+		uppaal.Location{bodyEnter.Location()[0], bodyExitY})
+	loopExit.SetLocationAndResetNameAndCommentLocation(
+		uppaal.Location{ctx.currentState.Location()[0], bodyExitY})
+
 	ctx.addLocation(bodyEnter.Location())
 	ctx.addLocation(bodyExit.Location())
 	ctx.addLocation(loopExit.Location())
 	ctx.addLocationsFromSubContext(bodySubCtx)
+
+	return
 }
 
 func (t *translator) translateBranchStmt(stmt *ir.BranchStmt, ctx *context) {

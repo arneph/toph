@@ -23,12 +23,16 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 		t.translateSwitchStmt(stmt, ctx)
 	case *ir.ForStmt:
 		t.translateForStmt(stmt, ctx)
-	case *ir.RangeStmt:
-		t.translateRangeStmt(stmt, ctx)
+	case *ir.ChanRangeStmt:
+		t.translateChanRangeStmt(stmt, ctx)
+	case *ir.ContainerRangeStmt:
+		t.translateContainerRangeStmt(stmt, ctx)
 	case *ir.BranchStmt:
 		t.translateBranchStmt(stmt, ctx)
 	case *ir.MakeStructStmt:
 		t.translateMakeStructStmt(stmt, ctx)
+	case *ir.MakeContainerStmt:
+		t.translateMakeContainerStmt(stmt, ctx)
 	case *ir.MakeChanStmt:
 		t.translateMakeChanStmt(stmt, ctx)
 	case *ir.ChanCommOpStmt:

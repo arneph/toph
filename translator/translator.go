@@ -14,6 +14,8 @@ type Config struct {
 	MaxMutexCount     int
 	MaxWaitGroupCount int
 	MaxStructCount    int
+	MaxContainerCount int
+	ContainerCapacity int
 
 	OptimizeIR bool
 }
@@ -80,12 +82,18 @@ fid make_fid(int id, int par_pid) {
 		"check system never runs out of resources", "",
 		uppaal.ResourceBoundUnreached))
 
-	t.translateGlobalScope()
+	t.addChannels()
+	t.addMutexes()
+	t.addWaitGroups()
+
 	t.system.Declarations().SetInitFuncName("global_initialize")
 
 	for _, u := range t.tg.TopologicalOrder() {
 		t.addType(u)
 	}
+
+	t.translateGlobalScope()
+
 	for _, f := range t.program.Funcs() {
 		if t.config.OptimizeIR && t.completeFCG.CalleeCount(f) == 0 {
 			continue
@@ -102,10 +110,6 @@ fid make_fid(int id, int par_pid) {
 		}
 		t.translateFunc(f)
 	}
-
-	t.addChannels()
-	t.addMutexes()
-	t.addWaitGroups()
 }
 
 func (t *translator) translateBody(b *ir.Body, ctx *context) {

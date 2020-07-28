@@ -38,7 +38,7 @@ func (b *Body) WalkStmts(visitFunc func(stmt Stmt, scope *Scope)) {
 			*DeadEndStmt,
 			*MakeMutexStmt, *MutexOpStmt,
 			*MakeWaitGroupStmt, *WaitGroupOpStmt,
-			*MakeStructStmt,
+			*MakeStructStmt, *MakeContainerStmt,
 			*CallStmt, *ReturnStmt, *RecoverStmt:
 			continue
 		case *SelectStmt:
@@ -59,7 +59,9 @@ func (b *Body) WalkStmts(visitFunc func(stmt Stmt, scope *Scope)) {
 		case *ForStmt:
 			stmt.Cond().WalkStmts(visitFunc)
 			stmt.Body().WalkStmts(visitFunc)
-		case *RangeStmt:
+		case *ChanRangeStmt:
+			stmt.Body().WalkStmts(visitFunc)
+		case *ContainerRangeStmt:
 			stmt.Body().WalkStmts(visitFunc)
 		default:
 			panic(fmt.Errorf("WalkStmts encountered unknown Stmt: %T", stmt))

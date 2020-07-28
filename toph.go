@@ -22,6 +22,9 @@ var (
 	maxMutexCount     = flag.Int("max-mutexes", 100, "set maximum number of sync.Mutexes and sync.RWMutexes in Uppaal")
 	maxWaitGroupCount = flag.Int("max-wait-groups", 100, "set maximum number of sync.WaitGroups in Uppaal")
 	maxStructCount    = flag.Int("max-structs", 100, "set maximum number of struct instances (per defined struct) in Uppaal")
+	maxContainerCount = flag.Int("max-containers", 100, "set maximum number of array, slice, or map instances (per element type) in Uppaal")
+
+	containerCapacity = flag.Int("container-capacity", 5, "set the constant capacity of arrays, slices, and maps in Uppaal")
 
 	optimizeIR     = flag.Bool("optimize-ir", true, "optimize intermediate representation of program")
 	optimizeSystem = flag.Bool("optimize-sys", true, "optimize uppaal system")
@@ -59,6 +62,8 @@ func main() {
 			MaxMutexCount:     *maxMutexCount,
 			MaxWaitGroupCount: *maxWaitGroupCount,
 			MaxStructCount:    *maxStructCount,
+			MaxContainerCount: *maxContainerCount,
+			ContainerCapacity: *containerCapacity,
 			OptimizeIR:        *optimizeIR,
 		},
 		OptimizeUppaalSystem: *optimizeSystem,

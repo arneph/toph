@@ -37,6 +37,10 @@ func addDependenciesToTypeGraph(program *ir.Program, tg *TypeGraph) {
 				u := f.Type()
 				tg.addDependency(t, u)
 			}
+		case *ir.ContainerType:
+			if !t.HoldsPointers() {
+				tg.addDependency(t, t.ElementType())
+			}
 		default:
 			panic(fmt.Errorf("unexpected ir.Type: %T", t))
 		}

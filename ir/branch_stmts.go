@@ -333,18 +333,18 @@ func (s *ForStmt) tree(b *strings.Builder, indent int) {
 	b.WriteString("}")
 }
 
-// RangeStmt represents a loop ranging over a channel.
-type RangeStmt struct {
+// ChanRangeStmt represents a loop ranging over a channel.
+type ChanRangeStmt struct {
 	channel LValue
 	body    Body
 
 	Node
 }
 
-// NewRangeStmt creates a new loop ranging over the give channel and embedded
+// NewChanRangeStmt creates a new loop ranging over the given channel and embedded
 // in the given enclosing scope.
-func NewRangeStmt(channel LValue, superScope *Scope, pos, end token.Pos) *RangeStmt {
-	s := new(RangeStmt)
+func NewChanRangeStmt(channel LValue, superScope *Scope, pos, end token.Pos) *ChanRangeStmt {
+	s := new(ChanRangeStmt)
 	s.channel = channel
 	s.body.init()
 	s.body.scope.superScope = superScope
@@ -354,19 +354,79 @@ func NewRangeStmt(channel LValue, superScope *Scope, pos, end token.Pos) *RangeS
 	return s
 }
 
-// Channel returns the channel the range based loop is ranging over.
-func (s *RangeStmt) Channel() LValue {
+// Channel returns the channel the range loop is ranging over.
+func (s *ChanRangeStmt) Channel() LValue {
 	return s.channel
 }
 
-// Body returns the main body of the range based loop.
-func (s *RangeStmt) Body() *Body {
+// Body returns the main body of the range loop.
+func (s *ChanRangeStmt) Body() *Body {
 	return &s.body
 }
 
-func (s *RangeStmt) tree(b *strings.Builder, indent int) {
+func (s *ChanRangeStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
-	fmt.Fprintf(b, "range %s {\n", s.channel.Handle())
+	fmt.Fprintf(b, "channel range %s {\n", s.channel.Handle())
+	s.body.tree(b, indent+1)
+	b.WriteString("\n")
+	writeIndent(b, indent)
+	b.WriteString("}")
+}
+
+// ContainerRangeStmt represents a loop raning over an array, slice, or map.
+type ContainerRangeStmt struct {
+	container  LValue
+	counterVar *Variable
+	valueVal   LValue
+	body       Body
+
+	Node
+}
+
+// NewContainerRangeStmt creates a new loop ranging over the given container
+// and embedded in the given enclosing scope.
+func NewContainerRangeStmt(container LValue, counterVar *Variable, valueVal LValue, superScope *Scope, pos, end token.Pos) *ContainerRangeStmt {
+	s := new(ContainerRangeStmt)
+	s.container = container
+	s.counterVar = counterVar
+	s.valueVal = valueVal
+	s.body.init()
+	s.body.scope.superScope = superScope
+	s.pos = pos
+	s.end = end
+
+	return s
+}
+
+// Container returns the container the range loop is ranging over.
+func (s *ContainerRangeStmt) Container() LValue {
+	return s.container
+}
+
+// CounterVar returns the variable holding the index for the current loop
+// iteration.
+func (s *ContainerRangeStmt) CounterVar() *Variable {
+	return s.counterVar
+}
+
+// ValueVal returns the variable holding the container element for the current
+// loop iteration.
+func (s *ContainerRangeStmt) ValueVal() LValue {
+	return s.valueVal
+}
+
+// Body returns the main body of the range loop.
+func (s *ContainerRangeStmt) Body() *Body {
+	return &s.body
+}
+
+func (s *ContainerRangeStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	if s.valueVal != nil {
+		fmt.Fprintf(b, "container range %s <- %s {\n", s.valueVal.Handle(), s.container.Handle())
+	} else {
+		fmt.Fprintf(b, "container range %s {\n", s.container.Handle())
+	}
 	s.body.tree(b, indent+1)
 	b.WriteString("\n")
 	writeIndent(b, indent)

@@ -34,7 +34,7 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		if result == nil {
 			return ir.RValue(nil)
 		}
-		return result.(ir.RValue)
+		return result
 	case *ast.CompositeLit:
 		result := b.processCompositeLit(e, ctx)
 		if result == nil {
@@ -49,8 +49,7 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 	case *ast.Ident:
 		return b.processIdent(e, ctx)
 	case *ast.IndexExpr:
-		b.processExprs([]ast.Expr{e.X, e.Index}, ctx)
-		return nil
+		return b.procesIndexExpr(e, ctx)
 	case *ast.KeyValueExpr:
 		b.processExprs([]ast.Expr{e.Key, e.Value}, ctx)
 		return nil
@@ -181,7 +180,7 @@ func (b *builder) processSelectorExpr(selExpr *ast.SelectorExpr, ctx *context) i
 	xVal := b.processExpr(selExpr.X, ctx)
 	xTypesType := b.typesInfo.TypeOf(selExpr.X)
 	xIrType := b.typesTypeToIrType(xTypesType)
-	if xVal == nil && xIrType == nil {
+	if xIrType == nil {
 		return nil
 	}
 	irStructVal, ok := xVal.(ir.LValue)
@@ -222,4 +221,45 @@ func (b *builder) processSelectorExpr(selExpr *ast.SelectorExpr, ctx *context) i
 	}
 
 	return ir.NewFieldSelection(irStructVal, irField)
+}
+
+func (b *builder) procesIndexExpr(indexExpr *ast.IndexExpr, ctx *context) ir.RValue {
+	xExpr := indexExpr.X
+	iExpr := indexExpr.Index
+	defer b.processExpr(iExpr, ctx)
+	xTypesType := b.typesInfo.TypeOf(xExpr)
+	iTypesType := b.typesInfo.TypeOf(iExpr)
+	xIrType := b.typesTypeToIrType(xTypesType)
+	iIrType := b.typesTypeToIrType(iTypesType)
+	if xIrType == nil {
+		return nil
+	}
+
+	irContainerVal := b.findContainer(xExpr, ctx)
+	if irContainerVal == nil {
+		return nil
+	}
+	if iIrType != nil {
+		p := b.fset.Position(iExpr.Pos())
+		iStr := b.nodeToString(iExpr)
+		b.addWarning(fmt.Errorf("%v: ignoring index value: %s", p, iStr))
+	}
+	irContainerType := xIrType.(*ir.ContainerType)
+	irContainerIndex := ir.RValue(ir.RandomIndex)
+	if irContainerType.Kind() == ir.Array ||
+		irContainerType.Kind() == ir.Slice {
+		if res, ok := b.staticIntEval(iExpr, ctx); ok {
+			irContainerIndex = ir.Value(res)
+		} else if iIdent, ok := iExpr.(*ast.Ident); ok {
+			typesVar, ok := b.typesInfo.Uses[iIdent].(*types.Var)
+			if ok {
+				irVar, ok := b.vars[typesVar]
+				if ok && irVar.Type() == ir.IntType {
+					irContainerIndex = irVar
+				}
+			}
+		}
+	}
+
+	return ir.NewContainerAccess(irContainerVal, irContainerIndex)
 }

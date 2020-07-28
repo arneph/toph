@@ -114,10 +114,10 @@ func (t *translator) addWaitGroupProcess() {
 
 func (t *translator) addWaitGroupDeclarations() {
 	t.system.Declarations().AddVariable("wait_group_count", "int", "0")
-	t.system.Declarations().AddArray("wait_group_counter", t.waitGroupCount(), "int")
-	t.system.Declarations().AddArray("wait_group_waiters", t.waitGroupCount(), "int")
-	t.system.Declarations().AddArray("add", t.waitGroupCount(), "chan")
-	t.system.Declarations().AddArray("wait", t.waitGroupCount(), "chan")
+	t.system.Declarations().AddArray("wait_group_counter", []int{t.waitGroupCount()}, "int")
+	t.system.Declarations().AddArray("wait_group_waiters", []int{t.waitGroupCount()}, "int")
+	t.system.Declarations().AddArray("add", []int{t.waitGroupCount()}, "chan")
+	t.system.Declarations().AddArray("wait", []int{t.waitGroupCount()}, "chan")
 	t.system.Declarations().AddSpaceBetweenVariables()
 
 	t.system.Declarations().AddFunc(fmt.Sprintf(

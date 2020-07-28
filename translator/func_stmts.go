@@ -17,34 +17,51 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 			endState:   nil,
 		}, ctx)
 	case ir.LValue:
-		handle, usesGlobals := t.translateLValue(callee, ctx)
+		var rvs randomVariableSupplier
+
+		handle, usesGlobals := t.translateLValue(callee, &rvs, ctx)
+
+		funcVar := "f"
+		ctx.proc.Declarations().AddVariable(funcVar, "fid", "")
+
+		dynamicCallEnter := ctx.proc.AddState("dynamic_call_enter_", uppaal.Renaming)
+		dynamicCallEnter.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+		dynamicCallEnter.SetLocationAndResetNameAndCommentLocation(
+			ctx.currentState.Location().Add(uppaal.Location{0, 136}))
+
+		funcEval := ctx.proc.AddTransition(ctx.currentState, dynamicCallEnter)
+		rvs.addToTrans(funcEval)
+		funcEval.AddUpdate(funcVar+" = "+handle, usesGlobals)
+		funcEval.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+		funcEval.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+		funcEval.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
 
 		nilState := ctx.proc.AddState(callee.Handle()+"_is_nil_", uppaal.Renaming)
 		nilState.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 		nilState.SetLocationAndResetNameAndCommentLocation(
-			ctx.currentState.Location().Add(uppaal.Location{0, 136}))
+			ctx.currentState.Location().Add(uppaal.Location{0, 272}))
 		ctx.proc.AddQuery(uppaal.NewQuery(
 			"A[] (not out_of_resources) imply (not $."+nilState.Name()+")",
 			"check function variable not nil",
 			t.program.FileSet().Position(stmt.Pos()).String(),
 			uppaal.NoFunctionCallsWithNilVariable))
-		nilTrans := ctx.proc.AddTransition(ctx.currentState, nilState)
-		nilTrans.SetGuard(handle+".id == -1", usesGlobals)
+		nilTrans := ctx.proc.AddTransition(dynamicCallEnter, nilState)
+		nilTrans.SetGuard(funcVar+".id == -1", false)
 		nilTrans.SetGuardLocation(
-			ctx.currentState.Location().Add(uppaal.Location{4, 28}))
+			ctx.currentState.Location().Add(uppaal.Location{4, 136 + 28}))
 
 		endState := ctx.proc.AddState("called_"+callee.Handle()+"_", uppaal.Renaming)
 		endState.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 		switch stmt.CallKind() {
 		case ir.Call:
 			endState.SetLocationAndResetNameAndCommentLocation(
-				ctx.currentState.Location().Add(uppaal.Location{0, 680}))
+				ctx.currentState.Location().Add(uppaal.Location{0, 816}))
 		case ir.Defer:
 			endState.SetLocationAndResetNameAndCommentLocation(
-				ctx.currentState.Location().Add(uppaal.Location{0, 544}))
+				ctx.currentState.Location().Add(uppaal.Location{0, 680}))
 		case ir.Go:
 			endState.SetLocationAndResetNameAndCommentLocation(
-				ctx.currentState.Location().Add(uppaal.Location{0, 544}))
+				ctx.currentState.Location().Add(uppaal.Location{0, 680}))
 		default:
 			panic(fmt.Errorf("unsupported CallKind: %v", stmt.CallKind()))
 		}
@@ -54,15 +71,15 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 			startState := ctx.proc.AddState(callee.Handle()+"_is_"+calleeFunc.Handle()+"_", uppaal.Renaming)
 			startState.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 			startState.SetLocationAndResetNameAndCommentLocation(
-				ctx.currentState.Location().Add(uppaal.Location{(i + 1) * 136, 136}))
-			startTrans := ctx.proc.AddTransition(ctx.currentState, startState)
-			startTrans.SetGuard(handle+".id == "+calleeFunc.FuncValue().String(), usesGlobals)
+				ctx.currentState.Location().Add(uppaal.Location{(i + 1) * 136, 272}))
+			startTrans := ctx.proc.AddTransition(dynamicCallEnter, startState)
+			startTrans.SetGuard(funcVar+".id == "+calleeFunc.FuncValue().String(), false)
 			startTrans.SetGuardLocation(
-				ctx.currentState.Location().Add(uppaal.Location{(i+1)*136 + 4, 44 + i*16}))
+				ctx.currentState.Location().Add(uppaal.Location{(i+1)*136 + 4, 136 + 44 + i*16}))
 
 			t.translateCall(stmt, calleeInfo{
 				f:          calleeFunc,
-				parPid:     handle + ".par_pid",
+				parPid:     funcVar + ".par_pid",
 				startState: startState,
 				endState:   endState,
 			}, ctx)
@@ -86,6 +103,8 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 	calleeFunc := info.f
 	calleeProc := t.funcToProcess[calleeFunc]
 
+	var argsRVS randomVariableSupplier
+
 	created := ctx.proc.AddState("created_"+calleeProc.Name()+"_", uppaal.Renaming)
 	created.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	created.SetLocationAndResetNameAndCommentLocation(
@@ -96,12 +115,14 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 	} else {
 		create.AddUpdate("p = make_"+calleeProc.Name()+"()", false)
 	}
-	create.SetUpdateLocation(info.startState.Location().Add(uppaal.Location{4, 60}))
+	create.SetSelectLocation(info.startState.Location().Add(uppaal.Location{4, 48}))
+	create.SetGuardLocation(info.startState.Location().Add(uppaal.Location{4, 64}))
+	create.SetUpdateLocation(info.startState.Location().Add(uppaal.Location{4, 80}))
 
 	for i, calleeArg := range calleeFunc.Args() {
 		calleeArgStr := t.translateArg(calleeArg, "p")
 		callerArg := stmt.Args()[i]
-		callerArgStr, usesGlobals := t.translateRValue(callerArg, calleeArg.Type(), ctx)
+		callerArgStr, usesGlobals := t.translateRValue(callerArg, calleeArg.Type(), &argsRVS, ctx)
 		if stmt.ArgRequiresCopy(i) {
 			callerArgStr = t.translateCopyOfRValue(callerArgStr, calleeArg.Type())
 		}
@@ -109,6 +130,7 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 			fmt.Sprintf("%s = %s", calleeArgStr, callerArgStr),
 			usesGlobals)
 	}
+	argsRVS.addToTrans(create)
 
 	if stmt.CallKind() == ir.Call || stmt.CallKind() == ir.Go {
 		started := ctx.proc.AddState("started_"+calleeProc.Name()+"_", uppaal.Renaming)
@@ -128,13 +150,11 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 				started.Location().Add(uppaal.Location{0, 136}))
 			waitForRegularReturn := ctx.proc.AddTransition(started, awaited)
 			waitForRegularReturn.SetGuard(fmt.Sprintf("!external_panic_%s[p]", calleeProc.Name()), false)
-			waitForRegularReturn.SetGuardLocation(started.Location().Add(uppaal.Location{4, 48}))
 			waitForRegularReturn.SetSync(fmt.Sprintf("sync_%s[p]?", calleeProc.Name()))
-			waitForRegularReturn.SetSyncLocation(started.Location().Add(uppaal.Location{4, 64}))
 
 			for i, resType := range calleeFunc.ResultTypes() {
 				calleeRes := t.translateResult(calleeFunc, i, "p")
-				callerRes, usesGlobals := t.translateLValue(stmt.Results()[i], ctx)
+				callerRes, usesGlobals := t.translateVariable(stmt.Results()[i], ctx)
 				if stmt.ResultRequiresCopy(i) {
 					calleeRes = t.translateCopyOfRValue(calleeRes, resType)
 				}
@@ -142,15 +162,18 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 					fmt.Sprintf("%s = %s", callerRes, calleeRes),
 					usesGlobals)
 			}
+			waitForRegularReturn.SetSelectLocation(started.Location().Add(uppaal.Location{4, 48}))
+			waitForRegularReturn.SetGuardLocation(started.Location().Add(uppaal.Location{4, 64}))
+			waitForRegularReturn.SetSyncLocation(started.Location().Add(uppaal.Location{4, 80}))
 			waitForRegularReturn.SetUpdateLocation(started.Location().Add(uppaal.Location{4, 96}))
 
 			waitForPanic := ctx.proc.AddTransition(started, ctx.exitFuncState)
 			waitForPanic.SetGuard(fmt.Sprintf("external_panic_%s[p]", calleeProc.Name()), false)
-			waitForPanic.SetGuardLocation(started.Location().Add(uppaal.Location{4, 32}))
 			waitForPanic.SetSync(fmt.Sprintf("sync_%s[p]?", calleeProc.Name()))
-			waitForPanic.SetSyncLocation(started.Location().Add(uppaal.Location{4, 64}))
 			waitForPanic.AddUpdate(fmt.Sprintf("internal_panic = true"), false)
-			waitForPanic.SetUpdateLocation(started.Location().Add(uppaal.Location{4, 80}))
+			waitForPanic.SetGuardLocation(started.Location().Add(uppaal.Location{4, 64}))
+			waitForPanic.SetSyncLocation(started.Location().Add(uppaal.Location{4, 80}))
+			waitForPanic.SetUpdateLocation(started.Location().Add(uppaal.Location{4, 96}))
 			waitForPanic.AddNail(started.Location().Add(uppaal.Location{0, 68}))
 			waitForPanic.AddNail(uppaal.Location{-68, started.Location().Y() + 68})
 
@@ -228,13 +251,14 @@ func (t *translator) translateDeferredCalls(proc *uppaal.Process, deferred *uppa
 }
 
 func (t *translator) translateReturnStmt(stmt *ir.ReturnStmt, ctx *context) {
+	var rvs randomVariableSupplier
 	ret := ctx.proc.AddTransition(ctx.currentState, ctx.exitFuncState)
 	for i, resType := range ctx.f.ResultTypes() {
 		resVal, ok := stmt.Results()[i]
 		if !ok {
 			continue
 		}
-		resStr, usesGlobals := t.translateRValue(resVal, resType, ctx)
+		resStr, usesGlobals := t.translateRValue(resVal, resType, &rvs, ctx)
 
 		ret.AddUpdate(fmt.Sprintf("%s = %s",
 			t.translateResult(ctx.f, i, "pid"), resStr), usesGlobals)
@@ -242,8 +266,10 @@ func (t *translator) translateReturnStmt(stmt *ir.ReturnStmt, ctx *context) {
 	if stmt.IsPanic() {
 		ret.AddUpdate("internal_panic = true", false)
 	}
-	ret.SetUpdateLocation(
-		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
+	rvs.addToTrans(ret)
+	ret.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+	ret.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+	ret.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
 	ret.AddNail(ctx.currentState.Location().Add(uppaal.Location{0, 68}))
 	ret.AddNail(uppaal.Location{-68, ctx.currentState.Location().Y() + 68})
 

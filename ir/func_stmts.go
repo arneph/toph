@@ -49,7 +49,7 @@ type CallStmt struct {
 	callKind           CallKind
 	args               map[int]RValue
 	argRequiresCopy    map[int]bool
-	results            map[int]LValue
+	results            map[int]*Variable
 	resultRequiresCopy map[int]bool
 
 	Node
@@ -67,7 +67,7 @@ func NewCallStmt(callee Callable, calleeSignature *types.Signature, callKind Cal
 	s.callKind = callKind
 	s.args = make(map[int]RValue)
 	s.argRequiresCopy = make(map[int]bool)
-	s.results = make(map[int]LValue)
+	s.results = make(map[int]*Variable)
 	s.resultRequiresCopy = make(map[int]bool)
 	s.pos = pos
 	s.end = end
@@ -122,7 +122,7 @@ func (s *CallStmt) AddArg(index int, arg RValue, requiresCopy bool) {
 }
 
 // Results returns all results processed by the function call.
-func (s *CallStmt) Results() map[int]LValue {
+func (s *CallStmt) Results() map[int]*Variable {
 	return s.results
 }
 
@@ -131,8 +131,8 @@ func (s *CallStmt) ResultRequiresCopy(index int) bool {
 	return s.resultRequiresCopy[index]
 }
 
-// AddResult adds an lvalue to store a function call result in.
-func (s *CallStmt) AddResult(index int, result LValue, requiresCopy bool) {
+// AddResult adds an variable to store a function call result in.
+func (s *CallStmt) AddResult(index int, result *Variable, requiresCopy bool) {
 	s.results[index] = result
 	s.resultRequiresCopy[index] = requiresCopy
 }

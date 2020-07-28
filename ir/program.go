@@ -139,6 +139,19 @@ func (p *Program) AddStructType(name string) *StructType {
 	return t
 }
 
+// AddContainerType adds a new container type to the program and returns the
+// new type.
+func (p *Program) AddContainerType(kind ContainerKind, length int, elementType Type, holdsPointers bool) *ContainerType {
+	tIndex := TypeIndex(p.typeCount)
+	t := newContainerType(tIndex, kind, length, elementType, holdsPointers)
+	p.typeCount++
+
+	p.types = append(p.types, t)
+	p.typeLookup[tIndex] = t
+
+	return t
+}
+
 // FileSet returns the token.FileSet from which the program was built.
 func (p *Program) FileSet() *token.FileSet {
 	return p.fset

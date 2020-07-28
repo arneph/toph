@@ -8,9 +8,8 @@ import (
 )
 
 func (t *translator) translateAssignStmt(stmt *ir.AssignStmt, ctx *context) {
-	sourceHandle, sourceUsesGlobals := t.translateRValue(stmt.Source(), stmt.Destination().Type(), ctx)
-	destination, destinationUsesGlobals := t.translateLValue(stmt.Destination(), ctx)
-
+	var rvs randomVariableSupplier
+	sourceHandle, sourceUsesGlobals := t.translateRValue(stmt.Source(), stmt.Destination().Type(), &rvs, ctx)
 	if stmt.RequiresCopy() {
 		sourceHandle = t.translateCopyOfRValue(sourceHandle, stmt.Destination().Type())
 	}
@@ -20,9 +19,26 @@ func (t *translator) translateAssignStmt(stmt *ir.AssignStmt, ctx *context) {
 	assigned.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	assign := ctx.proc.AddTransition(ctx.currentState, assigned)
-	assign.AddUpdate(fmt.Sprintf("%s = %s", destination, sourceHandle),
-		sourceUsesGlobals || destinationUsesGlobals)
-	assign.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 60}))
+
+	irContainerAccess, ok := stmt.Destination().(*ir.ContainerAccess)
+	if ok && irContainerAccess.IsSliceAppend() {
+		sliceAppend := t.translateSliceAppend(irContainerAccess, &rvs, sourceHandle, ctx)
+
+		assign.AddUpdate(sliceAppend, true)
+	} else if ok && irContainerAccess.IsMapWrite() {
+		mapWrite := t.translateMapWriteAcces(irContainerAccess, &rvs, sourceHandle, ctx)
+
+		assign.AddUpdate(mapWrite, true)
+	} else {
+		destination, destinationUsesGlobals := t.translateLValue(stmt.Destination(), &rvs, ctx)
+
+		assign.AddUpdate(fmt.Sprintf("%s = %s", destination, sourceHandle),
+			sourceUsesGlobals || destinationUsesGlobals)
+	}
+	rvs.addToTrans(assign)
+	assign.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+	assign.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+	assign.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
 
 	ctx.currentState = assigned
 	ctx.addLocation(assigned.Location())

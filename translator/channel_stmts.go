@@ -8,7 +8,7 @@ import (
 )
 
 func (t *translator) translateMakeChanStmt(stmt *ir.MakeChanStmt, ctx *context) {
-	handle, usesGlobals := t.translateLValue(stmt.Channel(), ctx)
+	handle, usesGlobals := t.translateVariable(stmt.Channel(), ctx)
 	name := stmt.Channel().Name()
 	b := stmt.BufferSize()
 
@@ -26,9 +26,13 @@ func (t *translator) translateMakeChanStmt(stmt *ir.MakeChanStmt, ctx *context) 
 }
 
 func (t *translator) translateChanCommOpStmt(stmt *ir.ChanCommOpStmt, ctx *context) {
-	handle, _ := t.translateLValue(stmt.Channel(), ctx)
+	var rvs randomVariableSupplier
+	handle, _ := t.translateLValue(stmt.Channel(), &rvs, ctx)
 	name := stmt.Channel().Name()
 	var pendingName, confirmedName, triggerChan, confirmChan, counterOp string
+
+	channelVar := "op_chan"
+	ctx.proc.Declarations().AddVariable(channelVar, "int", "0")
 
 	switch stmt.Op() {
 	case ir.Send:
@@ -53,10 +57,14 @@ func (t *translator) translateChanCommOpStmt(stmt *ir.ChanCommOpStmt, ctx *conte
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
 	trigger := ctx.proc.AddTransition(ctx.currentState, pending)
+	rvs.addToTrans(trigger)
 	trigger.SetSync(triggerChan + "[" + handle + "]!")
-	trigger.AddUpdate("chan_counter["+handle+"]"+counterOp, true)
-	trigger.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
-	trigger.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+	trigger.AddUpdate(channelVar+" = "+handle, true)
+	trigger.AddUpdate("\nchan_counter["+channelVar+"]"+counterOp, true)
+	trigger.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+	trigger.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+	trigger.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
+	trigger.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 96}))
 
 	confirmed := ctx.proc.AddState(confirmedName+"_"+name+"_", uppaal.Renaming)
 	confirmed.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
@@ -64,7 +72,7 @@ func (t *translator) translateChanCommOpStmt(stmt *ir.ChanCommOpStmt, ctx *conte
 		pending.Location().Add(uppaal.Location{0, 136}))
 
 	confirm := ctx.proc.AddTransition(pending, confirmed)
-	confirm.SetSync(confirmChan + "[" + handle + "]?")
+	confirm.SetSync(confirmChan + "[" + channelVar + "]?")
 	confirm.SetSyncLocation(
 		pending.Location().Add(uppaal.Location{4, 60}))
 
@@ -80,7 +88,8 @@ func (t *translator) translateChanCommOpStmt(stmt *ir.ChanCommOpStmt, ctx *conte
 }
 
 func (t *translator) translateCloseChanStmt(stmt *ir.CloseChanStmt, ctx *context) {
-	handle, _ := t.translateLValue(stmt.Channel(), ctx)
+	var rvs randomVariableSupplier
+	handle, _ := t.translateLValue(stmt.Channel(), &rvs, ctx)
 	name := stmt.Channel().Name()
 
 	closed := ctx.proc.AddState("closed_"+name+"_", uppaal.Renaming)
@@ -89,14 +98,18 @@ func (t *translator) translateCloseChanStmt(stmt *ir.CloseChanStmt, ctx *context
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
 	close := ctx.proc.AddTransition(ctx.currentState, closed)
+	rvs.addToTrans(close)
 	close.SetSync("close[" + handle + "]!")
-	close.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 60}))
+	close.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+	close.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+	close.SetSyncLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
 
 	ctx.currentState = closed
 	ctx.addLocation(closed.Location())
 }
 
 type selectCaseInfo struct {
+	channelVarAssignment string
 	counterForwardUpdate string
 	counterReverseUpdate string
 	possibleGuard        string
@@ -104,29 +117,34 @@ type selectCaseInfo struct {
 	confirmChanSync      string
 }
 
-func (t *translator) infoForSelectCase(selectCase *ir.SelectCase, ctx *context) selectCaseInfo {
+func (t *translator) infoForSelectCase(index int, selectCase *ir.SelectCase, rvs *randomVariableSupplier, ctx *context) selectCaseInfo {
 	var info selectCaseInfo
-	handle, _ := t.translateLValue(selectCase.OpStmt().Channel(), ctx)
+	handle, _ := t.translateLValue(selectCase.OpStmt().Channel(), rvs, ctx)
+
+	channelVar := fmt.Sprintf("select_chan%d", index)
+	ctx.proc.Declarations().AddVariable(channelVar, "int", "0")
+
+	info.channelVarAssignment = channelVar + " = " + handle
 
 	var rangeGuard string
 	switch selectCase.OpStmt().Op() {
 	case ir.Send:
-		info.counterForwardUpdate = "chan_counter[" + handle + "]++"
-		info.counterReverseUpdate = "chan_counter[" + handle + "]--"
-		rangeGuard = "chan_counter[" + handle + "] <= chan_buffer[" + handle + "]"
-		info.triggerChanSync = "sender_trigger[" + handle + "]!"
-		info.confirmChanSync = "sender_confirm[" + handle + "]?"
+		info.counterForwardUpdate = "chan_counter[" + channelVar + "]++"
+		info.counterReverseUpdate = "chan_counter[" + channelVar + "]--"
+		rangeGuard = "chan_counter[" + channelVar + "] <= chan_buffer[" + channelVar + "]"
+		info.triggerChanSync = "sender_trigger[" + channelVar + "]!"
+		info.confirmChanSync = "sender_confirm[" + channelVar + "]?"
 	case ir.Receive:
-		info.counterForwardUpdate = "chan_counter[" + handle + "]--"
-		info.counterReverseUpdate = "chan_counter[" + handle + "]++"
-		rangeGuard = "chan_counter[" + handle + "] >= 0"
-		info.triggerChanSync = "receiver_trigger[" + handle + "]!"
-		info.confirmChanSync = "receiver_confirm[" + handle + "]?"
+		info.counterForwardUpdate = "chan_counter[" + channelVar + "]--"
+		info.counterReverseUpdate = "chan_counter[" + channelVar + "]++"
+		rangeGuard = "chan_counter[" + channelVar + "] >= 0"
+		info.triggerChanSync = "receiver_trigger[" + channelVar + "]!"
+		info.confirmChanSync = "receiver_confirm[" + channelVar + "]?"
 	default:
 		panic("unexpected select case channel op")
 	}
 
-	closedGuard := "chan_buffer[" + handle + "] < 0"
+	closedGuard := "chan_buffer[" + channelVar + "] < 0"
 	info.possibleGuard = closedGuard + " || " + rangeGuard
 
 	return info
@@ -227,10 +245,11 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		uppaal.Location{ctx.currentState.Location()[0], maxY + 136})
 
 	// Prepare channel op information for each case:
+	var rvs randomVariableSupplier
 	caseInfos := make([]selectCaseInfo, len(stmt.Cases()))
 	nonePossibleGuard := ""
 	for i, c := range stmt.Cases() {
-		caseInfos[i] = t.infoForSelectCase(c, ctx)
+		caseInfos[i] = t.infoForSelectCase(i, c, &rvs, ctx)
 
 		impossibleGuard := "!(" + caseInfos[i].possibleGuard + ")"
 		if nonePossibleGuard == "" {
@@ -248,12 +267,17 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
 	enteringPass1 := ctx.proc.AddTransition(ctx.currentState, pass1)
+	rvs.addToTrans(enteringPass1)
+	for i := range stmt.Cases() {
+		enteringPass1.AddUpdate(caseInfos[i].channelVarAssignment, true)
+	}
 	// Update all counters when entering pass1:
 	for i := range stmt.Cases() {
 		enteringPass1.AddUpdate(caseInfos[i].counterForwardUpdate, true)
 	}
-	enteringPass1.SetUpdateLocation(
-		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
+	enteringPass1.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+	enteringPass1.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+	enteringPass1.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
 
 	// Poll channels (pass 1):
 	for i, c := range stmt.Cases() {
