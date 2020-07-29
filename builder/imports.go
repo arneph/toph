@@ -62,6 +62,31 @@ func (b *builder) packageProcessingOrder() ([]string, error) {
 			addedCount++
 		}
 		if addedCount == 0 {
+			var loopFinder func(curr string, prior []string) []string
+			loopFinder = func(curr string, prior []string) []string {
+				for i, p := range prior {
+					if p == curr {
+						return prior[i:]
+					}
+				}
+				for _, absImportPath := range b.pkgs[curr].absImportPaths {
+					if addedPaths[absImportPath] {
+						continue
+					}
+					loop := loopFinder(absImportPath, append(prior, curr))
+					if loop != nil {
+						return loop
+					}
+				}
+				return nil
+			}
+			for _, absPath := range nameOrderedPaths {
+				loop := loopFinder(absPath, nil)
+				loopStr := strings.Join(loop, "\n")
+				if loop != nil {
+					return nil, fmt.Errorf("encountered import loop:\n%s", loopStr)
+				}
+			}
 			return nil, fmt.Errorf("encountered import loop")
 		}
 	}
