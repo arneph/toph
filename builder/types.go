@@ -133,7 +133,7 @@ func (b *builder) typesContainerToIrType(typesType types.Type) ir.Type {
 
 func shouldModelType(typesType types.Type, seen []types.Type) bool {
 	for _, seen := range seen {
-		if seen == typesType {
+		if seen == typesType || seen == typesType.Underlying() {
 			return false
 		}
 	}
