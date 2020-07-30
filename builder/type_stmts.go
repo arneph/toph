@@ -192,7 +192,22 @@ func (b *builder) processStructCompositeLit(compositeLit *ast.CompositeLit,
 			continue
 		}
 		requiresCopy := irField.RequiresDeepCopy()
-		irFieldSelection := ir.NewFieldSelection(irVar, irField)
+		neededStructType := irField.StructType()
+		irStructVal := ir.LValue(irVar)
+		if neededStructType != irStructType {
+			embeddedFields, ok := irStructType.FindEmbeddedFieldOfType(neededStructType)
+			if !ok {
+				p := b.fset.Position(valExpr.Pos())
+				valExprStr := b.nodeToString(valExpr)
+				b.addWarning(fmt.Errorf("%v: could not find field for value: %s", p, valExprStr))
+				return nil
+			}
+			for _, irField := range embeddedFields {
+				irStructVal = ir.NewFieldSelection(irStructVal, irField)
+			}
+		}
+		irFieldSelection := ir.NewFieldSelection(irStructVal, irField)
+
 		assignStmt := ir.NewAssignStmt(irFieldVal, irFieldSelection, requiresCopy, valExpr.Pos(), valExpr.End())
 		ctx.body.AddStmt(assignStmt)
 
