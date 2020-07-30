@@ -74,7 +74,7 @@ func (v *Variable) Handle() string {
 
 func (v *Variable) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
-	b.WriteString(fmt.Sprintf("var %s %v = %d", v.Handle(), v.t, v.initialValue))
+	b.WriteString(fmt.Sprintf("var %s %v = %s", v.Handle(), v.t, v.initialValue))
 }
 
 func (v *Variable) String() string {
