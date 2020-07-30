@@ -72,17 +72,31 @@ func (b *builder) processGoStmt(stmt *ast.GoStmt, ctx *context) {
 }
 
 func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
-	resultVars := b.processExprs(stmt.Results, ctx)
+	var resultVals map[int]ir.RValue
+	if len(stmt.Results) > 0 {
+		callExpr, ok := stmt.Results[0].(*ast.CallExpr)
+		if ok && len(stmt.Results) == 1 {
+			resultVals = make(map[int]ir.RValue)
+			resultVars := b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
+			for i, resultVar := range resultVars {
+				resultVals[i] = resultVar
+			}
+		}
+	}
+	if resultVals == nil {
+		resultVals = b.processExprs(stmt.Results, ctx)
+	}
+
 	returnStmt := ir.NewReturnStmt(false, stmt.Pos(), stmt.End())
 	ctx.body.AddStmt(returnStmt)
 
 	if len(stmt.Results) > 0 {
 		// return stmt returns specified values
-		for i, v := range resultVars {
+		for i, v := range resultVals {
 			returnStmt.AddResult(i, v)
 		}
 		for i, t := range ctx.currentFunc().ResultTypes() {
-			if resultVars[i] == nil {
+			if resultVals[i] == nil {
 				returnStmt.AddResult(i, t.UninitializedValue())
 
 				p := b.fset.Position(stmt.Pos())
