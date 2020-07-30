@@ -222,7 +222,20 @@ func (b *builder) processCallReceiverVal(callExpr *ast.CallExpr, calleeSignature
 }
 
 func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *types.Signature, ctx *context) (argVals map[int]ir.RValue, requiresCopy map[int]bool, ok bool) {
-	argVals = b.processExprs(callExpr.Args, ctx)
+	if len(callExpr.Args) > 0 {
+		callExpr, ok := callExpr.Args[0].(*ast.CallExpr)
+		if ok && len(callExpr.Args) == 1 {
+			argVals = make(map[int]ir.RValue)
+			argVars := b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
+			for i, resultVar := range argVars {
+				argVals[i] = resultVar
+			}
+		}
+	}
+	if argVals == nil {
+		argVals = b.processExprs(callExpr.Args, ctx)
+	}
+
 	requiresCopy = make(map[int]bool)
 	regularParamN := calleeSignature.Params().Len()
 	if calleeSignature.Variadic() {
