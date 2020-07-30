@@ -149,6 +149,9 @@ func (b *builder) processCompositeLit(compositeLit *ast.CompositeLit, ctx *conte
 	}
 	switch irType := irType.(type) {
 	case *ir.StructType:
+		if typesPointer, ok := typesType.Underlying().(*types.Pointer); ok {
+			typesType = typesPointer.Elem()
+		}
 		typesStruct := typesType.Underlying().(*types.Struct)
 		return b.processStructCompositeLit(compositeLit, typesStruct, irType, ctx)
 	case *ir.ContainerType:
