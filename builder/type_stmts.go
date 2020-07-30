@@ -22,7 +22,7 @@ func (b *builder) findContainer(containerExpr ast.Expr, ctx *context) ir.LValue 
 
 func (b *builder) processNewExpr(callExpr *ast.CallExpr, ctx *context) *ir.Variable {
 	astType := callExpr.Args[0]
-	typesType := b.typesInfo.TypeOf(astType)
+	typesType := ctx.typesInfo.TypeOf(astType)
 	irType := b.typesTypeToIrType(typesType)
 	if irType == nil {
 		return nil
@@ -57,7 +57,7 @@ func (b *builder) processNewExpr(callExpr *ast.CallExpr, ctx *context) *ir.Varia
 
 func (b *builder) processMakeContainerExpr(callExpr *ast.CallExpr, ctx *context) *ir.Variable {
 	astType := callExpr.Args[0]
-	typesType := b.typesInfo.TypeOf(astType)
+	typesType := ctx.typesInfo.TypeOf(astType)
 	irType := b.typesTypeToIrType(typesType)
 	if irType == nil {
 		return nil
@@ -97,7 +97,7 @@ func (b *builder) processMakeContainerExpr(callExpr *ast.CallExpr, ctx *context)
 }
 
 func (b *builder) processSliceAppendExpr(callExpr *ast.CallExpr, ctx *context) *ir.Variable {
-	typesSliceType := b.typesInfo.TypeOf(callExpr.Args[0])
+	typesSliceType := ctx.typesInfo.TypeOf(callExpr.Args[0])
 	irType := b.typesTypeToIrType(typesSliceType)
 	if irType == nil {
 		return nil
@@ -108,7 +108,7 @@ func (b *builder) processSliceAppendExpr(callExpr *ast.CallExpr, ctx *context) *
 		return nil
 	}
 	if len(callExpr.Args) == 2 {
-		valueTypesType := b.typesInfo.TypeOf(callExpr.Args[1])
+		valueTypesType := ctx.typesInfo.TypeOf(callExpr.Args[1])
 		if _, ok := valueTypesType.(*types.Slice); ok {
 			p := b.fset.Position(callExpr.Pos())
 			callStr := b.nodeToString(callExpr)
@@ -142,7 +142,7 @@ func (b *builder) processSliceAppendExpr(callExpr *ast.CallExpr, ctx *context) *
 }
 
 func (b *builder) processCompositeLit(compositeLit *ast.CompositeLit, ctx *context) *ir.Variable {
-	typesType := b.typesInfo.TypeOf(compositeLit)
+	typesType := ctx.typesInfo.TypeOf(compositeLit)
 	irType := b.typesTypeToIrType(typesType)
 	if irType == nil {
 		return nil
@@ -176,7 +176,7 @@ func (b *builder) processStructCompositeLit(compositeLit *ast.CompositeLit,
 		if keyValueExpr, ok := valExpr.(*ast.KeyValueExpr); ok {
 			keyExpr := keyValueExpr.Key.(*ast.Ident)
 			valExpr = keyValueExpr.Value
-			typesVar = b.typesInfo.ObjectOf(keyExpr).(*types.Var)
+			typesVar = ctx.typesInfo.ObjectOf(keyExpr).(*types.Var)
 		} else {
 			typesVar = typesStruct.Field(i)
 		}

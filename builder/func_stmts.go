@@ -15,20 +15,20 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callabl
 	var calleeValue ir.RValue
 	var calleeTypesType types.Type
 	if selExpr, ok := funcExpr.(*ast.SelectorExpr); ok {
-		typesSelection, ok := b.typesInfo.Selections[selExpr]
+		typesSelection, ok := ctx.typesInfo.Selections[selExpr]
 		if ok && typesSelection.Kind() == types.MethodVal {
 			calleeValue = b.processIdent(selExpr.Sel, ctx)
-			calleeTypesType = b.typesInfo.TypeOf(selExpr.Sel)
+			calleeTypesType = ctx.typesInfo.TypeOf(selExpr.Sel)
 		} else {
 			calleeValue = b.processSelectorExpr(selExpr, ctx)
-			calleeTypesType = b.typesInfo.TypeOf(selExpr)
+			calleeTypesType = ctx.typesInfo.TypeOf(selExpr)
 		}
 	} else {
 		calleeValue = b.processExpr(funcExpr, ctx)
-		calleeTypesType = b.typesInfo.TypeOf(funcExpr)
+		calleeTypesType = ctx.typesInfo.TypeOf(funcExpr)
 	}
 	if calleeValue == nil {
-		funcExprTypesType := b.typesInfo.TypeOf(funcExpr).Underlying()
+		funcExprTypesType := ctx.typesInfo.TypeOf(funcExpr).Underlying()
 		switch funcExprTypesType.(type) {
 		case *types.Array, *types.Basic, *types.Chan, *types.Interface, *types.Map, *types.Pointer, *types.Slice:
 		default:
@@ -72,20 +72,7 @@ func (b *builder) processGoStmt(stmt *ast.GoStmt, ctx *context) {
 }
 
 func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
-	var resultVals map[int]ir.RValue
-	if len(stmt.Results) > 0 {
-		callExpr, ok := stmt.Results[0].(*ast.CallExpr)
-		if ok && len(stmt.Results) == 1 {
-			resultVals = make(map[int]ir.RValue)
-			resultVars := b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
-			for i, resultVar := range resultVars {
-				resultVals[i] = resultVar
-			}
-		}
-	}
-	if resultVals == nil {
-		resultVals = b.processExprs(stmt.Results, ctx)
-	}
+	resultVals := b.processExprs(stmt.Results, ctx)
 
 	returnStmt := ir.NewReturnStmt(false, stmt.Pos(), stmt.End())
 	ctx.body.AddStmt(returnStmt)
@@ -136,12 +123,12 @@ func (b *builder) processRecoverCall(callExpr *ast.CallExpr, ctx *context) {
 }
 
 func (b *builder) processCallExprWithCallKind(callExpr *ast.CallExpr, callKind ir.CallKind, ctx *context) map[int]*ir.Variable {
-	if b.canIgnoreCall(callExpr) {
+	if b.canIgnoreCall(callExpr, ctx) {
 		b.processExprs(callExpr.Args, ctx)
 		return map[int]*ir.Variable{}
 	}
 
-	if name, ok := b.isKnownBuiltin(callExpr); ok {
+	if name, ok := b.isKnownBuiltin(callExpr, ctx); ok {
 		if callKind != ir.Call {
 			p := b.fset.Position(callExpr.Pos())
 			b.addWarning(fmt.Errorf("%v: only direct calls to %s are supported", p, name))
@@ -171,7 +158,7 @@ func (b *builder) processCallExprWithCallKind(callExpr *ast.CallExpr, callKind i
 		return map[int]*ir.Variable{}
 	}
 
-	if specialOp, ok := b.specialOpForCall(callExpr); ok {
+	if specialOp, ok := b.specialOpForCall(callExpr, ctx); ok {
 		resultVar := b.processSpecialOpCallExprWithCallKind(callExpr, callKind, specialOp, ctx)
 		if resultVar != nil {
 			return map[int]*ir.Variable{0: resultVar}
@@ -225,20 +212,7 @@ func (b *builder) processCallReceiverVal(callExpr *ast.CallExpr, calleeSignature
 }
 
 func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *types.Signature, ctx *context) (argVals map[int]ir.RValue, requiresCopy map[int]bool, ok bool) {
-	if len(callExpr.Args) > 0 {
-		callExpr, ok := callExpr.Args[0].(*ast.CallExpr)
-		if ok && len(callExpr.Args) == 1 {
-			argVals = make(map[int]ir.RValue)
-			argVars := b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
-			for i, resultVar := range argVars {
-				argVals[i] = resultVar
-			}
-		}
-	}
-	if argVals == nil {
-		argVals = b.processExprs(callExpr.Args, ctx)
-	}
-
+	argVals = b.processExprs(callExpr.Args, ctx)
 	requiresCopy = make(map[int]bool)
 	regularParamN := calleeSignature.Params().Len()
 	if calleeSignature.Variadic() {
@@ -328,6 +302,8 @@ func (b *builder) processCallResultVars(calleeSignature *types.Signature, ctx *c
 		resultVars[i] = irVar
 		if _, ok := irType.(*ir.StructType); ok {
 			requiresCopy[i] = !b.isPointer(resultTypesType)
+		} else if irContainerType, ok := irType.(*ir.ContainerType); ok && irContainerType.Kind() == ir.Array {
+			requiresCopy[i] = !b.isPointer(resultTypesType)
 		} else {
 			requiresCopy[i] = false
 		}
@@ -378,7 +354,7 @@ func (b *builder) liftedSpecialOpFunc(specialOp ir.SpecialOp) *ir.Func {
 	}
 
 	irFunc = b.program.AddOuterFunc("lifted_"+specialOp.String(), nil, token.NoPos, token.NoPos)
-	subCtx := newContext(nil, irFunc)
+	subCtx := newContext(nil, nil, irFunc)
 	switch specialOp {
 	case ir.Close:
 		chanVar := b.program.NewVariable("ch", ir.ChanType, -1)

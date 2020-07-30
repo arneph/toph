@@ -2,12 +2,14 @@ package builder
 
 import (
 	"go/ast"
+	"go/types"
 
 	"github.com/arneph/toph/ir"
 )
 
 type context struct {
-	cmap ast.CommentMap
+	cmap      ast.CommentMap
+	typesInfo *types.Info
 
 	body           *ir.Body
 	enclosingFuncs []*ir.Func
@@ -16,9 +18,10 @@ type context struct {
 	enclosingStmtLabels map[string]ir.Stmt
 }
 
-func newContext(cmap ast.CommentMap, f *ir.Func) *context {
+func newContext(cmap ast.CommentMap, typesInfo *types.Info, f *ir.Func) *context {
 	ctx := new(context)
 	ctx.cmap = cmap
+	ctx.typesInfo = typesInfo
 	ctx.body = f.Body()
 	ctx.enclosingFuncs = []*ir.Func{f}
 	ctx.enclosingStmts = []ir.Stmt{}
@@ -81,6 +84,7 @@ func (c *context) findContinuable(label string) ir.Stmt {
 func (c *context) subContextForBody(stmt ir.Stmt, label string, containedBody *ir.Body) *context {
 	ctx := new(context)
 	ctx.cmap = c.cmap
+	ctx.typesInfo = c.typesInfo
 	ctx.body = containedBody
 	ctx.enclosingFuncs = c.enclosingFuncs
 	ctx.enclosingStmts = append(c.enclosingStmts, stmt)
@@ -98,6 +102,7 @@ func (c *context) subContextForBody(stmt ir.Stmt, label string, containedBody *i
 func (c *context) subContextForFunc(containedFunc *ir.Func) *context {
 	ctx := new(context)
 	ctx.cmap = c.cmap
+	ctx.typesInfo = c.typesInfo
 	ctx.body = containedFunc.Body()
 	ctx.enclosingFuncs = append(c.enclosingFuncs, containedFunc)
 	ctx.enclosingStmts = []ir.Stmt{}

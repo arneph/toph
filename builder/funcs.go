@@ -19,13 +19,13 @@ func (b *builder) processFuncReceiver(recv *ast.FieldList, ctx *context) {
 		return
 	}
 	fieldNameIdent := field.Names[0]
-	typesType := b.typesInfo.TypeOf(field.Type)
+	typesType := ctx.typesInfo.TypeOf(field.Type)
 	irType := b.typesTypeToIrType(typesType)
 	if irType == nil {
 		return
 	}
 	initialValue := irType.UninitializedValue()
-	typesVar := b.typesInfo.ObjectOf(fieldNameIdent).(*types.Var)
+	typesVar := ctx.typesInfo.ObjectOf(fieldNameIdent).(*types.Var)
 	irVar := b.program.NewVariable(fieldNameIdent.Name, irType, initialValue)
 	irFunc.AddArg(-1, irVar)
 	b.vars[typesVar] = irVar
@@ -36,7 +36,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 
 	argIndex := 0
 	for _, field := range funcType.Params.List {
-		typesType := b.typesInfo.TypeOf(field.Type)
+		typesType := ctx.typesInfo.TypeOf(field.Type)
 		irType := b.typesTypeToIrType(typesType)
 		if irType == nil {
 			argIndex += len(field.Names)
@@ -44,7 +44,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 		}
 		initialValue := irType.UninitializedValue()
 		for _, fieldNameIdent := range field.Names {
-			typesVar := b.typesInfo.Defs[fieldNameIdent].(*types.Var)
+			typesVar := ctx.typesInfo.Defs[fieldNameIdent].(*types.Var)
 			irVar := b.program.NewVariable(fieldNameIdent.Name, irType, initialValue)
 			irFunc.AddArg(argIndex, irVar)
 			b.vars[typesVar] = irVar
@@ -57,7 +57,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 	}
 	resultIndex := 0
 	for _, field := range funcType.Results.List {
-		typesType := b.typesInfo.TypeOf(field.Type)
+		typesType := ctx.typesInfo.TypeOf(field.Type)
 		irType := b.typesTypeToIrType(typesType)
 		if irType == nil {
 			if len(field.Names) > 0 {
@@ -75,7 +75,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 
 		} else {
 			for _, fieldNameIdent := range field.Names {
-				typesVar := b.typesInfo.Defs[fieldNameIdent].(*types.Var)
+				typesVar := ctx.typesInfo.Defs[fieldNameIdent].(*types.Var)
 				irVar := b.program.NewVariable(fieldNameIdent.Name, irType, initialValue)
 				irFunc.AddResult(resultIndex, irVar)
 				b.vars[typesVar] = irVar
@@ -86,7 +86,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 }
 
 func (b *builder) processFuncLit(funcLit *ast.FuncLit, ctx *context) *ir.Func {
-	sig := b.typesInfo.Types[funcLit].Type.(*types.Signature)
+	sig := ctx.typesInfo.Types[funcLit].Type.(*types.Signature)
 	f := b.program.AddInnerFunc(sig, ctx.currentFunc(), ctx.body.Scope(), funcLit.Pos(), funcLit.End())
 	subCtx := ctx.subContextForFunc(f)
 	b.processFuncType(funcLit.Type, subCtx)
@@ -104,10 +104,10 @@ func (b *builder) processFuncBody(body *ast.BlockStmt, ctx *context) {
 	b.processBlockStmt(body, ctx)
 }
 
-func (b *builder) canIgnoreCall(callExpr *ast.CallExpr) bool {
+func (b *builder) canIgnoreCall(callExpr *ast.CallExpr, ctx *context) bool {
 	switch funcExpr := callExpr.Fun.(type) {
 	case *ast.Ident:
-		if used, ok := b.typesInfo.Uses[funcExpr]; ok {
+		if used, ok := ctx.typesInfo.Uses[funcExpr]; ok {
 			switch used := used.(type) {
 			case *types.Builtin:
 				switch used.Name() {
@@ -121,7 +121,7 @@ func (b *builder) canIgnoreCall(callExpr *ast.CallExpr) bool {
 					return true
 				case "make":
 					astType := callExpr.Args[0]
-					typesType := b.typesInfo.TypeOf(astType)
+					typesType := ctx.typesInfo.TypeOf(astType)
 					irType := b.typesTypeToIrType(typesType)
 					return irType == nil
 				}
@@ -130,7 +130,7 @@ func (b *builder) canIgnoreCall(callExpr *ast.CallExpr) bool {
 			}
 		}
 	case *ast.SelectorExpr:
-		switch funcType := b.typesInfo.Uses[funcExpr.Sel].(type) {
+		switch funcType := ctx.typesInfo.Uses[funcExpr.Sel].(type) {
 		case *types.Func:
 			if funcType.String() == "func (error).Error() string" {
 				return true
@@ -217,14 +217,14 @@ func (b *builder) canIgnoreCall(callExpr *ast.CallExpr) bool {
 	return false
 }
 
-func (b *builder) specialOpForCall(callExpr *ast.CallExpr) (ir.SpecialOp, bool) {
+func (b *builder) specialOpForCall(callExpr *ast.CallExpr, ctx *context) (ir.SpecialOp, bool) {
 	var usedTypesObj types.Object
 
 	switch funcExpr := callExpr.Fun.(type) {
 	case *ast.Ident:
-		usedTypesObj = b.typesInfo.ObjectOf(funcExpr)
+		usedTypesObj = ctx.typesInfo.ObjectOf(funcExpr)
 	case *ast.SelectorExpr:
-		usedTypesObj = b.typesInfo.ObjectOf(funcExpr.Sel)
+		usedTypesObj = ctx.typesInfo.ObjectOf(funcExpr.Sel)
 	default:
 		return nil, false
 	}
@@ -234,7 +234,7 @@ func (b *builder) specialOpForCall(callExpr *ast.CallExpr) (ir.SpecialOp, bool) 
 		switch usedTypesObj.Name() {
 		case "make":
 			astType := callExpr.Args[0]
-			typesType := b.typesInfo.TypeOf(astType)
+			typesType := ctx.typesInfo.TypeOf(astType)
 			irType := b.typesTypeToIrType(typesType)
 			if irType != ir.ChanType {
 				return nil, false
@@ -265,14 +265,14 @@ func (b *builder) specialOpForCall(callExpr *ast.CallExpr) (ir.SpecialOp, bool) 
 	return nil, false
 }
 
-func (b *builder) isKnownBuiltin(callExpr *ast.CallExpr) (string, bool) {
+func (b *builder) isKnownBuiltin(callExpr *ast.CallExpr, ctx *context) (string, bool) {
 	var usedTypesObj types.Object
 
 	switch funcExpr := callExpr.Fun.(type) {
 	case *ast.Ident:
-		usedTypesObj = b.typesInfo.ObjectOf(funcExpr)
+		usedTypesObj = ctx.typesInfo.ObjectOf(funcExpr)
 	case *ast.SelectorExpr:
-		usedTypesObj = b.typesInfo.ObjectOf(funcExpr.Sel)
+		usedTypesObj = ctx.typesInfo.ObjectOf(funcExpr.Sel)
 	default:
 		return "", false
 	}
@@ -284,7 +284,7 @@ func (b *builder) isKnownBuiltin(callExpr *ast.CallExpr) (string, bool) {
 			return name, true
 		case "make":
 			astTypeArg := callExpr.Args[0]
-			typesTypeArg := b.typesInfo.TypeOf(astTypeArg)
+			typesTypeArg := ctx.typesInfo.TypeOf(astTypeArg)
 			switch typesTypeArg.(type) {
 			case *types.Slice, *types.Map:
 				return "make", true

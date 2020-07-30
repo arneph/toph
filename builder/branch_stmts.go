@@ -120,7 +120,7 @@ func (b *builder) processForStmt(stmt *ast.ForStmt, label string, ctx *context) 
 }
 
 func (b *builder) processRangeStmt(stmt *ast.RangeStmt, label string, ctx *context) {
-	typesType := b.typesInfo.TypeOf(stmt.X)
+	typesType := ctx.typesInfo.TypeOf(stmt.X)
 	irType := b.typesTypeToIrType(typesType)
 
 	if irType == ir.ChanType {
@@ -139,8 +139,8 @@ func (b *builder) processRangeStmt(stmt *ast.RangeStmt, label string, ctx *conte
 			var valueVal ir.LValue
 			keyIdent, ok := stmt.Key.(*ast.Ident)
 			if stmt.Key != nil && ok && keyIdent.Name != "_" && stmt.Tok == token.DEFINE && containerType.Kind() != ir.Map {
-				typesVar, ok := b.typesInfo.Defs[keyIdent].(*types.Var)
-				if ok && b.basicVarIsReadOnlyInBody(stmt.Body, typesVar) {
+				typesVar, ok := ctx.typesInfo.Defs[keyIdent].(*types.Var)
+				if ok && b.basicVarIsReadOnlyInBody(stmt.Body, typesVar, ctx) {
 					counterVar = b.program.NewVariable(keyIdent.Name, ir.IntType, ir.Value(0))
 					ctx.body.Scope().AddVariable(counterVar)
 					b.vars[typesVar] = counterVar

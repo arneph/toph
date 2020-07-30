@@ -28,7 +28,7 @@ func (b *builder) processVarDefinition(ident *ast.Ident, initialize bool, ctx *c
 }
 
 func (b *builder) processVarDefinitionInScope(ident *ast.Ident, scope *ir.Scope, initialize bool, ctx *context) *ir.Variable {
-	typesObj, ok := b.typesInfo.Defs[ident]
+	typesObj, ok := ctx.typesInfo.Defs[ident]
 	if !ok {
 		return nil
 	}

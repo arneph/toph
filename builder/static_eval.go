@@ -33,11 +33,11 @@ func (b *builder) staticExprEval(expr ast.Expr, vars []staticVarInfo, ctx *conte
 
 	case *ast.Ident:
 		for _, inf := range vars {
-			if inf.obj == b.typesInfo.Uses[expr] {
+			if inf.obj == ctx.typesInfo.Uses[expr] {
 				return inf.val, true
 			}
 		}
-		typeAndValue, ok := b.typesInfo.Types[expr]
+		typeAndValue, ok := ctx.typesInfo.Types[expr]
 		if !ok || typeAndValue.Value == nil {
 			return nil, false
 		}
@@ -86,7 +86,7 @@ func (b *builder) staticStmtEval(stmt ast.Stmt, vars []staticVarInfo, ctx *conte
 			}
 			loopVarIndex := -1
 			for j, inf := range vars {
-				if inf.obj == b.typesInfo.Uses[vIdent] {
+				if inf.obj == ctx.typesInfo.Uses[vIdent] {
 					loopVarIndex = j
 				}
 			}
@@ -120,7 +120,7 @@ func (b *builder) staticStmtEval(stmt ast.Stmt, vars []staticVarInfo, ctx *conte
 		}
 		loopVarIndex := -1
 		for i, inf := range vars {
-			if inf.obj == b.typesInfo.Uses[vIdent] {
+			if inf.obj == ctx.typesInfo.Uses[vIdent] {
 				loopVarIndex = i
 			}
 		}
@@ -142,7 +142,7 @@ func (b *builder) staticStmtEval(stmt ast.Stmt, vars []staticVarInfo, ctx *conte
 	}
 }
 
-func (b *builder) basicVarIsReadOnlyInBody(astBody *ast.BlockStmt, typesVar *types.Var) bool {
+func (b *builder) basicVarIsReadOnlyInBody(astBody *ast.BlockStmt, typesVar *types.Var, ctx *context) bool {
 	isReadOnly := true
 	ast.Inspect(astBody, func(node ast.Node) bool {
 		switch node := node.(type) {
@@ -151,7 +151,7 @@ func (b *builder) basicVarIsReadOnlyInBody(astBody *ast.BlockStmt, typesVar *typ
 				break
 			}
 			xIdent, ok := node.X.(*ast.Ident)
-			if !ok || b.typesInfo.Uses[xIdent] != typesVar {
+			if !ok || ctx.typesInfo.Uses[xIdent] != typesVar {
 				break
 			}
 			isReadOnly = false
@@ -159,7 +159,7 @@ func (b *builder) basicVarIsReadOnlyInBody(astBody *ast.BlockStmt, typesVar *typ
 		case *ast.AssignStmt:
 			for _, expr := range node.Lhs {
 				vIdent, ok := expr.(*ast.Ident)
-				if !ok || b.typesInfo.Uses[vIdent] != typesVar {
+				if !ok || ctx.typesInfo.Uses[vIdent] != typesVar {
 					continue
 				}
 				isReadOnly = false
@@ -167,7 +167,7 @@ func (b *builder) basicVarIsReadOnlyInBody(astBody *ast.BlockStmt, typesVar *typ
 			}
 		case *ast.IncDecStmt:
 			xIdent, ok := node.X.(*ast.Ident)
-			if !ok || b.typesInfo.Uses[xIdent] != typesVar {
+			if !ok || ctx.typesInfo.Uses[xIdent] != typesVar {
 				break
 			}
 			isReadOnly = false
@@ -197,7 +197,7 @@ func (b *builder) staticForLoopBoundsEval(forStmt *ast.ForStmt, ctx *context) in
 		if !ok {
 			return -1
 		}
-		v, ok := b.typesInfo.Defs[vIdent].(*types.Var)
+		v, ok := ctx.typesInfo.Defs[vIdent].(*types.Var)
 		if !ok {
 			return -1
 		}
@@ -215,7 +215,7 @@ func (b *builder) staticForLoopBoundsEval(forStmt *ast.ForStmt, ctx *context) in
 	}
 
 	for _, info := range loopVars {
-		if !b.basicVarIsReadOnlyInBody(forStmt.Body, info.obj) {
+		if !b.basicVarIsReadOnlyInBody(forStmt.Body, info.obj, ctx) {
 			return -1
 		}
 	}

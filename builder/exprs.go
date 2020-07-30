@@ -10,16 +10,26 @@ import (
 )
 
 func (b *builder) processExprs(exprs []ast.Expr, ctx *context) map[int]ir.RValue {
-	results := make(map[int]ir.RValue)
-
-	for i, expr := range exprs {
-		v := b.processExpr(expr, ctx)
-		if v != nil {
-			results[i] = v
+	if len(exprs) == 1 {
+		callExpr, ok := exprs[0].(*ast.CallExpr)
+		if ok {
+			resultVals := make(map[int]ir.RValue)
+			resultVars := b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
+			for i, resultVar := range resultVars {
+				resultVals[i] = resultVar
+			}
+			return resultVals
 		}
 	}
 
-	return results
+	resultVals := make(map[int]ir.RValue)
+	for i, expr := range exprs {
+		v := b.processExpr(expr, ctx)
+		if v != nil {
+			resultVals[i] = v
+		}
+	}
+	return resultVals
 }
 
 func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
@@ -27,7 +37,8 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 	case *ast.BasicLit:
 		return nil
 	case *ast.BinaryExpr:
-		b.processExprs([]ast.Expr{e.X, e.Y}, ctx)
+		b.processExpr(e.X, ctx)
+		b.processExpr(e.Y, ctx)
 		return nil
 	case *ast.CallExpr:
 		result := b.processCallExpr(e, ctx)[0]
@@ -51,7 +62,8 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 	case *ast.IndexExpr:
 		return b.procesIndexExpr(e, ctx)
 	case *ast.KeyValueExpr:
-		b.processExprs([]ast.Expr{e.Key, e.Value}, ctx)
+		b.processExpr(e.Key, ctx)
+		b.processExpr(e.Value, ctx)
 		return nil
 	case *ast.ParenExpr:
 		b.processExpr(e.X, ctx)
@@ -73,7 +85,8 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 	case *ast.StarExpr:
 		return b.processExpr(e.X, ctx)
 	case *ast.TypeAssertExpr:
-		b.processExprs([]ast.Expr{e.X, e.Type}, ctx)
+		b.processExpr(e.X, ctx)
+		b.processExpr(e.Type, ctx)
 		return nil
 	case *ast.UnaryExpr:
 		switch e.Op {
@@ -111,7 +124,7 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 		return ir.Value(-1)
 	}
 
-	usedTypesObj := b.typesInfo.ObjectOf(ident)
+	usedTypesObj := ctx.typesInfo.ObjectOf(ident)
 	if usedTypesObj == nil {
 		p := b.fset.Position(ident.Pos())
 		b.addWarning(fmt.Errorf("%v: types.Object for identifier is nil: %s", p, ident.Name))
@@ -160,11 +173,11 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 }
 
 func (b *builder) processSelectorExpr(selExpr *ast.SelectorExpr, ctx *context) ir.RValue {
-	typesSelection, ok := b.typesInfo.Selections[selExpr]
+	typesSelection, ok := ctx.typesInfo.Selections[selExpr]
 	if !ok {
 		// Assume *ast.SelectorExpr is for qualified identifier (package.identifier)
 		xIdent := selExpr.X.(*ast.Ident)
-		xTypesObj := b.typesInfo.ObjectOf(xIdent)
+		xTypesObj := ctx.typesInfo.ObjectOf(xIdent)
 		_ = xTypesObj.(*types.PkgName)
 
 		return b.processIdent(selExpr.Sel, ctx)
@@ -178,7 +191,7 @@ func (b *builder) processSelectorExpr(selExpr *ast.SelectorExpr, ctx *context) i
 	}
 
 	xVal := b.processExpr(selExpr.X, ctx)
-	xTypesType := b.typesInfo.TypeOf(selExpr.X)
+	xTypesType := ctx.typesInfo.TypeOf(selExpr.X)
 	xIrType := b.typesTypeToIrType(xTypesType)
 	if xIrType == nil {
 		return nil
@@ -227,8 +240,8 @@ func (b *builder) procesIndexExpr(indexExpr *ast.IndexExpr, ctx *context) ir.RVa
 	xExpr := indexExpr.X
 	iExpr := indexExpr.Index
 	defer b.processExpr(iExpr, ctx)
-	xTypesType := b.typesInfo.TypeOf(xExpr)
-	iTypesType := b.typesInfo.TypeOf(iExpr)
+	xTypesType := ctx.typesInfo.TypeOf(xExpr)
+	iTypesType := ctx.typesInfo.TypeOf(iExpr)
 	xIrType := b.typesTypeToIrType(xTypesType)
 	iIrType := b.typesTypeToIrType(iTypesType)
 	if xIrType == nil {
@@ -251,7 +264,7 @@ func (b *builder) procesIndexExpr(indexExpr *ast.IndexExpr, ctx *context) ir.RVa
 		if res, ok := b.staticIntEval(iExpr, ctx); ok {
 			irContainerIndex = ir.Value(res)
 		} else if iIdent, ok := iExpr.(*ast.Ident); ok {
-			typesVar, ok := b.typesInfo.Uses[iIdent].(*types.Var)
+			typesVar, ok := ctx.typesInfo.Uses[iIdent].(*types.Var)
 			if ok {
 				irVar, ok := b.vars[typesVar]
 				if ok && irVar.Type() == ir.IntType {

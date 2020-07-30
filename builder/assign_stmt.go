@@ -25,17 +25,7 @@ func (b *builder) processAssignStmt(stmt *ast.AssignStmt, ctx *context) {
 
 func (b *builder) processAssignments(lhsExprs []ast.Expr, rhsExprs []ast.Expr, ctx *context) {
 	// Handle Rhs expressions:
-	var rhs map[int]ir.RValue
-	callExpr, ok := rhsExprs[0].(*ast.CallExpr)
-	if ok && len(rhsExprs) == 1 {
-		rhs = make(map[int]ir.RValue)
-		resultVars := b.processCallExprWithCallKind(callExpr, ir.Call, ctx)
-		for i, resultVar := range resultVars {
-			rhs[i] = resultVar
-		}
-	} else {
-		rhs = b.processExprs(rhsExprs, ctx)
-	}
+	rhs := b.processExprs(rhsExprs, ctx)
 
 	// Handle Lhs expressions:
 	lhs := make(map[int]ir.LValue)
@@ -59,8 +49,10 @@ func (b *builder) processAssignments(lhsExprs []ast.Expr, rhsExprs []ast.Expr, c
 			continue
 		}
 		lhs[i] = irVar
+		typesType := ctx.typesInfo.TypeOf(expr)
 		if _, ok := irType.(*ir.StructType); ok {
-			typesType := b.typesInfo.TypeOf(expr)
+			requiresCopy[i] = !b.isPointer(typesType)
+		} else if irContainerType, ok := irType.(*ir.ContainerType); ok && irContainerType.Kind() == ir.Array {
 			requiresCopy[i] = !b.isPointer(typesType)
 		} else {
 			requiresCopy[i] = false
