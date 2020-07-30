@@ -100,6 +100,9 @@ func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
 				returnStmt.AddResult(i, t.UninitializedValue())
 
 				p := b.fset.Position(stmt.Pos())
+				if i >= len(stmt.Results) {
+					i = 0
+				}
 				resultExpr := stmt.Results[i]
 				resultExprStr := b.nodeToString(resultExpr)
 				b.addWarning(fmt.Errorf("%v: could not resolve return value: %s", p, resultExprStr))
@@ -249,6 +252,9 @@ func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *ty
 			continue
 		}
 		if _, ok := argVals[i]; !ok {
+			if i >= len(callExpr.Args) {
+				i = 0
+			}
 			argExpr := callExpr.Args[i]
 			argExprStr := b.nodeToString(argExpr)
 			p := b.fset.Position(argExpr.Pos())
