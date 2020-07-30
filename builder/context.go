@@ -39,7 +39,7 @@ func (c *context) findBreakable(label string) ir.Stmt {
 	if label != "" {
 		stmt := c.enclosingStmtLabels[label]
 		switch stmt.(type) {
-		case *ir.ForStmt, *ir.ChanRangeStmt, *ir.ContainerRangeStmt, *ir.SwitchStmt:
+		case *ir.ForStmt, *ir.ChanRangeStmt, *ir.ContainerRangeStmt, *ir.SwitchStmt, *ir.SelectStmt:
 			return stmt
 		default:
 			return nil
@@ -51,7 +51,7 @@ func (c *context) findBreakable(label string) ir.Stmt {
 	for i := len(c.enclosingStmts) - 1; i >= 0; i-- {
 		stmt := c.enclosingStmts[i]
 		switch stmt.(type) {
-		case *ir.ForStmt, *ir.ChanRangeStmt, *ir.ContainerRangeStmt, *ir.SwitchStmt:
+		case *ir.ForStmt, *ir.ChanRangeStmt, *ir.ContainerRangeStmt, *ir.SwitchStmt, *ir.SelectStmt:
 			return stmt
 		}
 	}
