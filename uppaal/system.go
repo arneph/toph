@@ -156,8 +156,10 @@ func (s *System) AsUGI() string {
 func (s *System) AsQ() string {
 	var str string
 
+	queryNumber := 1
 	for _, query := range s.queries {
-		str += query.AsQ()
+		str += query.AsQ(queryNumber)
+		queryNumber++
 	}
 
 	sortedInstances := s.sortedInstances()
@@ -166,7 +168,8 @@ func (s *System) AsQ() string {
 
 		for _, procQuery := range proc.queries {
 			instQuery := procQuery.Substitute(inst.Name())
-			str += instQuery.AsQ()
+			str += instQuery.AsQ(queryNumber)
+			queryNumber++
 		}
 	}
 
@@ -221,15 +224,18 @@ func (s *System) AsXML() string {
 	b.WriteString("</system>\n")
 
 	b.WriteString("    <queries>\n")
+	queryNumber := 1
 	for _, query := range s.queries {
-		query.asXML(&b, "        ")
+		query.asXML(&b, queryNumber, "        ")
 		b.WriteString("\n")
+		queryNumber++
 	}
 	for _, inst := range sortedInstances {
 		for _, procQuery := range inst.Process().Queries() {
 			instQuery := procQuery.Substitute(inst.Name())
-			instQuery.asXML(&b, "        ")
+			instQuery.asXML(&b, queryNumber, "        ")
 			b.WriteString("\n")
+			queryNumber++
 		}
 	}
 	b.WriteString("    </queries>\n")

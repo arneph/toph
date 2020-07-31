@@ -113,20 +113,21 @@ func (q *Query) Substitute(replacement string) *Query {
 }
 
 // AsQ returns the q (file format) representation of the query.
-func (q Query) AsQ() string {
+func (q Query) AsQ(number int) string {
 	var str string
 	str += "/*\n"
 	str += "description: " + q.description + "\n"
 	if q.sourceLocation != "" {
 		str += "location: " + q.sourceLocation + "\n"
 	}
-	str += "category: " + q.category.String()
+	str += "category: " + q.category.String() + "\n"
+	str += fmt.Sprintf("number: %d", number)
 	str += "*/\n"
 	str += q.query + "\n"
 	return str
 }
 
-func (q Query) asXML(b *strings.Builder, indent string) {
+func (q Query) asXML(b *strings.Builder, number int, indent string) {
 	b.WriteString(indent + "<query>\n")
 	b.WriteString(indent + "    <formula>")
 	xml.EscapeText(b, []byte(q.query))
@@ -142,6 +143,8 @@ func (q Query) asXML(b *strings.Builder, indent string) {
 	}
 	b.WriteString("category: ")
 	xml.EscapeText(b, []byte(q.category.String()))
+	b.WriteString("\n")
+	fmt.Fprintf(b, "number: %d", number)
 	b.WriteString("</comment>\n")
 	b.WriteString(indent + "</query>")
 }
