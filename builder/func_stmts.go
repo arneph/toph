@@ -44,6 +44,8 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callabl
 		callee = calleeValue
 	case *ir.FieldSelection:
 		callee = calleeValue
+	case *ir.ContainerAccess:
+		callee = calleeValue
 	case ir.Value:
 		callee = b.program.Func(ir.FuncIndex(calleeValue.Value()))
 		if callee == nil {

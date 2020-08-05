@@ -70,7 +70,7 @@ stmtsLoop:
 				if calleesToEliminate[callee] {
 					continue stmtsLoop
 				}
-			case *ir.Variable, *ir.FieldSelection:
+			case *ir.Variable, *ir.FieldSelection, *ir.ContainerAccess:
 				canEliminiate := true
 				calleeSig := callStmt.CalleeSignature()
 				for _, dynCallee := range fcg.DynamicCallees(calleeSig) {

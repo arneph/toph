@@ -12,9 +12,10 @@ type Callable interface {
 	callable()
 }
 
-func (v *Variable) callable()        {}
-func (fs *FieldSelection) callable() {}
-func (f *Func) callable()            {}
+func (v *Variable) callable()         {}
+func (fs *FieldSelection) callable()  {}
+func (ca *ContainerAccess) callable() {}
+func (f *Func) callable()             {}
 
 // CallKind represents whether a call is synchronous or asynchronous
 // (go statement). Multiple call kinds can be used in a bit map.
