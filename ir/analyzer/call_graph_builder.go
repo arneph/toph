@@ -14,6 +14,7 @@ func BuildFuncCallGraph(program *ir.Program, callKinds ir.CallKind) *FuncCallGra
 
 	addFuncsToFuncCallGraph(program, fcg)
 	addCallsToFuncCallGraph(program, callKinds, fcg)
+	addDynamicCalleesToFuncCallGraph(program, fcg)
 	addCallCountsToFuncCallGraph(program, callKinds, fcg)
 	removeCallsToClosuresInsideUncalledFunctionsFromFuncCallGraph(program, fcg)
 
@@ -38,12 +39,51 @@ func addCallsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fcg *Fu
 				fcg.addStaticCall(caller, callee)
 			case ir.LValue:
 				calleeSig := callStmt.CalleeSignature()
-				fcg.addDynamicCall(caller, calleeSig)
+				fcg.addDynamicCaller(caller, calleeSig)
 			default:
 				panic(fmt.Errorf("unexpected callee type: %T", callee))
 			}
 		})
 	}
+}
+
+func addDynamicCalleesToFuncCallGraph(program *ir.Program, fcg *FuncCallGraph) {
+	queue := []*ir.Scope{program.Scope()}
+	for len(queue) > 0 {
+		scope := queue[0]
+		queue = queue[1:]
+		queue = append(queue, scope.Children()...)
+		for _, v := range scope.Variables() {
+			if v.Type() == ir.FuncType {
+				addDynamicCalleeToFuncCallGraph(program, v.InitialValue(), fcg)
+			}
+		}
+	}
+	for _, f := range program.Funcs() {
+		f.Body().WalkStmts(func(stmt ir.Stmt, scope *ir.Scope) {
+			switch stmt := stmt.(type) {
+			case *ir.AssignStmt:
+				addDynamicCalleeToFuncCallGraph(program, stmt.Source(), fcg)
+			case *ir.CallStmt:
+				for _, arg := range stmt.Args() {
+					addDynamicCalleeToFuncCallGraph(program, arg, fcg)
+				}
+			case *ir.ReturnStmt:
+				for _, result := range stmt.Results() {
+					addDynamicCalleeToFuncCallGraph(program, result, fcg)
+				}
+			}
+		})
+	}
+}
+
+func addDynamicCalleeToFuncCallGraph(program *ir.Program, rvalue ir.RValue, fcg *FuncCallGraph) {
+	calleeVal, ok := rvalue.(ir.Value)
+	if !ok || calleeVal.Type() != ir.FuncType || calleeVal.Value() < 0 {
+		return
+	}
+	callee := program.Func(ir.FuncIndex(calleeVal.Value()))
+	fcg.addDynamicCallee(callee)
 }
 
 func addCallCountsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fcg *FuncCallGraph) {

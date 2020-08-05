@@ -201,19 +201,6 @@ func (fcg *FuncCallGraph) addFunc(f *ir.Func) {
 	fcg.callerToCallees[f] = make(map[*ir.Func]struct{})
 	fcg.calleeToCallers[f] = make(map[*ir.Func]struct{})
 
-	if f != fcg.entry && f.Signature() != nil {
-		if dynInfo := fcg.dynamicCallInfoForSignature(f.Signature()); dynInfo != nil {
-			dynInfo.callees[f] = struct{}{}
-		} else {
-			fcg.dynamicCallInfos = append(fcg.dynamicCallInfos,
-				dynamicCallInfo{
-					signature: f.Signature().Underlying().(*types.Signature),
-					callers:   map[*ir.Func]struct{}{},
-					callees:   map[*ir.Func]struct{}{f: {}},
-				})
-		}
-	}
-
 	fcg.callerToSpecialOpCounts[f] = make(map[ir.SpecialOp]int)
 	fcg.callerToTypeAllocations[f] = make(map[ir.Type]int)
 
@@ -229,7 +216,7 @@ func (fcg *FuncCallGraph) addStaticCall(caller, callee *ir.Func) {
 	fcg.sccsOk = false
 }
 
-func (fcg *FuncCallGraph) addDynamicCall(caller *ir.Func, calleeSignature *types.Signature) {
+func (fcg *FuncCallGraph) addDynamicCaller(caller *ir.Func, calleeSignature *types.Signature) {
 	dynInfo := fcg.dynamicCallInfoForSignature(calleeSignature)
 	if dynInfo == nil {
 		fcg.dynamicCallInfos = append(fcg.dynamicCallInfos,
@@ -246,6 +233,31 @@ func (fcg *FuncCallGraph) addDynamicCall(caller *ir.Func, calleeSignature *types
 		dynInfo.callers[caller] = struct{}{}
 
 		for callee := range dynInfo.callees {
+			fcg.addStaticCall(caller, callee)
+		}
+	}
+
+	fcg.sccsOk = false
+}
+
+func (fcg *FuncCallGraph) addDynamicCallee(callee *ir.Func) {
+	calleeSignature := callee.Signature()
+	dynInfo := fcg.dynamicCallInfoForSignature(calleeSignature)
+	if dynInfo == nil {
+		fcg.dynamicCallInfos = append(fcg.dynamicCallInfos,
+			dynamicCallInfo{
+				signature: calleeSignature.Underlying().(*types.Signature),
+				callers:   map[*ir.Func]struct{}{},
+				callees:   map[*ir.Func]struct{}{callee: {}},
+			})
+	} else {
+		if _, ok := dynInfo.callees[callee]; ok {
+			return
+		}
+
+		dynInfo.callees[callee] = struct{}{}
+
+		for caller := range dynInfo.callers {
 			fcg.addStaticCall(caller, callee)
 		}
 	}
