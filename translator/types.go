@@ -84,10 +84,10 @@ func (t *translator) addStructType(structType *ir.StructType) {
 	var initializeFieldsStmts strings.Builder
 	var copyFieldsStmts strings.Builder
 	for _, field := range structType.Fields() {
-		uninitializedValue := t.translateValue(field.Type().UninitializedValue(), field.Type())
+		uninitializedValue := t.translateValue(field.Type().UninitializedValue())
 		initializedValue := uninitializedValue
 		if !field.IsPointer() {
-			initializedValue = t.translateValue(field.Type().InitializedValue(), field.Type())
+			initializedValue = t.translateValue(field.Type().InitializedValue())
 		}
 		fieldHandle := fmt.Sprintf("%s_structs[sid].%s", structType.VariablePrefix(), field.Handle())
 		newFieldHandle := fmt.Sprintf("%s_structs[new_sid].%s", structType.VariablePrefix(), field.Handle())
@@ -149,10 +149,10 @@ func (t *translator) addArrayType(containerType *ir.ContainerType) {
 		t.uppaalReferenceTypeForIrType(containerType.ElementType()))
 	t.system.Declarations().AddSpaceBetweenVariables()
 
-	uninitializedValue := t.translateValue(containerType.ElementType().UninitializedValue(), containerType.ElementType())
+	uninitializedValue := t.translateValue(containerType.ElementType().UninitializedValue())
 	initializedValue := uninitializedValue
 	if !containerType.HoldsPointers() {
-		initializedValue = t.translateValue(containerType.ElementType().InitializedValue(), containerType.ElementType())
+		initializedValue = t.translateValue(containerType.ElementType().InitializedValue())
 	}
 	oldElementHandle := fmt.Sprintf("%s_arrays[old_aid][i]", containerType.VariablePrefix())
 	if containerType.RequiresDeepCopies() {
@@ -223,10 +223,10 @@ func (t *translator) addSliceType(containerType *ir.ContainerType) {
 		t.uppaalReferenceTypeForIrType(containerType.ElementType()))
 	t.system.Declarations().AddSpaceBetweenVariables()
 
-	uninitializedValue := t.translateValue(containerType.ElementType().UninitializedValue(), containerType.ElementType())
+	uninitializedValue := t.translateValue(containerType.ElementType().UninitializedValue())
 	initializedValue := uninitializedValue
 	if !containerType.HoldsPointers() {
-		initializedValue = t.translateValue(containerType.ElementType().InitializedValue(), containerType.ElementType())
+		initializedValue = t.translateValue(containerType.ElementType().InitializedValue())
 	}
 
 	t.system.Declarations().AddFunc(
@@ -306,10 +306,10 @@ func (t *translator) addMapType(containerType *ir.ContainerType) {
 		t.uppaalReferenceTypeForIrType(containerType.ElementType()))
 	t.system.Declarations().AddSpaceBetweenVariables()
 
-	uninitializedValue := t.translateValue(containerType.ElementType().UninitializedValue(), containerType.ElementType())
+	uninitializedValue := t.translateValue(containerType.ElementType().UninitializedValue())
 	initializedValue := uninitializedValue
 	if !containerType.HoldsPointers() {
-		initializedValue = t.translateValue(containerType.ElementType().InitializedValue(), containerType.ElementType())
+		initializedValue = t.translateValue(containerType.ElementType().InitializedValue())
 	}
 	writeElementHandle := fmt.Sprintf("%s_maps[mid][index]", containerType.VariablePrefix())
 	readElementHandle := fmt.Sprintf("%s_maps[mid][index]", containerType.VariablePrefix())

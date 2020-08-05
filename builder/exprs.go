@@ -121,7 +121,7 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 	if ident.Name == "_" {
 		return nil
 	} else if ident.Name == "nil" {
-		return ir.Value(-1)
+		return ir.Nil
 	}
 
 	usedTypesObj := ctx.typesInfo.ObjectOf(ident)
@@ -262,7 +262,7 @@ func (b *builder) procesIndexExpr(indexExpr *ast.IndexExpr, ctx *context) ir.RVa
 	if irContainerType.Kind() == ir.Array ||
 		irContainerType.Kind() == ir.Slice {
 		if res, ok := b.staticIntEval(iExpr, ctx); ok {
-			irContainerIndex = ir.Value(res)
+			irContainerIndex = ir.MakeValue(int64(res), ir.IntType)
 		} else if iIdent, ok := iExpr.(*ast.Ident); ok {
 			typesVar, ok := ctx.typesInfo.Uses[iIdent].(*types.Var)
 			if ok {

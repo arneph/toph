@@ -36,7 +36,7 @@ func (t *translator) translateWaitGroupOpSmt(stmt *ir.WaitGroupOpStmt, ctx *cont
 
 	switch stmt.Op() {
 	case ir.Add:
-		delta, _ := t.translateRValue(stmt.Delta(), ir.IntType, nil, ctx)
+		delta, _ := t.translateRValue(stmt.Delta(), nil, ctx)
 		completedName = "added_to_wait_group"
 		sync = fmt.Sprintf("add[%s]!", handle)
 		completeUpdate = fmt.Sprintf("wait_group_counter[%s] += %s", handle, delta)

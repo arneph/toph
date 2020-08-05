@@ -316,26 +316,27 @@ func findCalleesInfoForCallStmt(callStmt *ir.CallStmt, callKinds ir.CallKind, fc
 
 func findCalleesForInitializedType(irType ir.Type) (res callsInfo) {
 	res.init()
-	switch irType.InitializedValue() {
-	case ir.InitializedMutex, ir.InitializedWaitGroup:
+	switch irType := irType.(type) {
+	case ir.BasicType:
+		if irType == ir.MutexType || irType == ir.WaitGroupType {
+			res.addTypeAllocations(irType, 1)
+		}
+	case *ir.StructType:
 		res.addTypeAllocations(irType, 1)
-	case ir.InitializedStruct:
-		structType := irType.(*ir.StructType)
-
-		res.addTypeAllocations(irType, 1)
-		for _, field := range structType.Fields() {
+		for _, field := range irType.Fields() {
 			if field.IsPointer() {
 				continue
 			}
 			res.add(findCalleesForInitializedType(field.Type()))
 		}
-	case ir.InitializedArray:
-		arrayType := irType.(*ir.ContainerType)
-
+	case *ir.ContainerType:
+		if irType.Kind() != ir.Array {
+			break
+		}
 		res.addTypeAllocations(irType, 1)
-		if arrayType.HoldsPointers() {
-			elemRes := findCalleesForInitializedType(arrayType.ElementType())
-			elemRes.multiply(arrayType.Len())
+		if irType.HoldsPointers() {
+			elemRes := findCalleesForInitializedType(irType.ElementType())
+			elemRes.multiply(irType.Len())
 
 			res.add(elemRes)
 		}

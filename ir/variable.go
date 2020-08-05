@@ -12,17 +12,15 @@ type VariableIndex int
 type Variable struct {
 	index        VariableIndex
 	name         string
-	t            Type
 	initialValue Value
 	captured     bool
 	scope        *Scope
 }
 
-func newVariable(index VariableIndex, name string, t Type, initialValue Value) *Variable {
+func newVariable(index VariableIndex, name string, initialValue Value) *Variable {
 	v := new(Variable)
 	v.index = index
 	v.name = name
-	v.t = t
 	v.initialValue = initialValue
 	v.captured = false
 	v.scope = nil
@@ -37,7 +35,7 @@ func (v *Variable) Name() string {
 
 // Type returns the type of the variable.
 func (v *Variable) Type() Type {
-	return v.t
+	return v.initialValue.t
 }
 
 // InitialValue returns the value assigned to the variable with its
@@ -66,15 +64,15 @@ func (v *Variable) Scope() *Scope {
 func (v *Variable) Handle() string {
 	if v.name == "" {
 		return fmt.Sprintf("%s_var%d",
-			v.t.VariablePrefix(), v.index)
+			v.initialValue.t.VariablePrefix(), v.index)
 	}
 	return fmt.Sprintf("%s_var%d_%s",
-		v.t.VariablePrefix(), v.index, v.name)
+		v.initialValue.t.VariablePrefix(), v.index, v.name)
 }
 
 func (v *Variable) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
-	b.WriteString(fmt.Sprintf("var %s %v = %s", v.Handle(), v.t, v.initialValue))
+	b.WriteString(fmt.Sprintf("var %s %v = %s", v.Handle(), v.initialValue.t, v.initialValue))
 }
 
 func (v *Variable) String() string {

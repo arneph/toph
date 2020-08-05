@@ -10,7 +10,7 @@ func (t *translator) translateGlobalScope() {
 	addedVar := false
 	for _, v := range t.program.Scope().Variables() {
 		typ := t.uppaalReferenceTypeForIrType(v.Type())
-		initialValue := t.translateValue(v.InitialValue(), v.Type())
+		initialValue := t.translateValue(v.InitialValue())
 		t.system.Declarations().AddVariable(v.Handle(), typ, "")
 		t.system.Declarations().AddInitFuncStmt(fmt.Sprintf("%s = %s;",
 			v.Handle(), initialValue))
@@ -26,7 +26,7 @@ func (t *translator) translateScope(ctx *context) {
 	addedGlobalVar := false
 	for _, v := range ctx.body.Scope().Variables() {
 		typ := t.uppaalReferenceTypeForIrType(v.Type())
-		initialValue := t.translateValue(v.InitialValue(), v.Type())
+		initialValue := t.translateValue(v.InitialValue())
 		if !v.IsCaptured() {
 			ctx.proc.Declarations().AddVariable(v.Handle(), typ, "")
 			ctx.proc.Declarations().AddInitFuncStmt(fmt.Sprintf("%s = %s;",

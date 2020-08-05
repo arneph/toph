@@ -122,7 +122,7 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 	for i, calleeArg := range calleeFunc.Args() {
 		calleeArgStr := t.translateArg(calleeArg, "p")
 		callerArg := stmt.Args()[i]
-		callerArgStr, usesGlobals := t.translateRValue(callerArg, calleeArg.Type(), &argsRVS, ctx)
+		callerArgStr, usesGlobals := t.translateRValue(callerArg, &argsRVS, ctx)
 		if stmt.ArgRequiresCopy(i) {
 			callerArgStr = t.translateCopyOfRValue(callerArgStr, calleeArg.Type())
 		}
@@ -253,12 +253,12 @@ func (t *translator) translateDeferredCalls(proc *uppaal.Process, deferred *uppa
 func (t *translator) translateReturnStmt(stmt *ir.ReturnStmt, ctx *context) {
 	var rvs randomVariableSupplier
 	ret := ctx.proc.AddTransition(ctx.currentState, ctx.exitFuncState)
-	for i, resType := range ctx.f.ResultTypes() {
+	for i := range ctx.f.ResultTypes() {
 		resVal, ok := stmt.Results()[i]
 		if !ok {
 			continue
 		}
-		resStr, usesGlobals := t.translateRValue(resVal, resType, &rvs, ctx)
+		resStr, usesGlobals := t.translateRValue(resVal, &rvs, ctx)
 
 		ret.AddUpdate(fmt.Sprintf("%s = %s",
 			t.translateResult(ctx.f, i, "pid"), resStr), usesGlobals)

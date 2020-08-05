@@ -55,10 +55,10 @@ func (rvs *randomVariableSupplier) addToTrans(trans *uppaal.Trans) {
 	trans.SetGuard(combinedGuards, rvs.guardsUseGlobals || trans.GuardUsesGlobals())
 }
 
-func (t *translator) translateRValue(v ir.RValue, typ ir.Type, rvs *randomVariableSupplier, ctx *context) (handle string, usesGlobals bool) {
+func (t *translator) translateRValue(v ir.RValue, rvs *randomVariableSupplier, ctx *context) (handle string, usesGlobals bool) {
 	switch v := v.(type) {
 	case ir.Value:
-		return t.translateValue(v, typ), false
+		return t.translateValue(v), false
 	case *ir.Variable:
 		return t.translateVariable(v, ctx)
 	case *ir.FieldSelection:
@@ -83,21 +83,22 @@ func (t *translator) translateLValue(v ir.LValue, rvs *randomVariableSupplier, c
 	}
 }
 
-func (t *translator) translateValue(v ir.Value, typ ir.Type) string {
+func (t *translator) translateValue(v ir.Value) string {
+	if v.IsInitializedStruct() {
+		structType := v.Type().(*ir.StructType)
+		return fmt.Sprintf("make_%s(true)", structType.VariablePrefix())
+	} else if v.IsInitializedArray() {
+		arrayType := v.Type().(*ir.ContainerType)
+		return fmt.Sprintf("make_%s(true)", arrayType.VariablePrefix())
+	}
 	switch v {
 	case ir.InitializedMutex:
 		return "make_mutex()"
 	case ir.InitializedWaitGroup:
 		return "make_wait_group()"
-	case ir.InitializedStruct:
-		structType := typ.(*ir.StructType)
-		return fmt.Sprintf("make_%s(true)", structType.VariablePrefix())
-	case ir.InitializedArray:
-		arrayType := typ.(*ir.ContainerType)
-		return fmt.Sprintf("make_%s(true)", arrayType.VariablePrefix())
 	}
-	if typ == ir.FuncType {
-		irFuncIndex := ir.FuncIndex(v)
+	if v.Type() == ir.FuncType {
+		irFuncIndex := ir.FuncIndex(v.Value())
 		if irFuncIndex == -1 {
 			return "make_fid(-1, -1)"
 		}
@@ -123,7 +124,7 @@ func (t *translator) translateContainerAccess(ca *ir.ContainerAccess, rvs *rando
 	handle, usesGlobals := t.translateLValue(ca.ContainerVal(), rvs, ctx)
 	var index string
 	if ca.Index() != ir.RandomIndex {
-		index, _ = t.translateRValue(ca.Index(), ir.IntType, rvs, ctx)
+		index, _ = t.translateRValue(ca.Index(), rvs, ctx)
 	}
 	switch ca.ContainerType().Kind() {
 	case ir.Array:
@@ -186,7 +187,7 @@ func (t *translator) translateMapWriteAcces(ca *ir.ContainerAccess, rvs *randomV
 	handle, _ := t.translateLValue(ca.ContainerVal(), rvs, ctx)
 	var index string
 	if ca.Index() != ir.RandomIndex {
-		index, _ = t.translateRValue(ca.Index(), ir.IntType, rvs, ctx)
+		index, _ = t.translateRValue(ca.Index(), rvs, ctx)
 	} else {
 		index = rvs.next(0, t.config.ContainerCapacity)
 		rvs.addGuard(fmt.Sprintf("%s <= %s_lengths[%s]",

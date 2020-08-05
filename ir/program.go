@@ -114,8 +114,8 @@ func (p *Program) Scope() *Scope {
 
 // NewVariable creates a new variable with the given arguments. The new
 // variable is not part of any scope.
-func (p *Program) NewVariable(name string, t Type, initialValue Value) *Variable {
-	v := newVariable(VariableIndex(p.variableCount), name, t, initialValue)
+func (p *Program) NewVariable(name string, initialValue Value) *Variable {
+	v := newVariable(VariableIndex(p.variableCount), name, initialValue)
 	p.variableCount++
 
 	return v

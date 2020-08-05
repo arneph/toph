@@ -141,7 +141,7 @@ func (b *builder) processRangeStmt(stmt *ast.RangeStmt, label string, ctx *conte
 			if stmt.Key != nil && ok && keyIdent.Name != "_" && stmt.Tok == token.DEFINE && containerType.Kind() != ir.Map {
 				typesVar, ok := ctx.typesInfo.Defs[keyIdent].(*types.Var)
 				if ok && b.basicVarIsReadOnlyInBody(stmt.Body, typesVar, ctx) {
-					counterVar = b.program.NewVariable(keyIdent.Name, ir.IntType, ir.Value(0))
+					counterVar = b.program.NewVariable(keyIdent.Name, ir.IntType.InitializedValue())
 					ctx.body.Scope().AddVariable(counterVar)
 					b.vars[typesVar] = counterVar
 				}

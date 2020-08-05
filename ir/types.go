@@ -42,15 +42,9 @@ const (
 func (t BasicType) UninitializedValue() Value {
 	switch t {
 	case IntType:
-		return 0
-	case FuncType:
-		return -1
-	case ChanType:
-		return -1
-	case MutexType:
-		return -1
-	case WaitGroupType:
-		return -1
+		return Value{0, IntType}
+	case FuncType, ChanType, MutexType, WaitGroupType:
+		return Value{-1, t}
 	default:
 		panic(fmt.Errorf("unknown Type: %d", t))
 	}
@@ -60,11 +54,9 @@ func (t BasicType) UninitializedValue() Value {
 func (t BasicType) InitializedValue() Value {
 	switch t {
 	case IntType:
-		return 0
-	case FuncType:
-		return -1
-	case ChanType:
-		return -1
+		return Value{0, IntType}
+	case FuncType, ChanType:
+		return Value{-1, t}
 	case MutexType:
 		return InitializedMutex
 	case WaitGroupType:
@@ -240,12 +232,12 @@ func (t *StructType) FindEmbeddedFieldOfType(embeddedFieldType Type) (embeddedFi
 
 // UninitializedValue returns the Uppaal zeor value for the structure.
 func (t *StructType) UninitializedValue() Value {
-	return -1
+	return Value{-1, t}
 }
 
 // InitializedValue returns the Go zero value for the structure.
 func (t *StructType) InitializedValue() Value {
-	return InitializedStruct
+	return InitializedStruct(t)
 }
 
 // VariablePrefix returns the variable prefix for the given type.
@@ -326,16 +318,16 @@ func (t *ContainerType) RequiresDeepCopies() bool {
 
 // UninitializedValue returns the Uppaal zero value for the container type.
 func (t *ContainerType) UninitializedValue() Value {
-	return -1
+	return Value{-1, t}
 }
 
 // InitializedValue returns the Go zero value for the container type.
 func (t *ContainerType) InitializedValue() Value {
 	switch t.kind {
 	case Array:
-		return InitializedArray
+		return InitializedArray(t)
 	case Slice, Map:
-		return -1
+		return Value{-1, t}
 	default:
 		panic("unexpected container kind")
 	}

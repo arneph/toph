@@ -9,7 +9,7 @@ import (
 
 func (t *translator) translateAssignStmt(stmt *ir.AssignStmt, ctx *context) {
 	var rvs randomVariableSupplier
-	sourceHandle, sourceUsesGlobals := t.translateRValue(stmt.Source(), stmt.Destination().Type(), &rvs, ctx)
+	sourceHandle, sourceUsesGlobals := t.translateRValue(stmt.Source(), &rvs, ctx)
 	if stmt.RequiresCopy() {
 		sourceHandle = t.translateCopyOfRValue(sourceHandle, stmt.Destination().Type())
 	}

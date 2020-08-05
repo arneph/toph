@@ -77,7 +77,7 @@ func newInnerFunc(index FuncIndex, signature *types.Signature, enclosingFunc *Fu
 
 // FuncValue returns a Value representing the function.
 func (f *Func) FuncValue() Value {
-	return Value(f.index)
+	return Value{int64(f.index), FuncType}
 }
 
 // Name returns the name of the function.

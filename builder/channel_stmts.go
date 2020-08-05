@@ -35,7 +35,7 @@ func (b *builder) processMakeChanExpr(callExpr *ast.CallExpr, ctx *context) *ir.
 		}
 	}
 
-	result := b.program.NewVariable("", ir.ChanType, -1)
+	result := b.program.NewVariable("", ir.ChanType.InitializedValue())
 	ctx.body.Scope().AddVariable(result)
 	makeStmt := ir.NewMakeChanStmt(result, bufferSize, callExpr.Pos(), callExpr.End())
 	ctx.body.AddStmt(makeStmt)

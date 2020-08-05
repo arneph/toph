@@ -51,7 +51,7 @@ func (b *builder) processVarDefinitionInScope(ident *ast.Ident, scope *ir.Scope,
 	if initialize {
 		initialValue = irType.InitializedValue()
 	}
-	irVar := b.program.NewVariable(ident.Name, irType, initialValue)
+	irVar := b.program.NewVariable(ident.Name, initialValue)
 	scope.AddVariable(irVar)
 	b.vars[typesVar] = irVar
 

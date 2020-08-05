@@ -45,7 +45,7 @@ func (b *builder) findCallee(funcExpr ast.Expr, ctx *context) (callee ir.Callabl
 	case *ir.FieldSelection:
 		callee = calleeValue
 	case ir.Value:
-		callee = b.program.Func(ir.FuncIndex(calleeValue))
+		callee = b.program.Func(ir.FuncIndex(calleeValue.Value()))
 		if callee == nil {
 			p := b.fset.Position(funcExpr.Pos())
 			funcExprStr := b.nodeToString(funcExpr)
@@ -80,6 +80,9 @@ func (b *builder) processReturnStmt(stmt *ast.ReturnStmt, ctx *context) {
 	if len(stmt.Results) > 0 {
 		// return stmt returns specified values
 		for i, v := range resultVals {
+			if t, ok := ctx.currentFunc().ResultTypes()[i]; ok && v == ir.Nil {
+				v = t.UninitializedValue()
+			}
 			returnStmt.AddResult(i, v)
 		}
 		for i, t := range ctx.currentFunc().ResultTypes() {
@@ -225,7 +228,8 @@ func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *ty
 		if irType == nil {
 			continue
 		}
-		if _, ok := argVals[i]; !ok {
+		argVal, ok := argVals[i]
+		if !ok {
 			if i >= len(callExpr.Args) {
 				i = 0
 			}
@@ -234,6 +238,9 @@ func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *ty
 			p := b.fset.Position(argExpr.Pos())
 			b.addWarning(fmt.Errorf("%v: could not resolve argument: %s", p, argExprStr))
 			return nil, nil, false
+		} else if argVal == ir.Nil {
+			argVal = irType.UninitializedValue()
+			argVals[i] = argVal
 		}
 		if _, ok := irType.(*ir.StructType); ok {
 			requiresCopy[i] = !b.isPointer(paramTypesType)
@@ -249,6 +256,7 @@ func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *ty
 		if irType != nil {
 			length := len(callExpr.Args) - regularParamN
 			irSliceType := irType.(*ir.ContainerType)
+			irElementType := irSliceType.ElementType()
 			irElemVals := make([]ir.RValue, length)
 			for i := regularParamN; i < len(callExpr.Args); i++ {
 				val, ok := argVals[i]
@@ -258,12 +266,14 @@ func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *ty
 					p := b.fset.Position(argExpr.Pos())
 					b.addWarning(fmt.Errorf("%v: could not resolve argument: %s", p, argExprStr))
 					return nil, nil, false
+				} else if val == ir.Nil {
+					val = irElementType.UninitializedValue()
 				}
 				delete(argVals, i)
 				irElemVals[i-regularParamN] = val
 			}
 
-			irSlice := b.program.NewVariable("", irSliceType, -1)
+			irSlice := b.program.NewVariable("", irSliceType.UninitializedValue())
 			ctx.body.Scope().AddVariable(irSlice)
 
 			makeContainerStmt := ir.NewMakeContainerStmt(irSlice, length, false, callExpr.Pos(), callExpr.End())
@@ -273,7 +283,7 @@ func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *ty
 				astElemExpr := callExpr.Args[regularParamN+i]
 				irElemVal := irElemVals[i]
 				requiresCopy := irSliceType.RequiresDeepCopies()
-				irContainerAccess := ir.NewContainerAccess(irSlice, ir.Value(i))
+				irContainerAccess := ir.NewContainerAccess(irSlice, ir.MakeValue(int64(i), ir.IntType))
 				irContainerAccess.SetKind(ir.Write)
 				assignStmt := ir.NewAssignStmt(irElemVal, irContainerAccess, requiresCopy, astElemExpr.Pos(), astElemExpr.End())
 				ctx.body.AddStmt(assignStmt)
@@ -296,8 +306,7 @@ func (b *builder) processCallResultVars(calleeSignature *types.Signature, ctx *c
 		if irType == nil {
 			continue
 		}
-		initialValue := irType.UninitializedValue()
-		irVar := b.program.NewVariable("", irType, initialValue)
+		irVar := b.program.NewVariable("", irType.UninitializedValue())
 		ctx.body.Scope().AddVariable(irVar)
 		resultVars[i] = irVar
 		if _, ok := irType.(*ir.StructType); ok {
@@ -357,23 +366,23 @@ func (b *builder) liftedSpecialOpFunc(specialOp ir.SpecialOp) *ir.Func {
 	subCtx := newContext(nil, nil, irFunc)
 	switch specialOp {
 	case ir.Close:
-		chanVar := b.program.NewVariable("ch", ir.ChanType, -1)
+		chanVar := b.program.NewVariable("ch", ir.ChanType.UninitializedValue())
 		irFunc.AddArg(0, chanVar)
 		closeStmt := ir.NewCloseChanStmt(chanVar, token.NoPos, token.NoPos)
 		subCtx.body.AddStmt(closeStmt)
 
 	case ir.Lock, ir.Unlock, ir.RLock, ir.RUnlock:
-		mutexVar := b.program.NewVariable("mu", ir.MutexType, -1)
+		mutexVar := b.program.NewVariable("mu", ir.MutexType.UninitializedValue())
 		irFunc.AddArg(0, mutexVar)
 		mutexOpStmt := ir.NewMutexOpStmt(mutexVar, specialOp.(ir.MutexOp), token.NoPos, token.NoPos)
 		subCtx.body.AddStmt(mutexOpStmt)
 
 	case ir.Add, ir.Wait:
-		waitGroupVar := b.program.NewVariable("wg", ir.WaitGroupType, -1)
+		waitGroupVar := b.program.NewVariable("wg", ir.WaitGroupType.UninitializedValue())
 		irFunc.AddArg(0, waitGroupVar)
 		var delta *ir.Variable
 		if specialOp == ir.Add {
-			delta = b.program.NewVariable("delta", ir.IntType, 0)
+			delta = b.program.NewVariable("delta", ir.IntType.UninitializedValue())
 			irFunc.AddArg(1, delta)
 		}
 		waitGroupOpStmt := ir.NewWaitGroupOpStmt(waitGroupVar, specialOp.(ir.WaitGroupOp), delta, token.NoPos, token.NoPos)
@@ -434,7 +443,7 @@ func (b *builder) processSpecialOpCallExprWithCallKind(callExpr *ast.CallExpr, c
 		if waitGroupVal == nil {
 			return nil
 		}
-		var delta ir.RValue = ir.Value(-1)
+		var delta ir.RValue = ir.MakeValue(-1, ir.IntType)
 		if specialOp == ir.Add && selExpr.Sel.Name == "Add" {
 			a := callExpr.Args[0]
 			res, ok := b.staticIntEval(a, ctx)
@@ -443,7 +452,7 @@ func (b *builder) processSpecialOpCallExprWithCallKind(callExpr *ast.CallExpr, c
 				aStr := b.nodeToString(a)
 				b.addWarning(fmt.Errorf("%v: can not process sync.WaitGroup.Add argument: %s", p, aStr))
 			} else {
-				delta = ir.Value(res)
+				delta = ir.MakeValue(int64(res), ir.IntType)
 			}
 		}
 

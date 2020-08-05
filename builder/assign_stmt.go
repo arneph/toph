@@ -72,7 +72,7 @@ func (b *builder) processAssignments(lhsExprs []ast.Expr, rhsExprs []ast.Expr, c
 		r := rhs[i]
 		if l == nil && r == nil {
 			continue
-		} else if l == nil && r == ir.Value(-1) {
+		} else if l == nil && r == ir.Nil {
 			continue
 		} else if l == nil {
 			if ident, ok := lhsExpr.(*ast.Ident); ok && ident.Name == "_" {
@@ -88,6 +88,9 @@ func (b *builder) processAssignments(lhsExprs []ast.Expr, rhsExprs []ast.Expr, c
 			b.addWarning(
 				fmt.Errorf("%v: could not handle rhs of assignment: %s", p, rhsExprStr))
 			continue
+		}
+		if r == ir.Nil {
+			r = l.Type().UninitializedValue()
 		}
 		c := requiresCopy[i]
 		assignStmt := ir.NewAssignStmt(r, l, c, lhsExpr.Pos(), lhsExpr.End())

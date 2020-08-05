@@ -24,9 +24,8 @@ func (b *builder) processFuncReceiver(recv *ast.FieldList, ctx *context) {
 	if irType == nil {
 		return
 	}
-	initialValue := irType.UninitializedValue()
 	typesVar := ctx.typesInfo.ObjectOf(fieldNameIdent).(*types.Var)
-	irVar := b.program.NewVariable(fieldNameIdent.Name, irType, initialValue)
+	irVar := b.program.NewVariable(fieldNameIdent.Name, irType.UninitializedValue())
 	irFunc.AddArg(-1, irVar)
 	b.vars[typesVar] = irVar
 }
@@ -42,10 +41,9 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 			argIndex += len(field.Names)
 			continue
 		}
-		initialValue := irType.UninitializedValue()
 		for _, fieldNameIdent := range field.Names {
 			typesVar := ctx.typesInfo.Defs[fieldNameIdent].(*types.Var)
-			irVar := b.program.NewVariable(fieldNameIdent.Name, irType, initialValue)
+			irVar := b.program.NewVariable(fieldNameIdent.Name, irType.UninitializedValue())
 			irFunc.AddArg(argIndex, irVar)
 			b.vars[typesVar] = irVar
 			argIndex++
@@ -67,7 +65,6 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 			}
 			continue
 		}
-		initialValue := irType.InitializedValue()
 
 		if len(field.Names) == 0 {
 			irFunc.AddResultType(resultIndex, irType)
@@ -76,7 +73,7 @@ func (b *builder) processFuncType(funcType *ast.FuncType, ctx *context) {
 		} else {
 			for _, fieldNameIdent := range field.Names {
 				typesVar := ctx.typesInfo.Defs[fieldNameIdent].(*types.Var)
-				irVar := b.program.NewVariable(fieldNameIdent.Name, irType, initialValue)
+				irVar := b.program.NewVariable(fieldNameIdent.Name, irType.InitializedValue())
 				irFunc.AddResult(resultIndex, irVar)
 				b.vars[typesVar] = irVar
 				resultIndex++

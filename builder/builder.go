@@ -316,7 +316,7 @@ func (b *builder) processInitializer(typesInfo *types.Info, init *types.Initiali
 		r := rhs[i]
 		if l == nil && r == nil {
 			continue
-		} else if l == nil && r == ir.Value(-1) {
+		} else if l == nil && r == ir.Nil {
 			continue
 		} else if l == nil {
 			p := b.fset.Position(init.Lhs[i].Pos())

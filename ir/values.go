@@ -6,40 +6,80 @@ import (
 )
 
 // Value represents the value of a variable
-type Value int64
+type Value struct {
+	v int64
+	t Type
+}
 
-const (
+var (
 	// InitializedMutex is a placeholder initial value for mutexes.
-	InitializedMutex Value = math.MinInt64 + iota
+	InitializedMutex = Value{math.MinInt64 + 0, MutexType}
 	// InitializedWaitGroup is a placeholder initial value for wait groups.
-	InitializedWaitGroup
-	// InitializedStruct is a placeholder initial value for structures.
-	InitializedStruct
-	// InitializedArray is a placeholder initial value for arrays.
-	InitializedArray
+	InitializedWaitGroup = Value{math.MinInt64 + 1, WaitGroupType}
+
+	initializedStruct int64 = math.MinInt64 + 2
+	initializedArray  int64 = math.MinInt64 + 3
 
 	// AppendIndex is the value used to indicate a slice append.
-	AppendIndex
+	AppendIndex = Value{math.MinInt64 + 4, IntType}
 	// RandomIndex is fallback value for container accesses.
-	RandomIndex
+	RandomIndex = Value{math.MinInt64 + 5, IntType}
+
+	// Nil represents an untyped nil
+	Nil = Value{math.MinInt64 + 6, nil}
 )
 
+// InitializedStruct returns a placeholder initial value for structure types.
+func InitializedStruct(t *StructType) Value {
+	return Value{initializedStruct, t}
+}
+
+// IsInitializedStruct returns if the value is a placeholder initial value for a struct.
+func (v Value) IsInitializedStruct() bool {
+	return v.v == initializedStruct
+}
+
+// InitializedArray returns a placeholder initial value for array types.
+func InitializedArray(t *ContainerType) Value {
+	return Value{initializedArray, t}
+}
+
+// IsInitializedArray returns if the value is a placeholder initial value for an array.
+func (v Value) IsInitializedArray() bool {
+	return v.v == initializedArray
+}
+
+// MakeValue creates a new value for the given int value and type.
+func MakeValue(v int64, t Type) Value {
+	return Value{v, t}
+}
+
+// Value returns the underlying int value of the value.
+func (v Value) Value() int64 {
+	return v.v
+}
+
+// Type returns the type of the value.
+func (v Value) Type() Type {
+	return v.t
+}
+
 func (v Value) String() string {
-	switch v {
-	case InitializedMutex:
+	switch v.v {
+	case InitializedMutex.v:
 		return "initialized mutex"
-	case InitializedWaitGroup:
+	case InitializedWaitGroup.v:
 		return "initialized wait group"
-	case InitializedStruct:
+	case initializedStruct:
 		return "initialized struct"
-	case InitializedArray:
+	case initializedArray:
 		return "initialied array"
-	case AppendIndex:
+	case AppendIndex.v:
 		return "append index"
-	case RandomIndex:
+	case RandomIndex.v:
 		return "random index"
 	default:
-		return fmt.Sprintf("%d", v)
+		return fmt.Sprintf("%d", v.v)
 	}
 }
 
@@ -198,6 +238,8 @@ func (ca *ContainerAccess) String() string {
 // RValue represents a value that can be assigned from.
 type RValue interface {
 	fmt.Stringer
+
+	Type() Type
 
 	rvalue()
 }

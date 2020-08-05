@@ -29,7 +29,7 @@ func (b *builder) processNewExpr(callExpr *ast.CallExpr, ctx *context) *ir.Varia
 	}
 	switch irType := irType.(type) {
 	case *ir.StructType:
-		irVar := b.program.NewVariable("", irType, irType.UninitializedValue())
+		irVar := b.program.NewVariable("", irType.UninitializedValue())
 		ctx.body.Scope().AddVariable(irVar)
 
 		makeStructStmt := ir.NewMakeStructStmt(irVar, true, callExpr.Pos(), callExpr.End())
@@ -41,7 +41,7 @@ func (b *builder) processNewExpr(callExpr *ast.CallExpr, ctx *context) *ir.Varia
 			break
 		}
 
-		irVar := b.program.NewVariable("", irType, irType.UninitializedValue())
+		irVar := b.program.NewVariable("", irType.UninitializedValue())
 		ctx.body.Scope().AddVariable(irVar)
 
 		makeStructStmt := ir.NewMakeContainerStmt(irVar, -1, true, callExpr.Pos(), callExpr.End())
@@ -87,7 +87,7 @@ func (b *builder) processMakeContainerExpr(callExpr *ast.CallExpr, ctx *context)
 	default:
 		panic("unexpected container kind")
 	}
-	irVar := b.program.NewVariable("", irContainerType, irContainerType.UninitializedValue())
+	irVar := b.program.NewVariable("", irContainerType.UninitializedValue())
 	ctx.body.Scope().AddVariable(irVar)
 
 	makeContainerStmt := ir.NewMakeContainerStmt(irVar, length, true, callExpr.Pos(), callExpr.End())
@@ -117,7 +117,7 @@ func (b *builder) processSliceAppendExpr(callExpr *ast.CallExpr, ctx *context) *
 		}
 	}
 
-	newSlice := b.program.NewVariable("", oldSlice.Type(), oldSlice.Type().UninitializedValue())
+	newSlice := b.program.NewVariable("", oldSlice.Type().UninitializedValue())
 	ctx.body.Scope().AddVariable(newSlice)
 
 	copyStmt := ir.NewAssignStmt(oldSlice.(ir.RValue), newSlice, true, callExpr.Pos(), callExpr.End())
@@ -163,7 +163,7 @@ func (b *builder) processCompositeLit(compositeLit *ast.CompositeLit, ctx *conte
 
 func (b *builder) processStructCompositeLit(compositeLit *ast.CompositeLit,
 	typesStruct *types.Struct, irStructType *ir.StructType, ctx *context) *ir.Variable {
-	irVar := b.program.NewVariable("", irStructType, -1)
+	irVar := b.program.NewVariable("", irStructType.UninitializedValue())
 	ctx.body.Scope().AddVariable(irVar)
 
 	makeStructStmt := ir.NewMakeStructStmt(irVar, false, compositeLit.Pos(), compositeLit.End())
@@ -228,7 +228,7 @@ func (b *builder) processStructCompositeLit(compositeLit *ast.CompositeLit,
 
 func (b *builder) processContainerCompositeLit(compositeLit *ast.CompositeLit,
 	typesType types.Type, irContainerType *ir.ContainerType, ctx *context) *ir.Variable {
-	irVar := b.program.NewVariable("", irContainerType, -1)
+	irVar := b.program.NewVariable("", irContainerType.UninitializedValue())
 	ctx.body.Scope().AddVariable(irVar)
 
 	var arrayOrSliceEntries []arrayOrSliceCompositeLitEntry
@@ -262,7 +262,7 @@ func (b *builder) processContainerCompositeLit(compositeLit *ast.CompositeLit,
 				continue
 			}
 			requiresCopy := irContainerType.RequiresDeepCopies()
-			irContainerAccess := ir.NewContainerAccess(irVar, ir.Value(index))
+			irContainerAccess := ir.NewContainerAccess(irVar, ir.MakeValue(int64(index), ir.IntType))
 			irContainerAccess.SetKind(ir.Write)
 			assignStmt := ir.NewAssignStmt(irElemVal, irContainerAccess, requiresCopy, valExpr.Pos(), valExpr.End())
 			ctx.body.AddStmt(assignStmt)
@@ -275,7 +275,7 @@ func (b *builder) processContainerCompositeLit(compositeLit *ast.CompositeLit,
 				continue
 			}
 			irElemVal := irContainerType.ElementType().InitializedValue()
-			irContainerAccess := ir.NewContainerAccess(irVar, ir.Value(i))
+			irContainerAccess := ir.NewContainerAccess(irVar, ir.MakeValue(int64(i), ir.IntType))
 			irContainerAccess.SetKind(ir.Write)
 			assignStmt := ir.NewAssignStmt(irElemVal, irContainerAccess, false, compositeLit.Pos(), compositeLit.End())
 			ctx.body.AddStmt(assignStmt)
