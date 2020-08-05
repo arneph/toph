@@ -35,13 +35,14 @@ type IfStmt struct {
 func NewIfStmt(superScope *Scope, pos, end, ifPos, elsePos token.Pos) *IfStmt {
 	s := new(IfStmt)
 	s.ifBranch.init()
-	s.ifBranch.scope.superScope = superScope
 	s.elseBranch.init()
-	s.elseBranch.scope.superScope = superScope
 	s.pos = pos
 	s.end = end
 	s.ifPos = ifPos
 	s.elsePos = elsePos
+
+	superScope.addChild(&s.ifBranch.scope)
+	superScope.addChild(&s.elseBranch.scope)
 
 	return s
 }
@@ -116,7 +117,8 @@ func (c *SwitchCase) CondEnd(index int) token.Pos {
 func (c *SwitchCase) AddCond(pos, end token.Pos) *Body {
 	var cond Body
 	cond.init()
-	cond.scope.superScope = c.body.scope.superScope
+
+	c.body.scope.addChild(&cond.scope)
 
 	i := len(c.conds)
 	c.conds = append(c.conds, cond)
@@ -215,8 +217,9 @@ func (s *SwitchStmt) Cases() []*SwitchCase {
 func (s *SwitchStmt) AddCase(pos token.Pos) *SwitchCase {
 	c := new(SwitchCase)
 	c.body.init()
-	c.body.scope.superScope = s.superScope
 	c.pos = pos
+
+	s.superScope.addChild(&c.body.scope)
 
 	s.cases = append(s.cases, c)
 
@@ -250,14 +253,15 @@ type ForStmt struct {
 func NewForStmt(superScope *Scope, pos, end token.Pos) *ForStmt {
 	s := new(ForStmt)
 	s.cond.init()
-	s.cond.scope.superScope = superScope
 	s.body.init()
-	s.body.scope.superScope = superScope
 	s.isInfinite = false
 	s.minIterations = -1
 	s.maxIterations = -1
 	s.pos = pos
 	s.end = end
+
+	superScope.addChild(&s.cond.scope)
+	superScope.addChild(&s.body.scope)
 
 	return s
 }
@@ -347,9 +351,10 @@ func NewChanRangeStmt(channel LValue, superScope *Scope, pos, end token.Pos) *Ch
 	s := new(ChanRangeStmt)
 	s.channel = channel
 	s.body.init()
-	s.body.scope.superScope = superScope
 	s.pos = pos
 	s.end = end
+
+	superScope.addChild(&s.body.scope)
 
 	return s
 }
@@ -391,9 +396,10 @@ func NewContainerRangeStmt(container LValue, counterVar *Variable, valueVal LVal
 	s.counterVar = counterVar
 	s.valueVal = valueVal
 	s.body.init()
-	s.body.scope.superScope = superScope
 	s.pos = pos
 	s.end = end
+
+	superScope.addChild(&s.body.scope)
 
 	return s
 }

@@ -6,24 +6,38 @@ import (
 
 // Scope holds the function and channel declarations of Program and Func.
 type Scope struct {
-	superScope *Scope
+	parent   *Scope
+	children []*Scope
 
 	variables []*Variable
 }
 
-// SuperScope returns the immediate super scope of the scope.
-func (s *Scope) SuperScope() *Scope {
-	return s.superScope
+// Parent returns the immediate super scope of the scope.
+func (s *Scope) Parent() *Scope {
+	return s.parent
 }
 
-// IsSuperScopeOf returns whether the scope is a super scope of the given scope.
-func (s *Scope) IsSuperScopeOf(t *Scope) bool {
-	for ; t != nil; t = t.superScope {
-		if t.superScope == s {
+// Children returns all immediate sub scopes of the scope.
+func (s *Scope) Children() []*Scope {
+	return s.children
+}
+
+// IsParentOf returns whether the scope is a super scope of the given scope.
+func (s *Scope) IsParentOf(t *Scope) bool {
+	for ; t != nil; t = t.parent {
+		if t.parent == s {
 			return true
 		}
 	}
 	return false
+}
+
+func (s *Scope) addChild(t *Scope) {
+	if t.parent != nil {
+		panic("tired to add scope as child twice")
+	}
+	s.children = append(s.children, t)
+	t.parent = s
 }
 
 // Variables returns all variables in the scope.

@@ -75,7 +75,7 @@ func (t *translator) translateVariable(v *ir.Variable, ctx *context) (handle str
 	f := ctx.f
 	s := v.Scope()
 	arg := "pid"
-	for f != nil && s.IsSuperScopeOf(f.Scope()) {
+	for f != nil && s.IsParentOf(f.Scope()) {
 		arg = "par_pid_" + t.funcToProcess[f].Name() + "[" + arg + "]"
 		f = f.EnclosingFunc()
 	}

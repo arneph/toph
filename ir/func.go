@@ -44,7 +44,8 @@ func newOuterFunc(index FuncIndex, name string, signature *types.Signature, glob
 
 	f.enclosingFunc = nil
 	f.body.init()
-	f.body.scope.superScope = globalScope
+
+	globalScope.addChild(&f.body.scope)
 
 	f.pos = pos
 	f.end = end
@@ -65,7 +66,8 @@ func newInnerFunc(index FuncIndex, signature *types.Signature, enclosingFunc *Fu
 
 	f.enclosingFunc = enclosingFunc
 	f.body.init()
-	f.body.scope.superScope = enclosingScope
+
+	enclosingScope.addChild(&f.body.scope)
 
 	f.pos = pos
 	f.end = end

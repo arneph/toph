@@ -153,7 +153,7 @@ func (b *builder) processIdent(ident *ast.Ident, ctx *context) ir.RValue {
 			return nil
 		}
 		s := v.Scope()
-		if s != b.program.Scope() && s.IsSuperScopeOf(ctx.currentFunc().Scope()) {
+		if s != b.program.Scope() && s.IsParentOf(ctx.currentFunc().Scope()) {
 			v.SetCaptured(true)
 		}
 		return v
