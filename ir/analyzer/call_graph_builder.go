@@ -16,7 +16,9 @@ func BuildFuncCallGraph(program *ir.Program, callKinds ir.CallKind) *FuncCallGra
 	addCallsToFuncCallGraph(program, callKinds, fcg)
 	addDynamicCalleesToFuncCallGraph(program, fcg)
 	addCallCountsToFuncCallGraph(program, callKinds, fcg)
-	removeCallsToClosuresInsideUncalledFunctionsFromFuncCallGraph(program, fcg)
+	if callKinds == ir.Call|ir.Defer|ir.Go {
+		removeCallsToClosuresInsideUncalledFunctionsFromFuncCallGraph(program, fcg)
+	}
 
 	return fcg
 }
