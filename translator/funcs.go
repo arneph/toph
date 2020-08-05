@@ -57,7 +57,11 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 		t.system.Declarations().AddArray("par_pid_"+proc.Name(), []int{t.callCount(f)}, "int")
 	}
 
-	t.system.Declarations().AddArray("external_panic_"+proc.Name(), []int{t.callCount(f)}, "bool")
+	externalPanicInit := ""
+	if t.completeFCG.CanPanic(f) || t.completeFCG.CanRecover(f) {
+		t.system.Declarations().AddArray("external_panic_"+proc.Name(), []int{t.callCount(f)}, "bool")
+		externalPanicInit = fmt.Sprintf("\n    external_panic_%s[pid] = false;", proc.Name())
+	}
 
 	for _, arg := range f.Args() {
 		name := t.translateArgName(arg)
@@ -81,10 +85,9 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 		return 0;
 	}
 	pid = %[1]s_count;
-	%[1]s_count++;
-	external_panic_%[1]s[pid] = false;
+	%[1]s_count++;%[3]s
 	return pid;
-}`, proc.Name(), t.callCount(f)))
+}`, proc.Name(), t.callCount(f), externalPanicInit))
 	} else {
 		t.system.Declarations().AddFunc(
 			fmt.Sprintf(`int make_%[1]s(int par_pid) {
@@ -95,10 +98,9 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 	}
 	pid = %[1]s_count;
 	%[1]s_count++;
-	par_pid_%[1]s[pid] = par_pid;
-	external_panic_%[1]s[pid] = false;
+	par_pid_%[1]s[pid] = par_pid;%[3]s
 	return pid;
-}`, proc.Name(), t.callCount(f)))
+}`, proc.Name(), t.callCount(f), externalPanicInit))
 	}
 }
 
@@ -116,7 +118,9 @@ func (t *translator) translateFunc(f *ir.Func) {
 
 	// Internal helper variables:
 	proc.Declarations().AddVariable("is_sync", "bool", "false")
-	proc.Declarations().AddVariable("internal_panic", "bool", "false")
+	if t.completeFCG.CanPanic(f) {
+		proc.Declarations().AddVariable("internal_panic", "bool", "false")
+	}
 	if deferCount > 0 {
 		proc.Declarations().AddVariable("deferred_count", "int", "0")
 		proc.Declarations().AddArray("deferred_fid", []int{deferCount}, "int")
@@ -146,11 +150,13 @@ func (t *translator) translateFunc(f *ir.Func) {
 	if f == t.program.InitFunc() {
 		sourceLocation = ""
 	}
-	proc.AddQuery(uppaal.NewQuery(
-		"A[] (not out_of_resources) imply (not ($.ending and !$.is_sync and $.internal_panic))",
-		"check goroutine does not exit with panic",
-		sourceLocation,
-		uppaal.NoGoroutineExitWithPanic))
+	if t.completeFCG.CanPanic(f) {
+		proc.AddQuery(uppaal.NewQuery(
+			"A[] (not out_of_resources) imply (not ($.ending and !$.is_sync and $.internal_panic))",
+			"check goroutine does not exit with panic",
+			sourceLocation,
+			uppaal.NoGoroutineExitWithPanic))
+	}
 
 	var deferred *uppaal.State
 	var exitFuncState *uppaal.State
@@ -202,7 +208,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 	}
 
 	finalize := proc.AddTransition(finalizing, ending)
-	if f != t.program.InitFunc() {
+	if f != t.program.InitFunc() && t.completeFCG.CanPanic(f) {
 		finalize.AddUpdate(fmt.Sprintf("external_panic_%s[pid] |= internal_panic", proc.Name()), false)
 		finalize.SetUpdateLocation(uppaal.Location{4, endingY + 60})
 	}

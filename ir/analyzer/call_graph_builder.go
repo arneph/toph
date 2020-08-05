@@ -19,6 +19,7 @@ func BuildFuncCallGraph(program *ir.Program, callKinds ir.CallKind) *FuncCallGra
 	if callKinds == ir.Call|ir.Defer|ir.Go {
 		removeCallsToClosuresInsideUncalledFunctionsFromFuncCallGraph(program, fcg)
 	}
+	analyzePanics(program, fcg)
 
 	return fcg
 }
@@ -152,6 +153,56 @@ func removeCallsToClosuresInsideUncalledFunctionsFromFuncCallGraph(program *ir.P
 		}
 		fcg.zeroCalleeCounts(f)
 	}
+}
+
+func analyzePanics(program *ir.Program, fcg *FuncCallGraph) {
+	for _, f := range program.Funcs() {
+		fcg.canPanicInternally[f] = canPanicInternally(f)
+		fcg.canRecover[f] = canRecover(f)
+	}
+	for i := 1; i < fcg.SCCCount(); i++ {
+		sccFuncs := fcg.FuncsInSCC(SCC(i))
+		canPanicInSCC := false
+		for _, caller := range sccFuncs {
+			canPanicExternally := false
+			for _, callee := range fcg.AllCallees(caller) {
+				if fcg.canPanicInternally[callee] ||
+					fcg.canPanicExternally[callee] {
+					canPanicExternally = true
+					break
+				}
+			}
+			fcg.canPanicExternally[caller] = canPanicExternally
+			if fcg.canPanicInternally[caller] ||
+				fcg.canPanicExternally[caller] {
+				canPanicInSCC = true
+			}
+		}
+		if len(sccFuncs) > 1 && canPanicInSCC {
+			for _, f := range sccFuncs {
+				fcg.canPanicExternally[f] = true
+			}
+		}
+	}
+}
+
+func canPanicInternally(f *ir.Func) (canPanic bool) {
+	f.Body().WalkStmts(func(stmt ir.Stmt, scope *ir.Scope) {
+		returnStmt, ok := stmt.(*ir.ReturnStmt)
+		if ok && returnStmt.IsPanic() {
+			canPanic = true
+		}
+	})
+	return
+}
+
+func canRecover(f *ir.Func) (canRecover bool) {
+	f.Body().WalkStmts(func(stmt ir.Stmt, scope *ir.Scope) {
+		if _, ok := stmt.(*ir.RecoverStmt); ok {
+			canRecover = true
+		}
+	})
+	return
 }
 
 type callsInfo struct {

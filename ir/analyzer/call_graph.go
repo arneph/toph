@@ -42,6 +42,10 @@ type FuncCallGraph struct {
 	callerToTypeAllocations map[*ir.Func]map[ir.Type]int
 	totalTypeAllocations    map[ir.Type]int
 
+	canPanicInternally map[*ir.Func]bool
+	canPanicExternally map[*ir.Func]bool
+	canRecover         map[*ir.Func]bool
+
 	// Strongly connected components:
 	sccsOk     bool
 	sccCount   int
@@ -61,6 +65,9 @@ func newFuncCallGraph(entry *ir.Func) *FuncCallGraph {
 	fcg.totalSpecialOpCounts = make(map[ir.SpecialOp]int)
 	fcg.callerToTypeAllocations = make(map[*ir.Func]map[ir.Type]int)
 	fcg.totalTypeAllocations = make(map[ir.Type]int)
+	fcg.canPanicInternally = make(map[*ir.Func]bool)
+	fcg.canPanicExternally = make(map[*ir.Func]bool)
+	fcg.canRecover = make(map[*ir.Func]bool)
 	fcg.sccsOk = false
 
 	if entry != nil {
@@ -153,6 +160,16 @@ func (fcg *FuncCallGraph) TypeAllocations(caller *ir.Func, irType ir.Type) int {
 // type gets created.
 func (fcg *FuncCallGraph) TotalTypeAllocations(irType ir.Type) int {
 	return fcg.totalTypeAllocations[irType]
+}
+
+// CanPanic returns if the given function can panic.
+func (fcg *FuncCallGraph) CanPanic(f *ir.Func) bool {
+	return fcg.canPanicInternally[f] || fcg.canPanicExternally[f]
+}
+
+// CanRecover returns if the given function can recover from a panic (in a different function).
+func (fcg *FuncCallGraph) CanRecover(f *ir.Func) bool {
+	return fcg.canRecover[f]
 }
 
 // SCCCount returns the number of strongly connected components in the
@@ -455,6 +472,8 @@ func (fcg *FuncCallGraph) String() string {
 			}
 			fmt.Fprintf(&b, "\t\t%s: %d\n", op, count)
 		}
+		fmt.Fprintf(&b, "\tcan panic internally: %t\n", fcg.canPanicInternally[f])
+		fmt.Fprintf(&b, "\tcan panic externally: %t\n", fcg.canPanicExternally[f])
 	}
 	b.WriteString("\n")
 
