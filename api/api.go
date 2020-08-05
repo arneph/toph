@@ -76,8 +76,29 @@ func Run(path string, config Config) Result {
 		fmt.Fprintf(os.Stderr, "found no entry functions (main or tests)\n")
 	}
 
+	initStmts := program.InitFunc().Body().Stmts()
+	outNames := make([]string, len(entryFuncs))
+	for i, entryFunc := range entryFuncs {
+		outName := config.OutName
+		if len(entryFuncs) > 1 {
+			outName += "_" + entryFunc.Handle()
+		}
+		outNames[i] = outName
+	}
+
 	if config.Debug {
-		outputIRProgram(program, config.OutName, "init")
+		if len(entryFuncs) == 0 {
+			outputIRProgram(program, config.OutName+"_no_entry_func", "init")
+		}
+
+		for i, entryFunc := range entryFuncs {
+			callStmt := ir.NewCallStmt(entryFunc, entryFunc.Signature(), ir.Call, token.NoPos, token.NoPos)
+			program.InitFunc().Body().SetStmts(initStmts)
+			program.InitFunc().Body().AddStmt(callStmt)
+
+			outputIRProgram(program, outNames[i], "init")
+		}
+		program.InitFunc().Body().SetStmts(initStmts)
 	}
 
 	if config.TranslatorConfig.OptimizeIR {
@@ -85,12 +106,22 @@ func Run(path string, config Config) Result {
 		irOptimizer.EliminateDeadCode(program)
 
 		if config.Debug {
-			outputIRProgram(program, config.OutName, "opt")
+			if len(entryFuncs) == 0 {
+				outputIRProgram(program, config.OutName+"_no_entry_func", "opt")
+			}
+
+			for i, entryFunc := range entryFuncs {
+				callStmt := ir.NewCallStmt(entryFunc, entryFunc.Signature(), ir.Call, token.NoPos, token.NoPos)
+				program.InitFunc().Body().SetStmts(initStmts)
+				program.InitFunc().Body().AddStmt(callStmt)
+
+				outputIRProgram(program, outNames[i], "opt")
+			}
+			program.InitFunc().Body().SetStmts(initStmts)
 		}
 	}
 
-	initStmts := program.InitFunc().Body().Stmts()
-	for _, entryFunc := range entryFuncs {
+	for i, entryFunc := range entryFuncs {
 		callStmt := ir.NewCallStmt(entryFunc, entryFunc.Signature(), ir.Call, token.NoPos, token.NoPos)
 		program.InitFunc().Body().SetStmts(initStmts)
 		program.InitFunc().Body().AddStmt(callStmt)
@@ -105,14 +136,9 @@ func Run(path string, config Config) Result {
 			return RunFailedWithTranslator
 		}
 
-		outName := config.OutName
-		if len(entryFuncs) > 1 {
-			outName += "_" + entryFunc.Handle()
-		}
-
 		if config.OptimizeUppaalSystem {
 			if config.Debug {
-				ok := outputUppaalSystem(sys, outName+".init", config.OutFormats)
+				ok := outputUppaalSystem(sys, outNames[i]+".init", config.OutFormats)
 				if !ok {
 					return RunFailedWritingOutputFiles
 				}
@@ -122,14 +148,14 @@ func Run(path string, config Config) Result {
 			uppaalOptimizer.ReduceTransitions(sys)
 
 			if config.Debug {
-				ok := outputUppaalSystem(sys, outName+".opt", config.OutFormats)
+				ok := outputUppaalSystem(sys, outNames[i]+".opt", config.OutFormats)
 				if !ok {
 					return RunFailedWritingOutputFiles
 				}
 			}
 		}
 		if !config.Debug {
-			ok := outputUppaalSystem(sys, outName, config.OutFormats)
+			ok := outputUppaalSystem(sys, outNames[i], config.OutFormats)
 			if !ok {
 				return RunFailedWritingOutputFiles
 			}
