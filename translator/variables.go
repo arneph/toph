@@ -6,9 +6,24 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
+func (t *translator) isVarUsed(v *ir.Variable) bool {
+	if !t.config.OptimizeIR {
+		return true
+	}
+	for _, f := range t.vi.FuncsUsingVar(v) {
+		if t.completeFCG.CalleeCount(f) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (t *translator) translateGlobalScope() {
 	addedVar := false
 	for _, v := range t.program.Scope().Variables() {
+		if !t.isVarUsed(v) {
+			continue
+		}
 		typ := t.uppaalReferenceTypeForIrType(v.Type())
 		initialValue := t.translateValue(v.InitialValue())
 		t.system.Declarations().AddVariable(v.Handle(), typ, "")
@@ -25,6 +40,9 @@ func (t *translator) translateScope(ctx *context) {
 	addedLocalVar := false
 	addedGlobalVar := false
 	for _, v := range ctx.body.Scope().Variables() {
+		if !t.isVarUsed(v) {
+			continue
+		}
 		typ := t.uppaalReferenceTypeForIrType(v.Type())
 		initialValue := t.translateValue(v.InitialValue())
 		if !v.IsCaptured() {

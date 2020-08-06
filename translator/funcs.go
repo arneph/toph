@@ -8,6 +8,13 @@ import (
 	"github.com/arneph/toph/uppaal"
 )
 
+func (t translator) isFuncUsed(f *ir.Func) bool {
+	if !t.config.OptimizeIR {
+		return true
+	}
+	return t.completeFCG.CalleeCount(f) > 0
+}
+
 func (t translator) callCount(f *ir.Func) int {
 	callCount := t.completeFCG.CalleeCount(f)
 	if callCount < 1 {

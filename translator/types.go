@@ -7,6 +7,23 @@ import (
 	"github.com/arneph/toph/ir"
 )
 
+func (t *translator) isTypeUsed(typ ir.Type) bool {
+	if !t.config.OptimizeIR {
+		return true
+	}
+	for _, v := range t.vi.VarsUsingType(typ) {
+		if t.isVarUsed(v) {
+			return true
+		}
+	}
+	for _, f := range t.vi.FuncsUsingType(typ) {
+		if t.completeFCG.CalleeCount(f) > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func (t *translator) structTypeCount(structType *ir.StructType) int {
 	structTypeCount := t.completeFCG.TotalTypeAllocations(structType)
 	if structTypeCount < 1 {
@@ -39,7 +56,30 @@ func (t *translator) uppaalReferenceTypeForIrType(irType ir.Type) string {
 func (t *translator) addType(irType ir.Type) {
 	switch irType := irType.(type) {
 	case ir.BasicType:
-		return
+		switch irType {
+		case ir.IntType:
+			return
+		case ir.FuncType:
+			t.system.Declarations().AddType(`typedef struct {
+	int id;
+	int par_pid;
+} fid;
+
+fid make_fid(int id, int par_pid) {
+	fid t = {id, par_pid};
+	return t;
+}`)
+			t.system.Declarations().AddSpaceBetweenTypes()
+			return
+		case ir.ChanType:
+			t.addChannels()
+		case ir.MutexType:
+			t.addMutexes()
+		case ir.WaitGroupType:
+			t.addWaitGroups()
+		default:
+			panic(fmt.Errorf("unexpected ir.BasicType: %d", irType))
+		}
 	case *ir.StructType:
 		t.addStructType(irType)
 	case *ir.ContainerType:

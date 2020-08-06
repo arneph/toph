@@ -171,6 +171,7 @@ func Run(path string, config Config) Result {
 func outputIRProgram(program *ir.Program, outName string, stepName string) {
 	fcg := irAnalyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
 	tg := irAnalyzer.BuildTypeGraph(program)
+	vi := irAnalyzer.FindVarInfo(program)
 
 	// IR file
 	programPath := fmt.Sprintf("%s.%s.ir.txt", outName, stepName)
@@ -204,6 +205,17 @@ func outputIRProgram(program *ir.Program, outName string, stepName string) {
 	defer tgFile.Close()
 
 	tgFile.WriteString(tg.String())
+
+	// VI file
+	viPath := fmt.Sprintf("./%s.%s.vi.txt", outName, stepName)
+	viFile, err := os.Create(viPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not write vi.txt file: %v\n", err)
+		return
+	}
+	defer viFile.Close()
+
+	viFile.WriteString(vi.String())
 }
 
 func outputUppaalSystem(sys *uppaal.System, outName string, outFormats map[string]bool) bool {

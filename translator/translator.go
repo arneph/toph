@@ -26,6 +26,7 @@ func TranslateProg(program *ir.Program, config *Config) (*uppaal.System, []error
 	t.program = program
 	t.funcToProcess = make(map[*ir.Func]*uppaal.Process)
 	t.system = uppaal.NewSystem()
+	t.vi = analyzer.FindVarInfo(program)
 	t.tg = analyzer.BuildTypeGraph(program)
 	t.completeFCG = analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
 	t.deferFCG = analyzer.BuildFuncCallGraph(program, ir.Defer)
@@ -45,6 +46,7 @@ type translator struct {
 	mutexProcess     *uppaal.Process
 	waitGroupProcess *uppaal.Process
 
+	vi *analyzer.VarInfo
 	tg *analyzer.TypeGraph
 
 	completeFCG *analyzer.FuncCallGraph
@@ -60,17 +62,6 @@ func (t *translator) addWarning(err error) {
 }
 
 func (t *translator) translateProgram() {
-	t.system.Declarations().AddType(`typedef struct {
-	int id;
-	int par_pid;
-} fid;
-
-fid make_fid(int id, int par_pid) {
-	fid t = {id, par_pid};
-	return t;
-}`)
-	t.system.Declarations().AddSpaceBetweenTypes()
-
 	t.system.Declarations().AddVariable("out_of_resources", "bool", "false")
 	t.system.Declarations().AddVariable("active_go_routines", "int", "1")
 	t.system.Declarations().AddSpaceBetweenVariables()
@@ -82,20 +73,19 @@ fid make_fid(int id, int par_pid) {
 		"check system never runs out of resources", "",
 		uppaal.ResourceBoundUnreached))
 
-	t.addChannels()
-	t.addMutexes()
-	t.addWaitGroups()
-
 	t.system.Declarations().SetInitFuncName("global_initialize")
 
 	for _, u := range t.tg.TopologicalOrder() {
+		if !t.isTypeUsed(u) {
+			continue
+		}
 		t.addType(u)
 	}
 
 	t.translateGlobalScope()
 
 	for _, f := range t.program.Funcs() {
-		if t.config.OptimizeIR && t.completeFCG.CalleeCount(f) == 0 {
+		if !t.isFuncUsed(f) {
 			continue
 		}
 		t.addFuncProcess(f)
@@ -105,7 +95,7 @@ fid make_fid(int id, int par_pid) {
 		t.addFuncDeclarations(f)
 	}
 	for _, f := range t.program.Funcs() {
-		if t.config.OptimizeIR && t.completeFCG.CalleeCount(f) == 0 {
+		if !t.isFuncUsed(f) {
 			continue
 		}
 		t.translateFunc(f)
