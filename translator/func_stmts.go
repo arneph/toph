@@ -227,6 +227,9 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 
 func (t *translator) translateDeferredCalls(proc *uppaal.Process, deferred *uppaal.State, callerFunc *ir.Func) {
 	for i, calleeFunc := range t.deferFCG.AllCallees(callerFunc) {
+		if !t.isFuncUsed(calleeFunc) {
+			continue
+		}
 		calleeProc := t.funcToProcess[calleeFunc]
 
 		started := proc.AddState("started_"+calleeProc.Name()+"_", uppaal.Renaming)
