@@ -223,12 +223,11 @@ func NewSelectStmt(superScope *Scope, pos, end token.Pos) *SelectStmt {
 	s := new(SelectStmt)
 	s.cases = nil
 	s.hasDefault = false
-	s.defaultBody.init()
 	s.superScope = superScope
 	s.pos = pos
 	s.end = end
 
-	superScope.addChild(&s.defaultBody.scope)
+	superScope.addChild(s.DefaultBody().Scope())
 
 	return s
 }
@@ -245,10 +244,9 @@ func (s *SelectStmt) Cases() []*SelectCase {
 func (s *SelectStmt) AddCase(op *ChanCommOpStmt, pos token.Pos) *SelectCase {
 	c := new(SelectCase)
 	c.opStmt = op
-	c.body.init()
 	c.pos = pos
 
-	s.superScope.addChild(&c.body.scope)
+	s.superScope.addChild(c.Body().Scope())
 
 	s.cases = append(s.cases, c)
 

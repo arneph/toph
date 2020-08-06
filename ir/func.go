@@ -43,9 +43,8 @@ func newOuterFunc(index FuncIndex, name string, signature *types.Signature, glob
 	f.results = make(map[int]*Variable)
 
 	f.enclosingFunc = nil
-	f.body.init()
 
-	globalScope.addChild(&f.body.scope)
+	globalScope.addChild(f.Body().Scope())
 
 	f.pos = pos
 	f.end = end
@@ -65,9 +64,8 @@ func newInnerFunc(index FuncIndex, signature *types.Signature, enclosingFunc *Fu
 	f.results = make(map[int]*Variable)
 
 	f.enclosingFunc = enclosingFunc
-	f.body.init()
 
-	enclosingScope.addChild(&f.body.scope)
+	enclosingScope.addChild(f.Body().Scope())
 
 	f.pos = pos
 	f.end = end
@@ -151,7 +149,7 @@ func (f *Func) EnclosingFunc() *Func {
 
 // Scope returns the function scope.
 func (f *Func) Scope() *Scope {
-	return &f.body.scope
+	return f.Body().Scope()
 }
 
 // Body returns the function body.

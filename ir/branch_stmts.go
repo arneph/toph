@@ -34,15 +34,13 @@ type IfStmt struct {
 // scope.
 func NewIfStmt(superScope *Scope, pos, end, ifPos, elsePos token.Pos) *IfStmt {
 	s := new(IfStmt)
-	s.ifBranch.init()
-	s.elseBranch.init()
 	s.pos = pos
 	s.end = end
 	s.ifPos = ifPos
 	s.elsePos = elsePos
 
-	superScope.addChild(&s.ifBranch.scope)
-	superScope.addChild(&s.elseBranch.scope)
+	superScope.addChild(s.IfBranch().Scope())
+	superScope.addChild(s.ElseBranch().Scope())
 
 	return s
 }
@@ -115,15 +113,12 @@ func (c *SwitchCase) CondEnd(index int) token.Pos {
 
 // AddCond adds a condition body to the switch case.
 func (c *SwitchCase) AddCond(pos, end token.Pos) *Body {
-	var cond Body
-	cond.init()
-
-	c.body.scope.addChild(&cond.scope)
-
 	i := len(c.conds)
-	c.conds = append(c.conds, cond)
+	c.conds = append(c.conds, Body{})
 	c.condPos = append(c.condPos, pos)
 	c.condEnd = append(c.condEnd, end)
+
+	c.Body().Scope().Parent().addChild((&c.conds[i]).Scope())
 
 	return &c.conds[i]
 }
@@ -216,10 +211,9 @@ func (s *SwitchStmt) Cases() []*SwitchCase {
 // enclosing scope of the select statement.
 func (s *SwitchStmt) AddCase(pos token.Pos) *SwitchCase {
 	c := new(SwitchCase)
-	c.body.init()
 	c.pos = pos
 
-	s.superScope.addChild(&c.body.scope)
+	s.superScope.addChild(c.Body().Scope())
 
 	s.cases = append(s.cases, c)
 
@@ -252,16 +246,14 @@ type ForStmt struct {
 // NewForStmt creates a new loop, embedded in the given enclosing scope.
 func NewForStmt(superScope *Scope, pos, end token.Pos) *ForStmt {
 	s := new(ForStmt)
-	s.cond.init()
-	s.body.init()
 	s.isInfinite = false
 	s.minIterations = -1
 	s.maxIterations = -1
 	s.pos = pos
 	s.end = end
 
-	superScope.addChild(&s.cond.scope)
-	superScope.addChild(&s.body.scope)
+	superScope.addChild(s.Cond().Scope())
+	superScope.addChild(s.Body().Scope())
 
 	return s
 }
@@ -350,11 +342,10 @@ type ChanRangeStmt struct {
 func NewChanRangeStmt(channel LValue, superScope *Scope, pos, end token.Pos) *ChanRangeStmt {
 	s := new(ChanRangeStmt)
 	s.channel = channel
-	s.body.init()
 	s.pos = pos
 	s.end = end
 
-	superScope.addChild(&s.body.scope)
+	superScope.addChild(s.Body().Scope())
 
 	return s
 }
@@ -395,11 +386,10 @@ func NewContainerRangeStmt(container LValue, counterVar *Variable, valueVal LVal
 	s.container = container
 	s.counterVar = counterVar
 	s.valueVal = valueVal
-	s.body.init()
 	s.pos = pos
 	s.end = end
 
-	superScope.addChild(&s.body.scope)
+	superScope.addChild(s.Body().Scope())
 
 	return s
 }

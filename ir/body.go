@@ -11,10 +11,6 @@ type Body struct {
 	stmts []Stmt
 }
 
-func (b *Body) init() {
-	b.stmts = nil
-}
-
 // Scope returns the scope corresponding to the body.
 func (b *Body) Scope() *Scope {
 	return &b.scope
