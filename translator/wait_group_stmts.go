@@ -7,22 +7,6 @@ import (
 	"github.com/arneph/toph/uppaal"
 )
 
-func (t *translator) translateMakeWaitGroupStmt(stmt *ir.MakeWaitGroupStmt, ctx *context) {
-	handle, usesGlobals := t.translateVariable(stmt.WaitGroup(), ctx)
-	name := stmt.WaitGroup().Name()
-
-	made := ctx.proc.AddState("made_"+name+"_", uppaal.Renaming)
-	made.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
-	made.SetLocationAndResetNameAndCommentLocation(
-		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-	make := ctx.proc.AddTransition(ctx.currentState, made)
-	make.AddUpdate(fmt.Sprintf("%s = make_wait_group()", handle), usesGlobals)
-	make.SetUpdateLocation(
-		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
-	ctx.currentState = made
-	ctx.addLocation(made.Location())
-}
-
 func (t *translator) translateWaitGroupOpSmt(stmt *ir.WaitGroupOpStmt, ctx *context) {
 	var rvs randomVariableSupplier
 	handle, _ := t.translateLValue(stmt.WaitGroup(), &rvs, ctx)

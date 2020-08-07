@@ -61,12 +61,8 @@ func FindVarInfo(program *ir.Program) *VarInfo {
 				vi.addLValueUse(stmt.Channel(), f)
 			case *ir.CloseChanStmt:
 				vi.addLValueUse(stmt.Channel(), f)
-			case *ir.MakeMutexStmt:
-				vi.addVariableUse(stmt.Mutex(), f)
 			case *ir.MutexOpStmt:
 				vi.addLValueUse(stmt.Mutex(), f)
-			case *ir.MakeWaitGroupStmt:
-				vi.addVariableUse(stmt.WaitGroup(), f)
 			case *ir.WaitGroupOpStmt:
 				vi.addLValueUse(stmt.WaitGroup(), f)
 				vi.addRValueUse(stmt.Delta(), f)

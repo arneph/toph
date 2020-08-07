@@ -43,12 +43,8 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 		t.translateSelectStmt(stmt, ctx)
 	case *ir.DeadEndStmt:
 		t.translateDeadEndStmt(stmt, ctx)
-	case *ir.MakeMutexStmt:
-		t.translateMakeMutexStmt(stmt, ctx)
 	case *ir.MutexOpStmt:
 		t.translateMutexOpStmt(stmt, ctx)
-	case *ir.MakeWaitGroupStmt:
-		t.translateMakeWaitGroupStmt(stmt, ctx)
 	case *ir.WaitGroupOpStmt:
 		t.translateWaitGroupOpSmt(stmt, ctx)
 	default:

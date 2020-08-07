@@ -10,10 +10,8 @@ import (
 type MutexOp int
 
 const (
-	// MakeMutex is a mutex creation operation, executed for every variable declaration.
-	MakeMutex MutexOp = iota
 	// Lock represents a sync.(RW)Mutex.Lock() operation.
-	Lock
+	Lock MutexOp = iota
 	// Unlock represents a sync.(RW)Mutex.Unlock() operation.
 	Unlock
 	// RLock represents a sync.RWMutex.RLock() operation.
@@ -24,8 +22,6 @@ const (
 
 func (o MutexOp) String() string {
 	switch o {
-	case MakeMutex:
-		return "make_mutex"
 	case Lock:
 		return "lock"
 	case Unlock:
@@ -39,38 +35,6 @@ func (o MutexOp) String() string {
 	}
 }
 
-// MakeMutexStmt is a mutex creation statement, executed for every variable declaration.
-type MakeMutexStmt struct {
-	mutex *Variable
-
-	Node
-}
-
-// NewMakeMutexStmt creates a new MakeMutexStmt for the given mutex.
-func NewMakeMutexStmt(mutex *Variable, pos, end token.Pos) *MakeMutexStmt {
-	s := new(MakeMutexStmt)
-	s.mutex = mutex
-	s.pos = pos
-	s.end = end
-
-	return s
-}
-
-// Mutex returns the lvalue holding the newly created mutex.
-func (s *MakeMutexStmt) Mutex() *Variable {
-	return s.mutex
-}
-
-// SpecialOp returns the performed operation (always MakeMutex).
-func (s *MakeMutexStmt) SpecialOp() SpecialOp {
-	return MakeMutex
-}
-
-func (s *MakeMutexStmt) tree(b *strings.Builder, indent int) {
-	writeIndent(b, indent)
-	fmt.Fprintf(b, "%s <- make(mutex)", s.mutex.Handle())
-}
-
 // MutexOpStmt represents a sync.(RW)Mutex operation statement.
 type MutexOpStmt struct {
 	mutex LValue
@@ -82,10 +46,6 @@ type MutexOpStmt struct {
 // NewMutexOpStmt creates a new mutex operation statement for the given muxtex
 // and with the given mutex operation.
 func NewMutexOpStmt(mutex LValue, op MutexOp, pos, end token.Pos) *MutexOpStmt {
-	if op == MakeMutex {
-		panic("attempted to create MutexOpStmt with MakeMutex Operation")
-	}
-
 	s := new(MutexOpStmt)
 	s.mutex = mutex
 	s.op = op
@@ -119,18 +79,14 @@ func (s *MutexOpStmt) tree(b *strings.Builder, indent int) {
 type WaitGroupOp int
 
 const (
-	// MakeWaitGroup is a wait group creation operation, executed for every variable declaration.
-	MakeWaitGroup WaitGroupOp = iota
 	// Add represents a sync.WaitGroup.Add operation.
-	Add
+	Add WaitGroupOp = iota
 	// Wait represents a sync.WaitGroup.Wait operation.
 	Wait
 )
 
 func (o WaitGroupOp) String() string {
 	switch o {
-	case MakeWaitGroup:
-		return "make_wait_group"
 	case Add:
 		return "add"
 	case Wait:
@@ -138,38 +94,6 @@ func (o WaitGroupOp) String() string {
 	default:
 		panic(fmt.Sprintf("unknown WaitGroupOp: %d", o))
 	}
-}
-
-// MakeWaitGroupStmt is a wait group creation statement, executed for every variable declaration.
-type MakeWaitGroupStmt struct {
-	waitGroup *Variable
-
-	Node
-}
-
-// NewMakeWaitGroupStmt creates a new MakeWaitGroupStmt for the given wait group.
-func NewMakeWaitGroupStmt(waitGroup *Variable, pos, end token.Pos) *MakeWaitGroupStmt {
-	s := new(MakeWaitGroupStmt)
-	s.waitGroup = waitGroup
-	s.pos = pos
-	s.end = end
-
-	return s
-}
-
-// WaitGroup returns the lvalue holding the newly created wait group.
-func (s *MakeWaitGroupStmt) WaitGroup() *Variable {
-	return s.waitGroup
-}
-
-// SpecialOp returns the performed operation (always MakeWaitGroup).
-func (s *MakeWaitGroupStmt) SpecialOp() SpecialOp {
-	return MakeWaitGroup
-}
-
-func (s *MakeWaitGroupStmt) tree(b *strings.Builder, indent int) {
-	writeIndent(b, indent)
-	fmt.Fprintf(b, "%s <- make(wait group)", s.waitGroup.Handle())
 }
 
 // WaitGroupOpStmt represents a sync.WaitGroup operation statement.
@@ -184,10 +108,6 @@ type WaitGroupOpStmt struct {
 // NewWaitGroupOpStmt creates a new wait group operation satement for the given
 // wait group and with the given wait group operation.
 func NewWaitGroupOpStmt(waitGroup LValue, op WaitGroupOp, delta RValue, pos, end token.Pos) *WaitGroupOpStmt {
-	if op == MakeWaitGroup {
-		panic("attempted to create WaitGroupOpStmt with MakeWaitGroup Operation")
-	}
-
 	s := new(WaitGroupOpStmt)
 	s.waitGroup = waitGroup
 	s.op = op

@@ -7,22 +7,6 @@ import (
 	"github.com/arneph/toph/uppaal"
 )
 
-func (t *translator) translateMakeMutexStmt(stmt *ir.MakeMutexStmt, ctx *context) {
-	handle, usesGlobals := t.translateVariable(stmt.Mutex(), ctx)
-	name := stmt.Mutex().Name()
-
-	made := ctx.proc.AddState("made_"+name+"_", uppaal.Renaming)
-	made.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
-	made.SetLocationAndResetNameAndCommentLocation(
-		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
-	make := ctx.proc.AddTransition(ctx.currentState, made)
-	make.AddUpdate(fmt.Sprintf("%s = make_mutex()", handle), usesGlobals)
-	make.SetUpdateLocation(
-		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
-	ctx.currentState = made
-	ctx.addLocation(made.Location())
-}
-
 func (t *translator) translateMutexOpStmt(stmt *ir.MutexOpStmt, ctx *context) {
 	var rvs randomVariableSupplier
 	handle, _ := t.translateLValue(stmt.Mutex(), &rvs, ctx)

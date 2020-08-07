@@ -44,7 +44,11 @@ func (s *MakeStructStmt) InitialzeFields() bool {
 
 func (s *MakeStructStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
-	fmt.Fprintf(b, "%s <- make(%s)", s.structVar.Handle(), s.structVar.Type())
+	arg2 := "initialized"
+	if !s.initializeFields {
+		arg2 = "uninitialized"
+	}
+	fmt.Fprintf(b, "%s <- make(%s, %s)", s.structVar.Handle(), s.structVar.Type(), arg2)
 }
 
 // MakeContainerStmt represents a make([]T), make(map[T]U) call or a container literal.
@@ -91,5 +95,9 @@ func (s *MakeContainerStmt) InitializeElements() bool {
 
 func (s *MakeContainerStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
-	fmt.Fprintf(b, "%s <- make(%s)", s.containerVar.Handle(), s.containerVar.Type())
+	arg2 := "initialized"
+	if !s.initializeElements {
+		arg2 = "uninitialized"
+	}
+	fmt.Fprintf(b, "%s <- make(%s, %s)", s.containerVar.Handle(), s.containerVar.Type(), arg2)
 }

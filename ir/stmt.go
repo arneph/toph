@@ -26,8 +26,6 @@ func (s *DeadEndStmt) stmt()        {}
 func (s *ForStmt) stmt()            {}
 func (s *IfStmt) stmt()             {}
 func (s *MakeChanStmt) stmt()       {}
-func (s *MakeMutexStmt) stmt()      {}
-func (s *MakeWaitGroupStmt) stmt()  {}
 func (s *MakeStructStmt) stmt()     {}
 func (s *MakeContainerStmt) stmt()  {}
 func (s *MutexOpStmt) stmt()        {}
@@ -55,8 +53,8 @@ func SpecialOps() []SpecialOp {
 	return []SpecialOp{
 		MakeChan, Close,
 		DeadEnd,
-		MakeMutex, Lock, Unlock, RLock, RUnlock,
-		MakeWaitGroup, Add, Wait,
+		Lock, Unlock, RLock, RUnlock,
+		Add, Wait,
 	}
 }
 

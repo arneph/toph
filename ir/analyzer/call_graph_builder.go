@@ -347,9 +347,17 @@ func (b *callGraphBuilder) findCalleesInfoForBody(body *ir.Body) (res callsInfo)
 		case ir.SpecialOpStmt:
 			res.addSpecialOpCount(stmt.SpecialOp(), 1)
 		case *ir.MakeStructStmt:
-			res.addTypeAllocations(stmt.StructType(), 1)
+			if stmt.InitialzeFields() {
+				res.add(b.findCalleesForInitializedType(stmt.StructType()))
+			} else {
+				res.addTypeAllocations(stmt.StructType(), 1)
+			}
 		case *ir.MakeContainerStmt:
-			res.addTypeAllocations(stmt.ContainerType(), 1)
+			if stmt.InitializeElements() {
+				res.add(b.findCalleesForInitializedType(stmt.ContainerType()))
+			} else {
+				res.addTypeAllocations(stmt.ContainerType(), 1)
+			}
 		case *ir.IfStmt:
 			res.add(b.findCalleesInfoForIfStmt(stmt))
 		case *ir.SwitchStmt:
@@ -373,14 +381,28 @@ func (b *callGraphBuilder) findCalleesInfoForBody(body *ir.Body) (res callsInfo)
 }
 
 func (b *callGraphBuilder) findCalleesInfoForAssignStmt(assignStmt *ir.AssignStmt) (res callsInfo) {
+	res.init()
 	containerAccess, ok := assignStmt.Source().(*ir.ContainerAccess)
 	if ok && containerAccess.IsMapRead() && containerAccess.Index() == ir.RandomIndex {
-		return b.findCalleesForInitializedType(containerAccess.ContainerType().ElementType())
-	}
-	if !assignStmt.RequiresCopy() {
+		res.add(b.findCalleesForInitializedType(containerAccess.ContainerType().ElementType()))
 		return
 	}
-	return b.findCalleesForTypeCopy(assignStmt.Destination().Type())
+	v, ok := assignStmt.Source().(ir.Value)
+	if ok && v.IsInitializedStruct() {
+		structType := v.Type().(*ir.StructType)
+		res.add(b.findCalleesForInitializedType(structType))
+	} else if ok && v.IsInitializedArray() {
+		arrayType := v.Type().(*ir.ContainerType)
+		res.add(b.findCalleesForInitializedType(arrayType))
+	} else if ok && v == ir.InitializedMutex {
+		res.addTypeAllocations(ir.MutexType, 1)
+	} else if ok && v == ir.InitializedWaitGroup {
+		res.addTypeAllocations(ir.WaitGroupType, 1)
+	}
+	if assignStmt.RequiresCopy() {
+		res.add(b.findCalleesForTypeCopy(assignStmt.Destination().Type()))
+	}
+	return
 }
 
 func (b *callGraphBuilder) findCalleesInfoForCallStmt(callStmt *ir.CallStmt) (res callsInfo) {
@@ -439,7 +461,7 @@ func (b *callGraphBuilder) findCalleesForInitializedType(irType ir.Type) (res ca
 			break
 		}
 		res.addTypeAllocations(irType, 1)
-		if irType.HoldsPointers() {
+		if !irType.HoldsPointers() {
 			elemRes := b.findCalleesForInitializedType(irType.ElementType())
 			elemRes.multiply(irType.Len())
 
