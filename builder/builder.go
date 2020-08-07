@@ -15,7 +15,7 @@ import (
 
 	"github.com/arneph/toph/ir"
 
-	"golang.org/x/tools/go/packages"
+	"github.com/arneph/toph/builder/packages"
 	"golang.org/x/tools/go/types/typeutil"
 )
 
@@ -50,6 +50,12 @@ func BuildProgram(path string, config *Config) (program *ir.Program, entryFuncs 
 	// Parse program:
 	b.fset = token.NewFileSet()
 
+	oldDefault := build.Default
+	build.Default = *config.BuildContext
+	defer func() {
+		build.Default = oldDefault
+	}()
+
 	packagesConfig := &packages.Config{
 		Mode: loadMode,
 		Env: append(os.Environ(),
@@ -58,15 +64,17 @@ func BuildProgram(path string, config *Config) (program *ir.Program, entryFuncs 
 		),
 		Fset:  b.fset,
 		Tests: true,
-		ParseFile: func(fset *token.FileSet, filename string, src []byte) (*ast.File, error) {
-			return parser.ParseFile(fset, filename, src, parserMode)
-		},
 	}
 	rootPackages, err := packages.Load(packagesConfig, absPath)
 	if err != nil {
 		b.addWarning(err)
 		return
 	}
+	packages.Visit(rootPackages, nil, func(pkg *packages.Package) {
+		for _, err := range pkg.Errors {
+			b.addWarning(err)
+		}
+	})
 	packages.Visit(rootPackages, func(pkg *packages.Package) bool {
 		if pkg.Name == "unsafe" {
 			return false
@@ -90,9 +98,6 @@ func BuildProgram(path string, config *Config) (program *ir.Program, entryFuncs 
 		}
 		b.pkgs = append(b.pkgs, pkg)
 	})
-	if len(b.pkgs) < 1 {
-		b.addWarning(fmt.Errorf("expected at least one package"))
-	}
 
 	subsFile, err := parser.ParseFile(b.fset, "substitutes.go", substitutesCode, parserMode)
 	if err != nil {

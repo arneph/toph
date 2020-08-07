@@ -22,9 +22,6 @@ func main() {
 		requiredSubString = os.Args[1]
 	}
 
-	buildContext := build.Default
-	buildContext.GOOS = "linux"
-
 	dirs, err := ioutil.ReadDir("tests/")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not read 'tests/' dir: %v", err)
@@ -56,7 +53,7 @@ func main() {
 			fmt.Printf("running test: %s\n", testPath)
 			config := api.Config{
 				BuilderConfig: api.BuilderConfig{
-					BuildContext: &buildContext,
+					BuildContext: &build.Default,
 				},
 				TranslatorConfig: api.TranslatorConfig{
 					MaxProcessCount:   5,

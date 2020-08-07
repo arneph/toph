@@ -1,0 +1,9 @@
+package badstmt
+
+import (
+	"github.com/arneph/toph/builder/packages/internal/x/tools/lsp/foo"
+)
+
+func _() {
+	go foo. //@complete(" //", IntFoo, StructFoo, Foo)
+}
