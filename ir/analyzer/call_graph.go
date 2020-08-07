@@ -472,8 +472,28 @@ func (fcg *FuncCallGraph) String() string {
 			}
 			fmt.Fprintf(&b, "\t\t%s: %d\n", op, count)
 		}
+		fmt.Fprintf(&b, "\ttype allocations:\n")
+		for t, count := range fcg.callerToTypeAllocations[f] {
+			if count == 0 {
+				continue
+			}
+			fmt.Fprintf(&b, "\t\t%s: %d\n", t, count)
+		}
 		fmt.Fprintf(&b, "\tcan panic internally: %t\n", fcg.canPanicInternally[f])
 		fmt.Fprintf(&b, "\tcan panic externally: %t\n", fcg.canPanicExternally[f])
+		fmt.Fprintf(&b, "\tcan recover: %t\n", fcg.canRecover[f])
+	}
+	b.WriteString("\n")
+
+	b.WriteString("Special Ops Counts:\n")
+	for op, count := range fcg.totalSpecialOpCounts {
+		fmt.Fprintf(&b, "%s: %d\n", op, count)
+	}
+	b.WriteString("\n")
+
+	b.WriteString("Type Allocations Counts:\n")
+	for t, count := range fcg.totalTypeAllocations {
+		fmt.Fprintf(&b, "%s: %d\n", t, count)
 	}
 	b.WriteString("\n")
 
