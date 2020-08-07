@@ -3,14 +3,15 @@ package optimizer
 import (
 	"fmt"
 
+	c "github.com/arneph/toph/config"
 	"github.com/arneph/toph/ir"
 	"github.com/arneph/toph/ir/analyzer"
 )
 
 // EliminateDeadCode removes statements that are not necessary for
 // verification.
-func EliminateDeadCode(program *ir.Program) {
-	fcg := analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
+func EliminateDeadCode(program *ir.Program, config *c.Config) {
+	fcg := analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go, config)
 	emptyFuncs := make(map[*ir.Func]bool)
 	for i := 1; i < fcg.SCCCount(); i++ {
 		scc := analyzer.SCC(i)

@@ -15,8 +15,8 @@ func TranslateProg(program *ir.Program, config *c.Config) (*uppaal.System, []err
 	t.system = uppaal.NewSystem()
 	t.vi = analyzer.FindVarInfo(program)
 	t.tg = analyzer.BuildTypeGraph(program)
-	t.completeFCG = analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
-	t.deferFCG = analyzer.BuildFuncCallGraph(program, ir.Defer)
+	t.completeFCG = analyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go, config)
+	t.deferFCG = analyzer.BuildFuncCallGraph(program, ir.Defer, config)
 	t.config = config
 
 	t.translateProgram()

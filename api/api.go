@@ -65,7 +65,7 @@ func Run(path string, config *c.Config) Result {
 
 	if config.Debug {
 		if len(entryFuncs) == 0 {
-			outputIRProgram(program, config.OutName+"_no_entry_func", "init")
+			outputIRProgram(program, config.OutName+"_no_entry_func", "init", config)
 		}
 
 		for i, entryFunc := range entryFuncs {
@@ -73,18 +73,18 @@ func Run(path string, config *c.Config) Result {
 			program.InitFunc().Body().SetStmts(initStmts)
 			program.InitFunc().Body().AddStmt(callStmt)
 
-			outputIRProgram(program, outNames[i], "init")
+			outputIRProgram(program, outNames[i], "init", config)
 		}
 		program.InitFunc().Body().SetStmts(initStmts)
 	}
 
 	if config.OptimizeIR {
 		// Dead Code Eliminator
-		irOptimizer.EliminateDeadCode(program)
+		irOptimizer.EliminateDeadCode(program, config)
 
 		if config.Debug {
 			if len(entryFuncs) == 0 {
-				outputIRProgram(program, config.OutName+"_no_entry_func", "opt")
+				outputIRProgram(program, config.OutName+"_no_entry_func", "opt", config)
 			}
 
 			for i, entryFunc := range entryFuncs {
@@ -92,7 +92,7 @@ func Run(path string, config *c.Config) Result {
 				program.InitFunc().Body().SetStmts(initStmts)
 				program.InitFunc().Body().AddStmt(callStmt)
 
-				outputIRProgram(program, outNames[i], "opt")
+				outputIRProgram(program, outNames[i], "opt", config)
 			}
 			program.InitFunc().Body().SetStmts(initStmts)
 		}
@@ -145,8 +145,8 @@ func Run(path string, config *c.Config) Result {
 	return RunSuccessful
 }
 
-func outputIRProgram(program *ir.Program, outName string, stepName string) {
-	fcg := irAnalyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go)
+func outputIRProgram(program *ir.Program, outName string, stepName string, config *c.Config) {
+	fcg := irAnalyzer.BuildFuncCallGraph(program, ir.Call|ir.Defer|ir.Go, config)
 	tg := irAnalyzer.BuildTypeGraph(program)
 	vi := irAnalyzer.FindVarInfo(program)
 

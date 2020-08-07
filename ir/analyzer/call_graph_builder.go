@@ -3,46 +3,58 @@ package analyzer
 import (
 	"fmt"
 
+	c "github.com/arneph/toph/config"
 	"github.com/arneph/toph/ir"
 )
 
 // BuildFuncCallGraph returns a new function call graph for the given program
 // and call kind. Only calls of the given call kinds are contained in the
 // graph.
-func BuildFuncCallGraph(program *ir.Program, callKinds ir.CallKind) *FuncCallGraph {
-	fcg := newFuncCallGraph(program.InitFunc())
+func BuildFuncCallGraph(program *ir.Program, callKinds ir.CallKind, config *c.Config) *FuncCallGraph {
+	b := new(callGraphBuilder)
+	b.program = program
+	b.callKinds = callKinds
+	b.fcg = newFuncCallGraph(program.InitFunc())
+	b.config = config
 
-	addFuncsToFuncCallGraph(program, fcg)
-	addCallsToFuncCallGraph(program, callKinds, fcg)
-	addDynamicCalleesToFuncCallGraph(program, fcg)
-	addCallCountsToFuncCallGraph(program, callKinds, fcg)
+	b.addFuncsToFuncCallGraph()
+	b.addCallsToFuncCallGraph()
+	b.addDynamicCalleesToFuncCallGraph()
+	b.addCallCountsToFuncCallGraph()
 	if callKinds == ir.Call|ir.Defer|ir.Go {
-		removeCallsToClosuresInsideUncalledFunctionsFromFuncCallGraph(program, fcg)
+		b.removeCallsToClosuresInsideUncalledFunctionsFromFuncCallGraph()
 	}
-	analyzePanics(program, fcg)
+	b.analyzePanics()
 
-	return fcg
+	return b.fcg
 }
 
-func addFuncsToFuncCallGraph(program *ir.Program, fcg *FuncCallGraph) {
-	for _, f := range program.Funcs() {
-		fcg.addFunc(f)
+type callGraphBuilder struct {
+	program   *ir.Program
+	callKinds ir.CallKind
+	fcg       *FuncCallGraph
+	config    *c.Config
+}
+
+func (b *callGraphBuilder) addFuncsToFuncCallGraph() {
+	for _, f := range b.program.Funcs() {
+		b.fcg.addFunc(f)
 	}
 }
 
-func addCallsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fcg *FuncCallGraph) {
-	for _, caller := range program.Funcs() {
+func (b *callGraphBuilder) addCallsToFuncCallGraph() {
+	for _, caller := range b.program.Funcs() {
 		caller.Body().WalkStmts(func(stmt ir.Stmt, scope *ir.Scope) {
 			callStmt, ok := stmt.(*ir.CallStmt)
-			if !ok || callStmt.CallKind()&callKinds == 0 {
+			if !ok || callStmt.CallKind()&b.callKinds == 0 {
 				return
 			}
 			switch callee := callStmt.Callee().(type) {
 			case *ir.Func:
-				fcg.addStaticCall(caller, callee)
+				b.fcg.addStaticCall(caller, callee)
 			case ir.LValue:
 				calleeSig := callStmt.CalleeSignature()
-				fcg.addDynamicCaller(caller, calleeSig)
+				b.fcg.addDynamicCaller(caller, calleeSig)
 			default:
 				panic(fmt.Errorf("unexpected callee type: %T", callee))
 			}
@@ -50,54 +62,54 @@ func addCallsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fcg *Fu
 	}
 }
 
-func addDynamicCalleesToFuncCallGraph(program *ir.Program, fcg *FuncCallGraph) {
-	queue := []*ir.Scope{program.Scope()}
+func (b *callGraphBuilder) addDynamicCalleesToFuncCallGraph() {
+	queue := []*ir.Scope{b.program.Scope()}
 	for len(queue) > 0 {
 		scope := queue[0]
 		queue = queue[1:]
 		queue = append(queue, scope.Children()...)
 		for _, v := range scope.Variables() {
 			if v.Type() == ir.FuncType {
-				addDynamicCalleeToFuncCallGraph(program, v.InitialValue(), fcg)
+				b.addDynamicCalleeToFuncCallGraph(v.InitialValue())
 			}
 		}
 	}
-	for _, f := range program.Funcs() {
+	for _, f := range b.program.Funcs() {
 		f.Body().WalkStmts(func(stmt ir.Stmt, scope *ir.Scope) {
 			switch stmt := stmt.(type) {
 			case *ir.AssignStmt:
-				addDynamicCalleeToFuncCallGraph(program, stmt.Source(), fcg)
+				b.addDynamicCalleeToFuncCallGraph(stmt.Source())
 			case *ir.CallStmt:
 				for _, arg := range stmt.Args() {
-					addDynamicCalleeToFuncCallGraph(program, arg, fcg)
+					b.addDynamicCalleeToFuncCallGraph(arg)
 				}
 			case *ir.ReturnStmt:
 				for _, result := range stmt.Results() {
-					addDynamicCalleeToFuncCallGraph(program, result, fcg)
+					b.addDynamicCalleeToFuncCallGraph(result)
 				}
 			}
 		})
 	}
 }
 
-func addDynamicCalleeToFuncCallGraph(program *ir.Program, rvalue ir.RValue, fcg *FuncCallGraph) {
+func (b *callGraphBuilder) addDynamicCalleeToFuncCallGraph(rvalue ir.RValue) {
 	calleeVal, ok := rvalue.(ir.Value)
 	if !ok || calleeVal.Type() != ir.FuncType || calleeVal.Value() < 0 {
 		return
 	}
-	callee := program.Func(ir.FuncIndex(calleeVal.Value()))
-	fcg.addDynamicCallee(callee)
+	callee := b.program.Func(ir.FuncIndex(calleeVal.Value()))
+	b.fcg.addDynamicCallee(callee)
 }
 
-func addCallCountsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fcg *FuncCallGraph) {
+func (b *callGraphBuilder) addCallCountsToFuncCallGraph() {
 	// Find calleeInfos for each function independently.
-	callerToCalleesInfos := make(map[*ir.Func]callsInfo, len(program.Funcs()))
-	for _, caller := range program.Funcs() {
-		res := findCalleesInfoForBody(caller.Body(), callKinds, fcg)
-		if caller == program.InitFunc() {
-			for _, v := range program.Scope().Variables() {
+	callerToCalleesInfos := make(map[*ir.Func]callsInfo, len(b.program.Funcs()))
+	for _, caller := range b.program.Funcs() {
+		res := b.findCalleesInfoForBody(caller.Body())
+		if caller == b.program.InitFunc() {
+			for _, v := range b.program.Scope().Variables() {
 				if v.InitialValue() == v.Type().InitializedValue() {
-					res.add(findCalleesForInitializedType(v.Type()))
+					res.add(b.findCalleesForInitializedType(v.Type()))
 				}
 			}
 		}
@@ -105,12 +117,12 @@ func addCallCountsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fc
 	}
 
 	// Process all SCCs in topological order (starting from entry):
-	initSCC := fcg.SCCOfFunc(program.InitFunc())
+	initSCC := b.fcg.SCCOfFunc(b.program.InitFunc())
 	sccCallCounts := make(map[SCC]int)
 	sccCallCounts[initSCC] = 1
-	for i := fcg.SCCCount() - 1; i > 0; i-- {
+	for i := b.fcg.SCCCount() - 1; i > 0; i-- {
 		currentSCC := SCC(i)
-		currentSCCFuncs := fcg.FuncsInSCC(currentSCC)
+		currentSCCFuncs := b.fcg.FuncsInSCC(currentSCC)
 
 		hasCallCylce := false
 		if len(currentSCCFuncs) > 1 {
@@ -125,68 +137,68 @@ func addCallCountsToFuncCallGraph(program *ir.Program, callKinds ir.CallKind, fc
 		for _, caller := range currentSCCFuncs {
 			info := callerToCalleesInfos[caller]
 			for callee, calleeCount := range info.calleeCounts {
-				calleeSCC := fcg.SCCOfFunc(callee)
+				calleeSCC := b.fcg.SCCOfFunc(callee)
 				sccCallCounts[calleeSCC] += calleeCount * sccCallCounts[currentSCC]
 				if sccCallCounts[calleeSCC] > MaxCallCounts {
 					sccCallCounts[calleeSCC] = MaxCallCounts
 				}
 			}
-			fcg.addCallerCount(caller, info.callCount)
-			fcg.addCalleeCount(caller, sccCallCounts[currentSCC])
+			b.fcg.addCallerCount(caller, info.callCount)
+			b.fcg.addCalleeCount(caller, sccCallCounts[currentSCC])
 			for op, count := range info.specialOpCounts {
-				fcg.addSpecialOpCount(caller, op, count)
-				fcg.addTotalSpecialOpCount(op, count*sccCallCounts[currentSCC])
+				b.fcg.addSpecialOpCount(caller, op, count)
+				b.fcg.addTotalSpecialOpCount(op, count*sccCallCounts[currentSCC])
 			}
 			for irType, count := range info.typeAllocations {
-				fcg.addTypeAllocations(caller, irType, count)
-				fcg.addTotalTypeAllocations(irType, count*sccCallCounts[currentSCC])
+				b.fcg.addTypeAllocations(caller, irType, count)
+				b.fcg.addTotalTypeAllocations(irType, count*sccCallCounts[currentSCC])
 			}
 		}
 	}
 }
 
-func removeCallsToClosuresInsideUncalledFunctionsFromFuncCallGraph(program *ir.Program, fcg *FuncCallGraph) {
-	for _, f := range program.Funcs() {
+func (b *callGraphBuilder) removeCallsToClosuresInsideUncalledFunctionsFromFuncCallGraph() {
+	for _, f := range b.program.Funcs() {
 		g := f.EnclosingFunc()
-		if g == nil || fcg.CalleeCount(g) > 0 {
+		if g == nil || b.fcg.CalleeCount(g) > 0 {
 			continue
 		}
-		fcg.zeroCalleeCounts(f)
+		b.fcg.zeroCalleeCounts(f)
 	}
 }
 
-func analyzePanics(program *ir.Program, fcg *FuncCallGraph) {
-	for _, f := range program.Funcs() {
-		fcg.canPanicInternally[f] = canPanicInternally(f)
-		fcg.canRecover[f] = canRecover(f)
+func (b *callGraphBuilder) analyzePanics() {
+	for _, f := range b.program.Funcs() {
+		b.fcg.canPanicInternally[f] = b.canPanicInternally(f)
+		b.fcg.canRecover[f] = b.canRecover(f)
 	}
-	for i := 1; i < fcg.SCCCount(); i++ {
-		sccFuncs := fcg.FuncsInSCC(SCC(i))
+	for i := 1; i < b.fcg.SCCCount(); i++ {
+		sccFuncs := b.fcg.FuncsInSCC(SCC(i))
 		canPanicInSCC := false
 		for _, caller := range sccFuncs {
 			canPanicExternally := false
-			for _, callee := range fcg.AllCallees(caller) {
-				if fcg.canPanicInternally[callee] ||
-					fcg.canPanicExternally[callee] {
+			for _, callee := range b.fcg.AllCallees(caller) {
+				if b.fcg.canPanicInternally[callee] ||
+					b.fcg.canPanicExternally[callee] {
 					canPanicExternally = true
 					break
 				}
 			}
-			fcg.canPanicExternally[caller] = canPanicExternally
-			if fcg.canPanicInternally[caller] ||
-				fcg.canPanicExternally[caller] {
+			b.fcg.canPanicExternally[caller] = canPanicExternally
+			if b.fcg.canPanicInternally[caller] ||
+				b.fcg.canPanicExternally[caller] {
 				canPanicInSCC = true
 			}
 		}
 		if len(sccFuncs) > 1 && canPanicInSCC {
 			for _, f := range sccFuncs {
-				fcg.canPanicExternally[f] = true
+				b.fcg.canPanicExternally[f] = true
 			}
 		}
 	}
 }
 
-func canPanicInternally(f *ir.Func) (canPanic bool) {
+func (b *callGraphBuilder) canPanicInternally(f *ir.Func) (canPanic bool) {
 	f.Body().WalkStmts(func(stmt ir.Stmt, scope *ir.Scope) {
 		returnStmt, ok := stmt.(*ir.ReturnStmt)
 		if ok && returnStmt.IsPanic() {
@@ -196,7 +208,7 @@ func canPanicInternally(f *ir.Func) (canPanic bool) {
 	return
 }
 
-func canRecover(f *ir.Func) (canRecover bool) {
+func (b *callGraphBuilder) canRecover(f *ir.Func) (canRecover bool) {
 	f.Body().WalkStmts(func(stmt ir.Stmt, scope *ir.Scope) {
 		if _, ok := stmt.(*ir.RecoverStmt); ok {
 			canRecover = true
@@ -317,21 +329,21 @@ func (info *callsInfo) mergeFrom(other callsInfo) {
 	}
 }
 
-func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
+func (b *callGraphBuilder) findCalleesInfoForBody(body *ir.Body) (res callsInfo) {
 	res.init()
 
 	for _, v := range body.Scope().Variables() {
 		if v.InitialValue() == v.Type().InitializedValue() {
-			res.add(findCalleesForInitializedType(v.Type()))
+			res.add(b.findCalleesForInitializedType(v.Type()))
 		}
 	}
 
 	for _, stmt := range body.Stmts() {
 		switch stmt := stmt.(type) {
 		case *ir.AssignStmt:
-			res.add(findCalleesInfoForAssignStmt(stmt))
+			res.add(b.findCalleesInfoForAssignStmt(stmt))
 		case *ir.CallStmt:
-			res.add(findCalleesInfoForCallStmt(stmt, callKinds, fcg))
+			res.add(b.findCalleesInfoForCallStmt(stmt))
 		case ir.SpecialOpStmt:
 			res.addSpecialOpCount(stmt.SpecialOp(), 1)
 		case *ir.MakeStructStmt:
@@ -339,17 +351,17 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 		case *ir.MakeContainerStmt:
 			res.addTypeAllocations(stmt.ContainerType(), 1)
 		case *ir.IfStmt:
-			res.add(findCalleesInfoForIfStmt(stmt, callKinds, fcg))
+			res.add(b.findCalleesInfoForIfStmt(stmt))
 		case *ir.SwitchStmt:
-			res.add(findCalleesInfoForSwitchStmt(stmt, callKinds, fcg))
+			res.add(b.findCalleesInfoForSwitchStmt(stmt))
 		case *ir.SelectStmt:
-			res.add(findCalleesInfoForSelectStmt(stmt, callKinds, fcg))
+			res.add(b.findCalleesInfoForSelectStmt(stmt))
 		case *ir.ForStmt:
-			res.add(findCalleesInfoForForStmt(stmt, callKinds, fcg))
+			res.add(b.findCalleesInfoForForStmt(stmt))
 		case *ir.ChanRangeStmt:
-			res.add(findCalleesInfoForChanRangeStmt(stmt, callKinds, fcg))
+			res.add(b.findCalleesInfoForChanRangeStmt(stmt))
 		case *ir.ContainerRangeStmt:
-			res.add(findCalleesInfoForContainerRangeStmt(stmt, callKinds, fcg))
+			res.add(b.findCalleesInfoForContainerRangeStmt(stmt))
 		case *ir.BranchStmt, *ir.ChanCommOpStmt, *ir.ReturnStmt, *ir.RecoverStmt:
 			continue
 		default:
@@ -360,20 +372,20 @@ func findCalleesInfoForBody(body *ir.Body, callKinds ir.CallKind, fcg *FuncCallG
 	return
 }
 
-func findCalleesInfoForAssignStmt(assignStmt *ir.AssignStmt) (res callsInfo) {
+func (b *callGraphBuilder) findCalleesInfoForAssignStmt(assignStmt *ir.AssignStmt) (res callsInfo) {
 	containerAccess, ok := assignStmt.Source().(*ir.ContainerAccess)
 	if ok && containerAccess.IsMapRead() && containerAccess.Index() == ir.RandomIndex {
-		return findCalleesForInitializedType(containerAccess.ContainerType().ElementType())
+		return b.findCalleesForInitializedType(containerAccess.ContainerType().ElementType())
 	}
 	if !assignStmt.RequiresCopy() {
 		return
 	}
-	return findCalleesForTypeCopy(assignStmt.Destination().Type())
+	return b.findCalleesForTypeCopy(assignStmt.Destination().Type())
 }
 
-func findCalleesInfoForCallStmt(callStmt *ir.CallStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
+func (b *callGraphBuilder) findCalleesInfoForCallStmt(callStmt *ir.CallStmt) (res callsInfo) {
 	res.init()
-	if callStmt.CallKind()&callKinds == 0 {
+	if callStmt.CallKind()&b.callKinds == 0 {
 		return
 	}
 	res.addCallCount(1)
@@ -382,7 +394,7 @@ func findCalleesInfoForCallStmt(callStmt *ir.CallStmt, callKinds ir.CallKind, fc
 		res.addCalleeCount(callee, 1)
 	case ir.LValue:
 		calleeSig := callStmt.CalleeSignature()
-		for _, dynCallee := range fcg.DynamicCallees(calleeSig) {
+		for _, dynCallee := range b.fcg.DynamicCallees(calleeSig) {
 			res.addCalleeCount(dynCallee, 1)
 		}
 	default:
@@ -396,18 +408,18 @@ func findCalleesInfoForCallStmt(callStmt *ir.CallStmt, callKinds ir.CallKind, fc
 		if !callStmt.ArgRequiresCopy(i) {
 			continue
 		}
-		res.add(findCalleesForTypeCopy(argLV.Type()))
+		res.add(b.findCalleesForTypeCopy(argLV.Type()))
 	}
 	for i, resLV := range callStmt.Results() {
 		if !callStmt.ResultRequiresCopy(i) {
 			continue
 		}
-		res.add(findCalleesForTypeCopy(resLV.Type()))
+		res.add(b.findCalleesForTypeCopy(resLV.Type()))
 	}
 	return
 }
 
-func findCalleesForInitializedType(irType ir.Type) (res callsInfo) {
+func (b *callGraphBuilder) findCalleesForInitializedType(irType ir.Type) (res callsInfo) {
 	res.init()
 	switch irType := irType.(type) {
 	case ir.BasicType:
@@ -420,7 +432,7 @@ func findCalleesForInitializedType(irType ir.Type) (res callsInfo) {
 			if field.IsPointer() {
 				continue
 			}
-			res.add(findCalleesForInitializedType(field.Type()))
+			res.add(b.findCalleesForInitializedType(field.Type()))
 		}
 	case *ir.ContainerType:
 		if irType.Kind() != ir.Array {
@@ -428,7 +440,7 @@ func findCalleesForInitializedType(irType ir.Type) (res callsInfo) {
 		}
 		res.addTypeAllocations(irType, 1)
 		if irType.HoldsPointers() {
-			elemRes := findCalleesForInitializedType(irType.ElementType())
+			elemRes := b.findCalleesForInitializedType(irType.ElementType())
 			elemRes.multiply(irType.Len())
 
 			res.add(elemRes)
@@ -437,56 +449,56 @@ func findCalleesForInitializedType(irType ir.Type) (res callsInfo) {
 	return res
 }
 
-func findCalleesForTypeCopy(irType ir.Type) (res callsInfo) {
+func (b *callGraphBuilder) findCalleesForTypeCopy(irType ir.Type) (res callsInfo) {
 	switch irType := irType.(type) {
 	case *ir.StructType:
-		return findCalleesForStructTypeCopy(irType)
+		return b.findCalleesForStructTypeCopy(irType)
 	case *ir.ContainerType:
-		return findCalleesForContainerTypeCopy(irType)
+		return b.findCalleesForContainerTypeCopy(irType)
 	default:
 		return
 	}
 }
 
-func findCalleesForStructTypeCopy(structType *ir.StructType) (res callsInfo) {
+func (b *callGraphBuilder) findCalleesForStructTypeCopy(structType *ir.StructType) (res callsInfo) {
 	res.init()
 	res.addTypeAllocations(structType, 1)
 	for _, field := range structType.Fields() {
 		if field.RequiresDeepCopy() {
-			res.add(findCalleesForTypeCopy(field.Type()))
+			res.add(b.findCalleesForTypeCopy(field.Type()))
 		}
 	}
 	return res
 }
 
-func findCalleesForContainerTypeCopy(containerType *ir.ContainerType) (res callsInfo) {
+func (b *callGraphBuilder) findCalleesForContainerTypeCopy(containerType *ir.ContainerType) (res callsInfo) {
 	res.init()
 	res.addTypeAllocations(containerType, 1)
 	if containerType.RequiresDeepCopies() {
-		subRes := findCalleesForTypeCopy(containerType.ElementType())
+		subRes := b.findCalleesForTypeCopy(containerType.ElementType())
 		if containerType.Kind() == ir.Array {
 			subRes.multiply(containerType.Len())
 		} else {
-			subRes.multiply(MaxCallCounts)
+			subRes.multiply(b.config.ContainerCapacity)
 		}
 		res.add(subRes)
 	}
 	return res
 }
 
-func findCalleesInfoForIfStmt(ifStmt *ir.IfStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
+func (b *callGraphBuilder) findCalleesInfoForIfStmt(ifStmt *ir.IfStmt) (res callsInfo) {
 	res.init()
-	res.mergeFrom(findCalleesInfoForBody(ifStmt.IfBranch(), callKinds, fcg))
-	res.mergeFrom(findCalleesInfoForBody(ifStmt.ElseBranch(), callKinds, fcg))
+	res.mergeFrom(b.findCalleesInfoForBody(ifStmt.IfBranch()))
+	res.mergeFrom(b.findCalleesInfoForBody(ifStmt.ElseBranch()))
 	return
 }
 
-func findCalleesInfoForSwitchStmt(switchStmt *ir.SwitchStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
+func (b *callGraphBuilder) findCalleesInfoForSwitchStmt(switchStmt *ir.SwitchStmt) (res callsInfo) {
 	res.init()
 
 	bodyInfos := make([]callsInfo, len(switchStmt.Cases()))
 	for i, switchCase := range switchStmt.Cases() {
-		bodyInfos[i] = findCalleesInfoForBody(switchCase.Body(), callKinds, fcg)
+		bodyInfos[i] = b.findCalleesInfoForBody(switchCase.Body())
 	}
 
 	var condInfo callsInfo
@@ -503,7 +515,7 @@ func findCalleesInfoForSwitchStmt(switchStmt *ir.SwitchStmt, callKinds ir.CallKi
 		}
 
 		for _, cond := range switchCase.Conds() {
-			condInfo.add(findCalleesInfoForBody(cond, callKinds, fcg))
+			condInfo.add(b.findCalleesInfoForBody(cond))
 		}
 
 		var executeCaseInfo callsInfo
@@ -538,40 +550,40 @@ func findCalleesInfoForSwitchStmt(switchStmt *ir.SwitchStmt, callKinds ir.CallKi
 	return
 }
 
-func findCalleesInfoForSelectStmt(selectStmt *ir.SelectStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
+func (b *callGraphBuilder) findCalleesInfoForSelectStmt(selectStmt *ir.SelectStmt) (res callsInfo) {
 	res.init()
 	for _, selectCase := range selectStmt.Cases() {
-		res.mergeFrom(findCalleesInfoForBody(selectCase.Body(), callKinds, fcg))
+		res.mergeFrom(b.findCalleesInfoForBody(selectCase.Body()))
 	}
 	if selectStmt.HasDefault() {
-		res.mergeFrom(findCalleesInfoForBody(selectStmt.DefaultBody(), callKinds, fcg))
+		res.mergeFrom(b.findCalleesInfoForBody(selectStmt.DefaultBody()))
 	}
 	return
 }
 
-func findCalleesInfoForForStmt(forStmt *ir.ForStmt, callKinds ir.CallKind, fcg *FuncCallGraph) (res callsInfo) {
+func (b *callGraphBuilder) findCalleesInfoForForStmt(forStmt *ir.ForStmt) (res callsInfo) {
 	res.init()
 	f := MaxCallCounts
 	if forStmt.HasMaxIterations() {
 		f = forStmt.MaxIterations()
 	}
-	condRes := findCalleesInfoForBody(forStmt.Cond(), callKinds, fcg)
+	condRes := b.findCalleesInfoForBody(forStmt.Cond())
 	condRes.multiply(f + 1)
-	bodyRes := findCalleesInfoForBody(forStmt.Body(), callKinds, fcg)
+	bodyRes := b.findCalleesInfoForBody(forStmt.Body())
 	bodyRes.multiply(f)
 	res.add(condRes)
 	res.add(bodyRes)
 	return
 }
 
-func findCalleesInfoForChanRangeStmt(rangeStmt *ir.ChanRangeStmt, callKinds ir.CallKind, fcg *FuncCallGraph) callsInfo {
-	res := findCalleesInfoForBody(rangeStmt.Body(), callKinds, fcg)
+func (b *callGraphBuilder) findCalleesInfoForChanRangeStmt(rangeStmt *ir.ChanRangeStmt) callsInfo {
+	res := b.findCalleesInfoForBody(rangeStmt.Body())
 	res.multiply(MaxCallCounts)
 	return res
 }
 
-func findCalleesInfoForContainerRangeStmt(rangeStmt *ir.ContainerRangeStmt, callKinds ir.CallKind, fcg *FuncCallGraph) callsInfo {
-	res := findCalleesInfoForBody(rangeStmt.Body(), callKinds, fcg)
+func (b *callGraphBuilder) findCalleesInfoForContainerRangeStmt(rangeStmt *ir.ContainerRangeStmt) callsInfo {
+	res := b.findCalleesInfoForBody(rangeStmt.Body())
 	containerType := rangeStmt.Container().Type().(*ir.ContainerType)
 	switch containerType.Kind() {
 	case ir.Array:
