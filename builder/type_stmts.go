@@ -217,7 +217,12 @@ func (b *builder) processStructCompositeLit(compositeLit *ast.CompositeLit,
 		if initializedFields[irField] {
 			continue
 		}
-		irFieldVal := irField.Type().InitializedValue()
+		var irFieldVal ir.Value
+		if !irField.IsPointer() {
+			irFieldVal = irField.Type().InitializedValue()
+		} else {
+			irFieldVal = irField.Type().UninitializedValue()
+		}
 		irFieldSelection := ir.NewFieldSelection(irVar, irField)
 		assignStmt := ir.NewAssignStmt(irFieldVal, irFieldSelection, false, compositeLit.Pos(), compositeLit.End())
 		ctx.body.AddStmt(assignStmt)
@@ -274,7 +279,12 @@ func (b *builder) processContainerCompositeLit(compositeLit *ast.CompositeLit,
 			if initializedIndices[i] {
 				continue
 			}
-			irElemVal := irContainerType.ElementType().InitializedValue()
+			var irElemVal ir.Value
+			if !irContainerType.HoldsPointers() {
+				irElemVal = irContainerType.ElementType().InitializedValue()
+			} else {
+				irElemVal = irContainerType.ElementType().UninitializedValue()
+			}
 			irContainerAccess := ir.NewContainerAccess(irVar, ir.MakeValue(int64(i), ir.IntType))
 			irContainerAccess.SetKind(ir.Write)
 			assignStmt := ir.NewAssignStmt(irElemVal, irContainerAccess, false, compositeLit.Pos(), compositeLit.End())
