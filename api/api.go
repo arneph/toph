@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/arneph/toph/builder"
+	c "github.com/arneph/toph/config"
 	"github.com/arneph/toph/ir"
 	irAnalyzer "github.com/arneph/toph/ir/analyzer"
 	irOptimizer "github.com/arneph/toph/ir/optimizer"
@@ -13,30 +14,6 @@ import (
 	"github.com/arneph/toph/uppaal"
 	uppaalOptimizer "github.com/arneph/toph/uppaal/optimizer"
 )
-
-// BuilderConfig is a wrapper type for builder.Config to avoid naming collisions
-type BuilderConfig = builder.Config
-
-// TranslatorConfig is a wrapper type for translator.Config to avoid naming collisions
-type TranslatorConfig = translator.Config
-
-// Config holds paramters for the Run function.
-type Config struct {
-	BuilderConfig
-	TranslatorConfig
-
-	// OptimizeUppaalSystem indicates if the Uppaal optimizer should be run
-	// before the final output gets generated.
-	OptimizeUppaalSystem bool
-
-	// Debug indicates if debug output files should be generated.
-	Debug bool
-
-	// OutName is the file name of all output files.
-	OutName string
-	// OutFormats lists the generated output file formats (supports xml, xta, ugi, q)
-	OutFormats map[string]bool
-}
 
 // Result indicates if the Run function was successful or how it failed.
 type Result int
@@ -61,11 +38,11 @@ const (
 
 // Run translates the package at the given path and returns whether it was
 // successful or failed.
-func Run(path string, config Config) Result {
+func Run(path string, config *c.Config) Result {
 	warnings := false
 
 	// Builder
-	program, entryFuncs, errs := builder.BuildProgram(path, &config.BuilderConfig)
+	program, entryFuncs, errs := builder.BuildProgram(path, config)
 	warnings = warnings || len(errs) > 0
 	for _, err := range errs {
 		fmt.Fprintln(os.Stderr, err)
@@ -101,7 +78,7 @@ func Run(path string, config Config) Result {
 		program.InitFunc().Body().SetStmts(initStmts)
 	}
 
-	if config.TranslatorConfig.OptimizeIR {
+	if config.OptimizeIR {
 		// Dead Code Eliminator
 		irOptimizer.EliminateDeadCode(program)
 
@@ -127,7 +104,7 @@ func Run(path string, config Config) Result {
 		program.InitFunc().Body().AddStmt(callStmt)
 
 		// Translator
-		sys, errs := translator.TranslateProg(program, &config.TranslatorConfig)
+		sys, errs := translator.TranslateProg(program, config)
 		warnings = warnings || len(errs) > 0
 		for _, err := range errs {
 			fmt.Fprintln(os.Stderr, err)

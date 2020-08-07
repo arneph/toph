@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/arneph/toph/api"
+	c "github.com/arneph/toph/config"
 )
 
 func ignore(info os.FileInfo) bool {
@@ -51,27 +52,23 @@ func main() {
 				continue
 			}
 			fmt.Printf("running test: %s\n", testPath)
-			config := api.Config{
-				BuilderConfig: api.BuilderConfig{
-					BuildContext: &build.Default,
-				},
-				TranslatorConfig: api.TranslatorConfig{
-					MaxProcessCount:   5,
-					MaxDeferCount:     10,
-					MaxChannelCount:   100,
-					MaxMutexCount:     100,
-					MaxWaitGroupCount: 100,
-					MaxStructCount:    100,
-					MaxContainerCount: 100,
-					ContainerCapacity: 5,
-					OptimizeIR:        true,
-				},
+			config := c.Config{
+				BuildContext:         &build.Default,
+				MaxProcessCount:      5,
+				MaxDeferCount:        10,
+				MaxChannelCount:      100,
+				MaxMutexCount:        100,
+				MaxWaitGroupCount:    100,
+				MaxStructCount:       100,
+				MaxContainerCount:    100,
+				ContainerCapacity:    5,
+				OptimizeIR:           true,
 				OptimizeUppaalSystem: true,
 				Debug:                true,
 				OutName:              testPath + test.Name(),
 				OutFormats:           map[string]bool{"xml": true},
 			}
-			result := api.Run(testPath, config)
+			result := api.Run(testPath, &config)
 			perfect := result == api.RunSuccessful
 			attemptedTests++
 			if perfect {

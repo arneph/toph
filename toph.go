@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/arneph/toph/api"
+	c "github.com/arneph/toph/config"
 )
 
 var (
@@ -51,27 +52,23 @@ func main() {
 	for _, ffmt := range strings.Split(*outFormats, ",") {
 		ffmts[ffmt] = true
 	}
-	config := api.Config{
-		BuilderConfig: api.BuilderConfig{
-			BuildContext: &buildContext,
-		},
-		TranslatorConfig: api.TranslatorConfig{
-			MaxProcessCount:   *maxProcessCount,
-			MaxDeferCount:     *maxDeferCount,
-			MaxChannelCount:   *maxChannelCount,
-			MaxMutexCount:     *maxMutexCount,
-			MaxWaitGroupCount: *maxWaitGroupCount,
-			MaxStructCount:    *maxStructCount,
-			MaxContainerCount: *maxContainerCount,
-			ContainerCapacity: *containerCapacity,
-			OptimizeIR:        *optimizeIR,
-		},
+	config := c.Config{
+		BuildContext:         &buildContext,
+		MaxProcessCount:      *maxProcessCount,
+		MaxDeferCount:        *maxDeferCount,
+		MaxChannelCount:      *maxChannelCount,
+		MaxMutexCount:        *maxMutexCount,
+		MaxWaitGroupCount:    *maxWaitGroupCount,
+		MaxStructCount:       *maxStructCount,
+		MaxContainerCount:    *maxContainerCount,
+		ContainerCapacity:    *containerCapacity,
+		OptimizeIR:           *optimizeIR,
 		OptimizeUppaalSystem: *optimizeSystem,
 		Debug:                *debug,
 		OutName:              *outName,
 		OutFormats:           ffmts,
 	}
-	result := api.Run(path, config)
+	result := api.Run(path, &config)
 
 	os.Exit(int(result))
 }

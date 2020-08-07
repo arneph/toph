@@ -1,27 +1,14 @@
 package translator
 
 import (
+	c "github.com/arneph/toph/config"
 	"github.com/arneph/toph/ir"
 	"github.com/arneph/toph/ir/analyzer"
 	"github.com/arneph/toph/uppaal"
 )
 
-// Config contains configuration settings for translation.
-type Config struct {
-	MaxProcessCount   int
-	MaxDeferCount     int
-	MaxChannelCount   int
-	MaxMutexCount     int
-	MaxWaitGroupCount int
-	MaxStructCount    int
-	MaxContainerCount int
-	ContainerCapacity int
-
-	OptimizeIR bool
-}
-
 // TranslateProg translates an ir.Prog to a uppaal.System.
-func TranslateProg(program *ir.Program, config *Config) (*uppaal.System, []error) {
+func TranslateProg(program *ir.Program, config *c.Config) (*uppaal.System, []error) {
 	t := new(translator)
 	t.program = program
 	t.funcToProcess = make(map[*ir.Func]*uppaal.Process)
@@ -52,7 +39,7 @@ type translator struct {
 	completeFCG *analyzer.FuncCallGraph
 	deferFCG    *analyzer.FuncCallGraph
 
-	config *Config
+	config *c.Config
 
 	warnings []error
 }
