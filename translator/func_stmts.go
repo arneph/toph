@@ -149,7 +149,7 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 			awaited.SetLocationAndResetNameAndCommentLocation(
 				started.Location().Add(uppaal.Location{0, 136}))
 			waitForRegularReturn := ctx.proc.AddTransition(started, awaited)
-			if t.completeFCG.CanPanic(calleeFunc) {
+			if !t.config.OptimizeIR || t.completeFCG.CanPanic(calleeFunc) {
 				waitForRegularReturn.SetGuard(fmt.Sprintf("!external_panic_%s[p]", calleeProc.Name()), false)
 			}
 			waitForRegularReturn.SetSync(fmt.Sprintf("sync_%s[p]?", calleeProc.Name()))
@@ -169,7 +169,7 @@ func (t *translator) translateCall(stmt *ir.CallStmt, info calleeInfo, ctx *cont
 			waitForRegularReturn.SetSyncLocation(started.Location().Add(uppaal.Location{4, 80}))
 			waitForRegularReturn.SetUpdateLocation(started.Location().Add(uppaal.Location{4, 96}))
 
-			if t.completeFCG.CanPanic(calleeFunc) {
+			if !t.config.OptimizeIR || t.completeFCG.CanPanic(calleeFunc) {
 				waitForPanic := ctx.proc.AddTransition(started, ctx.exitFuncState)
 				waitForPanic.SetGuard(fmt.Sprintf("external_panic_%s[p]", calleeProc.Name()), false)
 				waitForPanic.SetSync(fmt.Sprintf("sync_%s[p]?", calleeProc.Name()))
@@ -243,7 +243,7 @@ func (t *translator) translateDeferredCalls(proc *uppaal.Process, deferred *uppa
 		start.SetSync(fmt.Sprintf("sync_%s[deferred_pid[deferred_count-1]]!", calleeProc.Name()))
 		start.SetSyncLocation(
 			deferred.Location().Add(uppaal.Location{136 * (i + 1), 16 + 48*(i+1)}))
-		if t.completeFCG.CanPanic(callerFunc) && t.completeFCG.CanRecover(calleeFunc) {
+		if !t.config.OptimizeIR || (t.completeFCG.CanPanic(callerFunc) && t.completeFCG.CanRecover(calleeFunc)) {
 			start.AddUpdate(fmt.Sprintf("external_panic_%s[deferred_pid[deferred_count-1]] = internal_panic", calleeProc.Name()), false)
 			start.SetUpdateLocation(
 				deferred.Location().Add(uppaal.Location{136 * (i + 1), 32 + 48*(i+1)}))
@@ -252,7 +252,7 @@ func (t *translator) translateDeferredCalls(proc *uppaal.Process, deferred *uppa
 		wait := proc.AddTransition(started, deferred)
 		wait.SetSync(fmt.Sprintf("sync_%s[deferred_pid[deferred_count-1]]?", calleeProc.Name()))
 		wait.SetSyncLocation(started.Location().Add(uppaal.Location{4, 32 + 32*i}))
-		if t.completeFCG.CanPanic(callerFunc) && t.completeFCG.CanRecover(calleeFunc) {
+		if !t.config.OptimizeIR || (t.completeFCG.CanPanic(callerFunc) && t.completeFCG.CanRecover(calleeFunc)) {
 			wait.AddUpdate(fmt.Sprintf("internal_panic = external_panic_%s[deferred_pid[deferred_count-1]]", calleeProc.Name()), false)
 		}
 		wait.AddUpdate("deferred_count--", false)

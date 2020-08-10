@@ -65,7 +65,7 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 	}
 
 	externalPanicInit := ""
-	if t.completeFCG.CanPanic(f) || t.completeFCG.CanRecover(f) {
+	if !t.config.OptimizeIR || t.completeFCG.CanPanic(f) || t.completeFCG.CanRecover(f) {
 		t.system.Declarations().AddArray("external_panic_"+proc.Name(), []int{t.callCount(f)}, "bool")
 		externalPanicInit = fmt.Sprintf("\n    external_panic_%s[pid] = false;", proc.Name())
 	}
@@ -125,7 +125,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 
 	// Internal helper variables:
 	proc.Declarations().AddVariable("is_sync", "bool", "false")
-	if t.completeFCG.CanPanic(f) {
+	if !t.config.OptimizeIR || t.completeFCG.CanPanic(f) {
 		proc.Declarations().AddVariable("internal_panic", "bool", "false")
 	}
 	if deferCount > 0 {
@@ -157,7 +157,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 	if f == t.program.InitFunc() {
 		sourceLocation = ""
 	}
-	if t.completeFCG.CanPanic(f) {
+	if !t.config.OptimizeIR || t.completeFCG.CanPanic(f) {
 		proc.AddQuery(uppaal.NewQuery(
 			"A[] (not out_of_resources) imply (not ($.ending and !$.is_sync and $.internal_panic))",
 			"check goroutine does not exit with panic",
@@ -215,7 +215,7 @@ func (t *translator) translateFunc(f *ir.Func) {
 	}
 
 	finalize := proc.AddTransition(finalizing, ending)
-	if f != t.program.InitFunc() && t.completeFCG.CanPanic(f) {
+	if f != t.program.InitFunc() && (!t.config.OptimizeIR || t.completeFCG.CanPanic(f)) {
 		finalize.AddUpdate(fmt.Sprintf("external_panic_%s[pid] |= internal_panic", proc.Name()), false)
 		finalize.SetUpdateLocation(uppaal.Location{4, endingY + 60})
 	}
