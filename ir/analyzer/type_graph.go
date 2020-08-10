@@ -33,8 +33,8 @@ func (tg *TypeGraph) ContainsEdge(dependant, dependee ir.Type) bool {
 	return ok
 }
 
-// AllDependees returns all dependees of the given dependant.
-func (tg *TypeGraph) AllDependees(dependant ir.Type) []ir.Type {
+// AllDirectDependees returns all dependees of the given dependant.
+func (tg *TypeGraph) AllDirectDependees(dependant ir.Type) []ir.Type {
 	var dependees []ir.Type
 	for dependee := range tg.dependantsToDependees[dependant] {
 		dependees = append(dependees, dependee)
@@ -42,11 +42,61 @@ func (tg *TypeGraph) AllDependees(dependant ir.Type) []ir.Type {
 	return dependees
 }
 
-// AllDependants returns all dependants of the given dependee.
-func (tg *TypeGraph) AllDependants(dependee ir.Type) []ir.Type {
+// AllTransitiveDependees returns all dependees of the given dependant.
+func (tg *TypeGraph) AllTransitiveDependees(dependant ir.Type) []ir.Type {
+	var dependees []ir.Type
+	queue := make([]ir.Type, 0, len(tg.dependantsToDependees[dependant]))
+	seen := make(map[ir.Type]bool, len(tg.dependantsToDependees[dependant]))
+	for t := range tg.dependantsToDependees[dependant] {
+		queue = append(queue, t)
+		seen[t] = true
+	}
+	for len(queue) > 0 {
+		dependee := queue[0]
+		dependees = append(dependees, dependee)
+		queue = queue[1:]
+
+		for t := range tg.dependantsToDependees[dependee] {
+			if seen[t] {
+				continue
+			}
+			queue = append(queue, t)
+			seen[t] = true
+		}
+	}
+	return dependees
+}
+
+// AllDirectDependants returns all dependants of the given dependee.
+func (tg *TypeGraph) AllDirectDependants(dependee ir.Type) []ir.Type {
 	var dependants []ir.Type
 	for dependant := range tg.dependeesToDependants[dependee] {
 		dependants = append(dependants, dependant)
+	}
+	return dependants
+}
+
+// AllTransitiveDependants returns all dependants of the given dependant.
+func (tg *TypeGraph) AllTransitiveDependants(dependee ir.Type) []ir.Type {
+	var dependants []ir.Type
+	queue := make([]ir.Type, 0, len(tg.dependeesToDependants[dependee]))
+	seen := make(map[ir.Type]bool, len(tg.dependeesToDependants[dependee]))
+	for t := range tg.dependeesToDependants[dependee] {
+		queue = append(queue, t)
+		seen[t] = true
+	}
+	for len(queue) > 0 {
+		dependant := queue[0]
+		dependants = append(dependants, dependant)
+		queue = queue[1:]
+
+		for t := range tg.dependeesToDependants[dependant] {
+			if seen[t] {
+				continue
+			}
+			queue = append(queue, t)
+			seen[t] = true
+		}
 	}
 	return dependants
 }
