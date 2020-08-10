@@ -21,6 +21,11 @@ func (t *translator) isTypeUsed(typ ir.Type) bool {
 			return true
 		}
 	}
+	for _, dep := range t.tg.AllTransitiveDependants(typ) {
+		if t.isTypeUsed(dep) {
+			return true
+		}
+	}
 	return false
 }
 

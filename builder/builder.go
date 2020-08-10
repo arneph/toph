@@ -45,6 +45,7 @@ func BuildProgram(path string, config *c.Config) (program *ir.Program, entryFunc
 
 	// Parse program:
 	b.fset = token.NewFileSet()
+	b.typesPkgs = make(map[*types.Package]struct{})
 
 	oldDefault := build.Default
 	build.Default = *config.BuildContext
@@ -79,6 +80,7 @@ func BuildProgram(path string, config *c.Config) (program *ir.Program, entryFunc
 		} else if strings.HasPrefix(pkg.GoFiles[0], config.BuildContext.GOROOT) {
 			return false
 		}
+		b.typesPkgs[pkg.Types] = struct{}{}
 		return true
 	}, func(pkg *packages.Package) {
 		if pkg.Name == "unsafe" {
@@ -198,13 +200,14 @@ func BuildProgram(path string, config *c.Config) (program *ir.Program, entryFunc
 }
 
 type builder struct {
-	fset   *token.FileSet
-	pkgs   []*packages.Package
-	funcs  map[*types.Func]*ir.Func
-	vars   map[*types.Var]*ir.Variable
-	fields map[*types.Var]*ir.Field
-	types  typeutil.Map
-	cmaps  map[*ast.File]ast.CommentMap
+	fset      *token.FileSet
+	pkgs      []*packages.Package
+	typesPkgs map[*types.Package]struct{}
+	funcs     map[*types.Func]*ir.Func
+	vars      map[*types.Var]*ir.Variable
+	fields    map[*types.Var]*ir.Field
+	types     typeutil.Map
+	cmaps     map[*ast.File]ast.CommentMap
 
 	program              *ir.Program
 	liftedSpecialOpFuncs map[ir.SpecialOp]*ir.Func

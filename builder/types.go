@@ -32,7 +32,7 @@ func (b *builder) typesTypeToIrType(typesType types.Type) ir.Type {
 		if ok {
 			return info.irType
 		}
-		if !shouldModelType(typesType, nil) {
+		if !b.shouldModelType(typesType, nil) {
 			info = new(typeInfo)
 			info.irType = nil
 			b.types.Set(typesType, info)
@@ -65,7 +65,7 @@ func (b *builder) typesTypeToIrType(typesType types.Type) ir.Type {
 		if ok {
 			return info.irType
 		}
-		if !shouldModelType(typesType, nil) {
+		if !b.shouldModelType(typesType, nil) {
 			info = new(typeInfo)
 			info.irType = nil
 			b.types.Set(typesType, info)
@@ -131,7 +131,13 @@ func (b *builder) typesContainerToIrType(typesType types.Type) ir.Type {
 	return irContainerType
 }
 
-func shouldModelType(typesType types.Type, seen []types.Type) bool {
+func (b *builder) shouldModelType(typesType types.Type, seen []types.Type) bool {
+	if typesNamed, ok := typesType.(*types.Named); ok {
+		_, ok := b.typesPkgs[typesNamed.Obj().Pkg()]
+		if !ok {
+			return false
+		}
+	}
 	for _, seen := range seen {
 		if seen == typesType || seen == typesType.Underlying() {
 			return false
@@ -146,26 +152,26 @@ func shouldModelType(typesType types.Type, seen []types.Type) bool {
 	case *types.Pointer:
 		switch elementType := typesType.Elem().Underlying().(type) {
 		case *types.Struct:
-			return shouldModelType(elementType, append(seen, typesType))
+			return b.shouldModelType(elementType, append(seen, typesType))
 		case *types.Array:
-			return shouldModelType(elementType, append(seen, typesType))
+			return b.shouldModelType(elementType, append(seen, typesType))
 		default:
 			return false
 		}
 	case *types.Struct:
 		for i := 0; i < typesType.NumFields(); i++ {
 			typesVar := typesType.Field(i)
-			if shouldModelType(typesVar.Type(), append(seen, typesType)) {
+			if b.shouldModelType(typesVar.Type(), append(seen, typesType)) {
 				return true
 			}
 		}
 		return false
 	case *types.Array:
-		return shouldModelType(typesType.Elem(), append(seen, typesType))
+		return b.shouldModelType(typesType.Elem(), append(seen, typesType))
 	case *types.Slice:
-		return shouldModelType(typesType.Elem(), append(seen, typesType))
+		return b.shouldModelType(typesType.Elem(), append(seen, typesType))
 	case *types.Map:
-		return shouldModelType(typesType.Elem(), append(seen, typesType))
+		return b.shouldModelType(typesType.Elem(), append(seen, typesType))
 	default:
 		return false
 	}
