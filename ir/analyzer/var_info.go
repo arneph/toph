@@ -96,7 +96,7 @@ func FindVarInfo(program *ir.Program) *VarInfo {
 				if stmt.ValueVal() != nil {
 					vi.addLValueUse(stmt.ValueVal(), f)
 				}
-			case *ir.BranchStmt, *ir.DeadEndStmt, *ir.IfStmt, *ir.SwitchStmt, *ir.ForStmt, *ir.RecoverStmt:
+			case *ir.BranchStmt, *ir.DeadEndStmt, *ir.DeleteMapEntryStmt, *ir.IfStmt, *ir.SwitchStmt, *ir.ForStmt, *ir.RecoverStmt:
 			default:
 				panic(fmt.Errorf("unexpected ir.Stmt type: %T", stmt))
 			}

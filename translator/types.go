@@ -361,6 +361,8 @@ func (t *translator) addMapType(containerType *ir.ContainerType) {
 	if containerType.RequiresDeepCopies() {
 		readElementHandle = t.translateCopyOfRValue(readElementHandle, containerType.ElementType())
 	}
+	currentElementHandle := fmt.Sprintf("%s_maps[mid][index]", containerType.VariablePrefix())
+	nextElementHandle := fmt.Sprintf("%s_maps[mid][index + 1]", containerType.VariablePrefix())
 
 	t.system.Declarations().AddFunc(
 		fmt.Sprintf(`int make_%[1]s() {
@@ -405,4 +407,18 @@ func (t *translator) addMapType(containerType *ir.ContainerType) {
 			t.uppaalReferenceTypeForIrType(containerType.ElementType()),
 			t.config.ContainerCapacity,
 			writeElementHandle))
+
+	t.system.Declarations().AddFunc(
+		fmt.Sprintf(`void delete_%[1]s(int mid, int index) {
+	if (mid < 0 || index < 0) {
+		return;
+	}
+	%[1]s_lengths[mid]--;
+	for (index = index; index < %[1]s_lengths[mid]; index++) {
+		%[2]s = %[3]s;
+	}
+}`,
+			containerType.VariablePrefix(),
+			currentElementHandle,
+			nextElementHandle))
 }

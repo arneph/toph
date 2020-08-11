@@ -57,6 +57,7 @@ func main() {
 	for _, w := range workers {
 		go w.Work()
 	}
+	delete(workers, WorkerId(42))
 	for i := 100; i <= 10000; i *= 10 {
 		chStart <- i
 		result := <-chEnd

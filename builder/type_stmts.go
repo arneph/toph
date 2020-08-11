@@ -350,3 +350,18 @@ func (b *builder) indicesAndValueExprsForArrayOrSliceCompositeLit(compositeLit *
 	}
 	return
 }
+
+func (b *builder) processDeleteExpr(callExpr *ast.CallExpr, ctx *context) {
+	typesMapType := ctx.typesInfo.TypeOf(callExpr.Args[0])
+	irType := b.typesTypeToIrType(typesMapType)
+	if irType == nil {
+		return
+	}
+	mapVal := b.findContainer(callExpr.Args[0], ctx)
+	b.processExpr(callExpr.Args[1], ctx)
+	if mapVal == nil {
+		return
+	}
+	deleteStmt := ir.NewDeleteMapEntryStmt(mapVal, callExpr.Pos(), callExpr.End())
+	ctx.body.AddStmt(deleteStmt)
+}

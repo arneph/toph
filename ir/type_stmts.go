@@ -101,3 +101,35 @@ func (s *MakeContainerStmt) tree(b *strings.Builder, indent int) {
 	}
 	fmt.Fprintf(b, "%s <- make(%s, %s)", s.containerVar.Handle(), s.containerVar.Type(), arg2)
 }
+
+// DeleteMapEntryStmt represents a delete(map[K]V, k) call.
+type DeleteMapEntryStmt struct {
+	mapVal LValue
+
+	Node
+}
+
+// NewDeleteMapEntryStmt creates a new DeleteMapEntryStmt for the given map value.
+func NewDeleteMapEntryStmt(mapVal LValue, pos, end token.Pos) *DeleteMapEntryStmt {
+	s := new(DeleteMapEntryStmt)
+	s.mapVal = mapVal
+	s.pos = pos
+	s.end = end
+
+	return s
+}
+
+// MapVal returns the lvalue holding the map to delete an entry from.
+func (s *DeleteMapEntryStmt) MapVal() LValue {
+	return s.mapVal
+}
+
+// MapType returns the type of the map to delete an entry from.
+func (s *DeleteMapEntryStmt) MapType() *ContainerType {
+	return s.mapVal.Type().(*ContainerType)
+}
+
+func (s *DeleteMapEntryStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	fmt.Fprintf(b, "delete(%s)", s.mapVal.Handle())
+}

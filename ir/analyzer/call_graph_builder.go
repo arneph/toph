@@ -370,7 +370,7 @@ func (b *callGraphBuilder) findCalleesInfoForBody(body *ir.Body) (res callsInfo)
 			res.add(b.findCalleesInfoForChanRangeStmt(stmt))
 		case *ir.ContainerRangeStmt:
 			res.add(b.findCalleesInfoForContainerRangeStmt(stmt))
-		case *ir.BranchStmt, *ir.ChanCommOpStmt, *ir.ReturnStmt, *ir.RecoverStmt:
+		case *ir.BranchStmt, *ir.ChanCommOpStmt, *ir.DeleteMapEntryStmt, *ir.ReturnStmt, *ir.RecoverStmt:
 			continue
 		default:
 			panic(fmt.Errorf("unexpected ir.Stmt type: %T", stmt))

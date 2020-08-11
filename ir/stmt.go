@@ -23,6 +23,7 @@ func (s *ChanRangeStmt) stmt()      {}
 func (s *CloseChanStmt) stmt()      {}
 func (s *ContainerRangeStmt) stmt() {}
 func (s *DeadEndStmt) stmt()        {}
+func (s *DeleteMapEntryStmt) stmt() {}
 func (s *ForStmt) stmt()            {}
 func (s *IfStmt) stmt()             {}
 func (s *MakeChanStmt) stmt()       {}

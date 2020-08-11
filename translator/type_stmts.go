@@ -65,3 +65,26 @@ func (t *translator) translateMakeContainerStmt(stmt *ir.MakeContainerStmt, ctx 
 	ctx.currentState = made
 	ctx.addLocation(made.Location())
 }
+
+func (t *translator) translateDeleteMapEntryStmt(stmt *ir.DeleteMapEntryStmt, ctx *context) {
+	var rvs randomVariableSupplier
+	handle, _ := t.translateLValue(stmt.MapVal(), &rvs, ctx)
+	name := stmt.MapVal().Name()
+	index := rvs.next(-1, t.config.ContainerCapacity-1)
+	rvs.addGuard(fmt.Sprintf("%s < %s_lengths[%s]",
+		index, stmt.MapType().VariablePrefix(), handle), true)
+
+	deleted := ctx.proc.AddState("deleted_entry_"+name+"_", uppaal.Renaming)
+	deleted.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+	deleted.SetLocationAndResetNameAndCommentLocation(
+		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
+	delete := ctx.proc.AddTransition(ctx.currentState, deleted)
+	delete.AddUpdate(fmt.Sprintf("delete_%s(%s, %s)", stmt.MapType().VariablePrefix(), handle, index), true)
+	rvs.addToTrans(delete)
+	delete.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+	delete.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+	delete.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
+
+	ctx.currentState = deleted
+	ctx.addLocation(deleted.Location())
+}
