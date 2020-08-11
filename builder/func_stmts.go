@@ -471,6 +471,31 @@ func (b *builder) processSpecialOpCallExprWithCallKind(callExpr *ast.CallExpr, c
 			liftedFuncArgs = []ir.RValue{waitGroupVal.(ir.RValue)}
 		}
 
+	case ir.Do:
+		selExpr := callExpr.Fun.(*ast.SelectorExpr)
+		onceVal := b.findOnce(selExpr.X, ctx)
+		if onceVal == nil {
+			return nil
+		}
+		f, _ := b.findCallee(callExpr.Args[0], ctx)
+		if f == nil {
+			p := b.fset.Position(callExpr.Args[0].Pos())
+			fStr := b.nodeToString(callExpr.Args[0])
+			b.addWarning(fmt.Errorf("%v: can not process sync.Once.Do argument: %s", p, fStr))
+			return nil
+		}
+
+		if callKind != ir.Call {
+			p := b.fset.Position(callExpr.Args[0].Pos())
+			fStr := b.nodeToString(callExpr.Args[0])
+			b.addWarning(fmt.Errorf("%v: sync.Once.Do only supported as direct function call: %s", p, fStr))
+			return nil
+		}
+
+		onceDoStmt := ir.NewOnceDoStmt(onceVal, f, callExpr.Pos(), callExpr.End())
+		ctx.body.AddStmt(onceDoStmt)
+		return nil
+
 	case ir.DeadEnd:
 		if callKind == ir.Call {
 			deadEndStmt := ir.NewDeadEndStmt(callExpr.Pos(), callExpr.End())

@@ -133,7 +133,7 @@ func (tg *TypeGraph) updateTopologicalOrder() {
 		return
 	}
 	tg.topologicalOrderOk = true
-	tg.topologicalOrder = []ir.Type{ir.IntType, ir.FuncType, ir.ChanType, ir.MutexType, ir.WaitGroupType}
+	tg.topologicalOrder = []ir.Type{ir.IntType, ir.FuncType, ir.ChanType, ir.MutexType, ir.WaitGroupType, ir.OnceType}
 
 	added := map[ir.Type]bool{
 		ir.IntType:       true,
@@ -141,6 +141,7 @@ func (tg *TypeGraph) updateTopologicalOrder() {
 		ir.ChanType:      true,
 		ir.MutexType:     true,
 		ir.WaitGroupType: true,
+		ir.OnceType:      true,
 	}
 
 	for len(tg.topologicalOrder) < len(tg.dependantsToDependees) {

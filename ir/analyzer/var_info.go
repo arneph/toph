@@ -66,6 +66,11 @@ func FindVarInfo(program *ir.Program) *VarInfo {
 			case *ir.WaitGroupOpStmt:
 				vi.addLValueUse(stmt.WaitGroup(), f)
 				vi.addRValueUse(stmt.Delta(), f)
+			case *ir.OnceDoStmt:
+				vi.addLValueUse(stmt.Once(), f)
+				if v, ok := stmt.F().(ir.LValue); ok {
+					vi.addLValueUse(v, f)
+				}
 			case *ir.MakeStructStmt:
 				vi.addVariableUse(stmt.StructVar(), f)
 			case *ir.MakeContainerStmt:

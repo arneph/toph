@@ -30,9 +30,9 @@ func NewProgram(fset *token.FileSet) *Program {
 	p.funcLookup = make(map[FuncIndex]*Func)
 	p.funcCount = 0
 	p.variableCount = 0
-	p.types = []Type{IntType, FuncType, ChanType, MutexType, WaitGroupType}
+	p.types = []Type{IntType, FuncType, ChanType, MutexType, WaitGroupType, OnceType}
 	p.typeLookup = map[TypeIndex]Type{
-		0: IntType, 1: FuncType, 2: ChanType, 3: MutexType, 4: WaitGroupType,
+		0: IntType, 1: FuncType, 2: ChanType, 3: MutexType, 4: WaitGroupType, 5: OnceType,
 	}
 	p.typeCount = len(p.types)
 	p.fset = fset

@@ -25,6 +25,8 @@ func (b *builder) typesTypeToIrType(typesType types.Type) ir.Type {
 			return ir.MutexType
 		} else if typesType.String() == "sync.WaitGroup" {
 			return ir.WaitGroupType
+		} else if typesType.String() == "sync.Once" {
+			return ir.OnceType
 		} else if typesType.String() == "testing.T" {
 			return nil
 		}

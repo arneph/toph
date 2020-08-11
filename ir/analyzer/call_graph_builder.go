@@ -2,6 +2,7 @@ package analyzer
 
 import (
 	"fmt"
+	"go/types"
 
 	c "github.com/arneph/toph/config"
 	"github.com/arneph/toph/ir"
@@ -45,18 +46,33 @@ func (b *callGraphBuilder) addFuncsToFuncCallGraph() {
 func (b *callGraphBuilder) addCallsToFuncCallGraph() {
 	for _, caller := range b.program.Funcs() {
 		caller.Body().WalkStmts(func(stmt ir.Stmt, scope *ir.Scope) {
-			callStmt, ok := stmt.(*ir.CallStmt)
-			if !ok || callStmt.CallKind()&b.callKinds == 0 {
-				return
-			}
-			switch callee := callStmt.Callee().(type) {
-			case *ir.Func:
-				b.fcg.addStaticCall(caller, callee)
-			case ir.LValue:
-				calleeSig := callStmt.CalleeSignature()
-				b.fcg.addDynamicCaller(caller, calleeSig)
-			default:
-				panic(fmt.Errorf("unexpected callee type: %T", callee))
+			switch stmt := stmt.(type) {
+			case *ir.CallStmt:
+				if stmt.CallKind()&b.callKinds == 0 {
+					return
+				}
+				switch callee := stmt.Callee().(type) {
+				case *ir.Func:
+					b.fcg.addStaticCall(caller, callee)
+				case ir.LValue:
+					calleeSig := stmt.CalleeSignature()
+					b.fcg.addDynamicCaller(caller, calleeSig)
+				default:
+					panic(fmt.Errorf("unexpected callee type: %T", callee))
+				}
+			case *ir.OnceDoStmt:
+				if ir.Call&b.callKinds == 0 {
+					return
+				}
+				switch callee := stmt.F().(type) {
+				case *ir.Func:
+					b.fcg.addStaticCall(caller, callee)
+				case ir.LValue:
+					calleeSig := types.NewSignature(nil, nil, nil, false)
+					b.fcg.addDynamicCaller(caller, calleeSig)
+				default:
+					panic(fmt.Errorf("unexpected callee type: %T", callee))
+				}
 			}
 		})
 	}
@@ -344,6 +360,17 @@ func (b *callGraphBuilder) findCalleesInfoForBody(body *ir.Body) (res callsInfo)
 			res.add(b.findCalleesInfoForAssignStmt(stmt))
 		case *ir.CallStmt:
 			res.add(b.findCalleesInfoForCallStmt(stmt))
+		case *ir.OnceDoStmt:
+			res.addSpecialOpCount(ir.Do, 1)
+			res.addCallCount(1)
+			if callee, ok := stmt.F().(*ir.Func); ok {
+				res.addCalleeCount(callee, 1)
+			} else {
+				calleeSig := types.NewSignature(nil, nil, nil, false)
+				for _, dynCallee := range b.fcg.DynamicCallees(calleeSig) {
+					res.addCalleeCount(dynCallee, 1)
+				}
+			}
 		case ir.SpecialOpStmt:
 			res.addSpecialOpCount(stmt.SpecialOp(), 1)
 		case *ir.MakeStructStmt:

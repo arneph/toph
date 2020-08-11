@@ -16,17 +16,19 @@ var (
 	InitializedMutex = Value{math.MinInt64 + 0, MutexType}
 	// InitializedWaitGroup is a placeholder initial value for wait groups.
 	InitializedWaitGroup = Value{math.MinInt64 + 1, WaitGroupType}
+	// InitializedOnce is a placeholder initial value for once.
+	InitializedOnce = Value{math.MinInt64 + 2, OnceType}
 
-	initializedStruct int64 = math.MinInt64 + 2
-	initializedArray  int64 = math.MinInt64 + 3
+	initializedStruct int64 = math.MinInt64 + 3
+	initializedArray  int64 = math.MinInt64 + 4
 
 	// AppendIndex is the value used to indicate a slice append.
-	AppendIndex = Value{math.MinInt64 + 4, IntType}
+	AppendIndex = Value{math.MinInt64 + 5, IntType}
 	// RandomIndex is fallback value for container accesses.
-	RandomIndex = Value{math.MinInt64 + 5, IntType}
+	RandomIndex = Value{math.MinInt64 + 6, IntType}
 
 	// Nil represents an untyped nil
-	Nil = Value{math.MinInt64 + 6, nil}
+	Nil = Value{math.MinInt64 + 7, nil}
 )
 
 // InitializedStruct returns a placeholder initial value for structure types.
@@ -70,6 +72,8 @@ func (v Value) String() string {
 		return "initialized mutex"
 	case InitializedWaitGroup.v:
 		return "initialized wait group"
+	case InitializedOnce.v:
+		return "initialized once"
 	case initializedStruct:
 		return "initialized struct"
 	case initializedArray:

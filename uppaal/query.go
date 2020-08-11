@@ -24,6 +24,8 @@ const (
 	NoMutexRelatedDeadlocks
 	// NoWaitGroupRelatedDeadlocks verifies the system is never stuck waiting on a wait group operation.
 	NoWaitGroupRelatedDeadlocks
+	// NoOnceRelatedDeadlocks verifies the system is never stuck waiting on a once operation.
+	NoOnceRelatedDeadlocks
 	// NoFunctionCallsWithNilVariable verifies the system is never attempting to call a nil (-1) function variable.
 	NoFunctionCallsWithNilVariable
 	// NoGoroutineExitWithPanic verifies the system never exits a panicking goroutine.
@@ -48,6 +50,8 @@ func (c QueryCategory) String() string {
 		return "no mutex related deadlocks"
 	case NoWaitGroupRelatedDeadlocks:
 		return "no wait group related deadlocks"
+	case NoOnceRelatedDeadlocks:
+		return "no once related deadlocks"
 	case NoFunctionCallsWithNilVariable:
 		return "no function calls with nil variable"
 	case NoGoroutineExitWithPanic:

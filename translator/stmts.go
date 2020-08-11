@@ -49,6 +49,8 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 		t.translateMutexOpStmt(stmt, ctx)
 	case *ir.WaitGroupOpStmt:
 		t.translateWaitGroupOpSmt(stmt, ctx)
+	case *ir.OnceDoStmt:
+		t.translateOnceDoStmt(stmt, ctx)
 	default:
 		t.addWarning(fmt.Errorf("ignoring %T statement", stmt))
 	}

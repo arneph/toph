@@ -254,6 +254,8 @@ func (b *builder) specialOpForCall(callExpr *ast.CallExpr, ctx *context) (ir.Spe
 			return ir.Add, true
 		case "(*sync.WaitGroup).Wait":
 			return ir.Wait, true
+		case "(*sync.Once).Do":
+			return ir.Do, true
 		case "os.Exit":
 			return ir.DeadEnd, true
 		}

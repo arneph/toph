@@ -59,6 +59,7 @@ func main() {
 				MaxChannelCount:      100,
 				MaxMutexCount:        100,
 				MaxWaitGroupCount:    100,
+				MaxOnceCount:         100,
 				MaxStructCount:       100,
 				MaxContainerCount:    100,
 				ContainerCapacity:    5,

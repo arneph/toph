@@ -29,6 +29,7 @@ func (s *IfStmt) stmt()             {}
 func (s *MakeChanStmt) stmt()       {}
 func (s *MakeStructStmt) stmt()     {}
 func (s *MakeContainerStmt) stmt()  {}
+func (s *OnceDoStmt) stmt()         {}
 func (s *MutexOpStmt) stmt()        {}
 func (s *RecoverStmt) stmt()        {}
 func (s *ReturnStmt) stmt()         {}
@@ -48,6 +49,7 @@ func (o ChanOp) specialOp()      {}
 func (o DeadEndOp) specialOp()   {}
 func (o MutexOp) specialOp()     {}
 func (o WaitGroupOp) specialOp() {}
+func (o OnceOp) specialOp()      {}
 
 // SpecialOps returns a list of all defined special operations.
 func SpecialOps() []SpecialOp {
@@ -56,6 +58,7 @@ func SpecialOps() []SpecialOp {
 		DeadEnd,
 		Lock, Unlock, RLock, RUnlock,
 		Add, Wait,
+		Do,
 	}
 }
 

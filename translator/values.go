@@ -40,7 +40,7 @@ func (rvs *randomVariableSupplier) addToTrans(trans *uppaal.Trans) {
 	if trans.Guard() != "" {
 		guards = append(guards, trans.Guard())
 	}
-	for _, guard := range rvs.guards {
+	for _, guard := range guards {
 		if combinedGuardCount == 0 {
 			combinedGuards = guard
 			combinedGuardCount++
@@ -96,6 +96,8 @@ func (t *translator) translateValue(v ir.Value) string {
 		return "make_mutex()"
 	case ir.InitializedWaitGroup:
 		return "make_wait_group()"
+	case ir.InitializedOnce:
+		return "make_once()"
 	}
 	if v.Type() == ir.FuncType {
 		irFuncIndex := ir.FuncIndex(v.Value())

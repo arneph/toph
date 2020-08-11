@@ -146,3 +146,62 @@ func (s *WaitGroupOpStmt) tree(b *strings.Builder, indent int) {
 	}
 	fmt.Fprintf(b, "%s %s", s.op, s.waitGroup.String())
 }
+
+// OnceOp represents an operation performed on a wait group.
+type OnceOp int
+
+const (
+	// Do represents a sync.Once.Do operation.
+	Do OnceOp = iota
+)
+
+func (o OnceOp) String() string {
+	return "do"
+}
+
+// OnceDoStmt represents a sync.Once.Do call.
+type OnceDoStmt struct {
+	once LValue
+	f    Callable
+
+	Node
+}
+
+// NewOnceDoStmt creates a new once do statement for the given once and
+// function value.
+func NewOnceDoStmt(once LValue, f Callable, pos, end token.Pos) *OnceDoStmt {
+	s := new(OnceDoStmt)
+	s.once = once
+	s.f = f
+	s.pos = pos
+	s.end = end
+
+	return s
+}
+
+// Once returns the once that is called on.
+func (s *OnceDoStmt) Once() LValue {
+	return s.once
+}
+
+// F returns the function that may or may not get called by once.
+func (s *OnceDoStmt) F() Callable {
+	return s.f
+}
+
+// SpecialOp returns the operation performed on the once.
+func (s *OnceDoStmt) SpecialOp() SpecialOp {
+	return Do
+}
+
+func (s *OnceDoStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	switch callee := s.f.(type) {
+	case *Func:
+		fmt.Fprintf(b, "once_do %s %s", s.once.Handle(), callee.FuncValue())
+	case LValue:
+		fmt.Fprintf(b, "once_do %s %s", s.once.Handle(), callee.Handle())
+	default:
+		panic(fmt.Errorf("unexpected callee type: %T", callee))
+	}
+}

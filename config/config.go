@@ -11,6 +11,7 @@ type Config struct {
 	MaxChannelCount   int
 	MaxMutexCount     int
 	MaxWaitGroupCount int
+	MaxOnceCount      int
 	MaxStructCount    int
 	MaxContainerCount int
 	ContainerCapacity int

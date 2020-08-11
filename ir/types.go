@@ -36,6 +36,8 @@ const (
 	MutexType
 	// WaitGroupType is the type of a wait group variable.
 	WaitGroupType
+	// OnceType is the type of a once variable.
+	OnceType
 )
 
 // UninitializedValue returns the Uppaal zero value for the given type.
@@ -45,6 +47,8 @@ func (t BasicType) UninitializedValue() Value {
 		return Value{0, IntType}
 	case FuncType, ChanType, MutexType, WaitGroupType:
 		return Value{-1, t}
+	case OnceType:
+		return Value{0, OnceType}
 	default:
 		panic(fmt.Errorf("unknown Type: %d", t))
 	}
@@ -61,6 +65,8 @@ func (t BasicType) InitializedValue() Value {
 		return InitializedMutex
 	case WaitGroupType:
 		return InitializedWaitGroup
+	case OnceType:
+		return InitializedOnce
 	default:
 		panic(fmt.Errorf("unknown Type: %d", t))
 	}
@@ -79,6 +85,8 @@ func (t BasicType) VariablePrefix() string {
 		return "mid"
 	case WaitGroupType:
 		return "wid"
+	case OnceType:
+		return "oid"
 	default:
 		panic(fmt.Errorf("unknown Type: %d", t))
 	}
@@ -96,6 +104,8 @@ func (t BasicType) String() string {
 		return "Mutex"
 	case WaitGroupType:
 		return "WaitGroup"
+	case OnceType:
+		return "Once"
 	default:
 		panic(fmt.Errorf("unknown Type: %d", t))
 	}

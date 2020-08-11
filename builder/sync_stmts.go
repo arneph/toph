@@ -56,3 +56,28 @@ func (b *builder) findWaitGroup(waitGroupExpr ast.Expr, ctx *context) ir.LValue 
 	}
 	return lv
 }
+
+func (b *builder) findOnce(onceExpr ast.Expr, ctx *context) ir.LValue {
+	rv := b.processExpr(onceExpr, ctx)
+	lv, ok := rv.(ir.LValue)
+	if !ok || lv == nil {
+		p := b.fset.Position(onceExpr.Pos())
+		onceExprStr := b.nodeToString(onceExpr)
+		b.addWarning(fmt.Errorf("%v: could not resolve once expr: %v", p, onceExprStr))
+		return nil
+	}
+	if lv.Type() != ir.OnceType {
+		structType := lv.Type().(*ir.StructType)
+		embeddedFields, ok := structType.FindEmbeddedFieldOfType(ir.WaitGroupType)
+		if !ok {
+			p := b.fset.Position(onceExpr.Pos())
+			onceExprStr := b.nodeToString(onceExpr)
+			b.addWarning(fmt.Errorf("%v: could not resolve once expr: %v", p, onceExprStr))
+			return nil
+		}
+		for _, field := range embeddedFields {
+			lv = ir.NewFieldSelection(lv, field)
+		}
+	}
+	return lv
+}

@@ -82,6 +82,8 @@ fid make_fid(int id, int par_pid) {
 			t.addMutexes()
 		case ir.WaitGroupType:
 			t.addWaitGroups()
+		case ir.OnceType:
+			t.addOnces()
 		default:
 			panic(fmt.Errorf("unexpected ir.BasicType: %d", irType))
 		}

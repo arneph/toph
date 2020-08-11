@@ -22,6 +22,7 @@ var (
 	maxChannelCount   = flag.Int("max-channels", 100, "set maximum number of channels in Uppaal")
 	maxMutexCount     = flag.Int("max-mutexes", 100, "set maximum number of sync.Mutexes and sync.RWMutexes in Uppaal")
 	maxWaitGroupCount = flag.Int("max-wait-groups", 100, "set maximum number of sync.WaitGroups in Uppaal")
+	maxOnceCount      = flag.Int("max-once", 100, "set maximum number of sync.Once in Uppaal")
 	maxStructCount    = flag.Int("max-structs", 100, "set maximum number of struct instances (per defined struct) in Uppaal")
 	maxContainerCount = flag.Int("max-containers", 100, "set maximum number of array, slice, or map instances (per element type) in Uppaal")
 
@@ -59,6 +60,7 @@ func main() {
 		MaxChannelCount:      *maxChannelCount,
 		MaxMutexCount:        *maxMutexCount,
 		MaxWaitGroupCount:    *maxWaitGroupCount,
+		MaxOnceCount:         *maxOnceCount,
 		MaxStructCount:       *maxStructCount,
 		MaxContainerCount:    *maxContainerCount,
 		ContainerCapacity:    *containerCapacity,
