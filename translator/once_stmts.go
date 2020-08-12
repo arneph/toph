@@ -16,7 +16,10 @@ func (t *translator) translateOnceDoStmt(stmt *ir.OnceDoStmt, ctx *context) {
 	onceVar := "oid"
 	ctx.proc.Declarations().AddVariable(onceVar, "int", "")
 
-	start := ctx.currentState
+	enter := ctx.proc.AddState(name+"_enter_", uppaal.Renaming)
+	enter.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+	enter.SetLocationAndResetNameAndCommentLocation(
+		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 
 	exit := ctx.proc.AddState(name+"_exit_", uppaal.Renaming)
 	exit.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
@@ -24,22 +27,24 @@ func (t *translator) translateOnceDoStmt(stmt *ir.OnceDoStmt, ctx *context) {
 	do := ctx.proc.AddState(name+"_do_", uppaal.Renaming)
 	do.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	do.SetLocationAndResetNameAndCommentLocation(
-		ctx.currentState.Location().Add(uppaal.Location{136, 136}))
+		ctx.currentState.Location().Add(uppaal.Location{136, 272}))
 
-	dontEnter := ctx.proc.AddTransition(ctx.currentState, exit)
-	dontEnter.SetGuard(fmt.Sprintf("once_values[%s] == 2", handle), true)
-	rvs.addToTrans(dontEnter)
-	dontEnter.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
-	dontEnter.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+	trans1 := ctx.proc.AddTransition(ctx.currentState, enter)
+	rvs.addToTrans(trans1)
+	trans1.AddUpdate(fmt.Sprintf("oid = %s", handle), true)
+	trans1.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+	trans1.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+	trans1.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
 
-	doEnter := ctx.proc.AddTransition(ctx.currentState, do)
-	doEnter.SetGuard(fmt.Sprintf("once_values[%s] == 0", handle), true)
-	doEnter.AddUpdate(fmt.Sprintf("oid = %s", handle), true)
-	doEnter.AddUpdate("\nonce_values[oid] = 1", true)
-	rvs.addToTrans(dontEnter)
-	doEnter.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
-	doEnter.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{140, 80}))
-	doEnter.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{140, 96}))
+	dontExecute := ctx.proc.AddTransition(enter, exit)
+	dontExecute.SetGuard("once_values[oid] == 2", true)
+	dontExecute.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 184}))
+
+	doExecute := ctx.proc.AddTransition(enter, do)
+	doExecute.SetGuard("once_values[oid] == 0", true)
+	doExecute.AddUpdate("once_values[oid] = 1", true)
+	doExecute.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{140, 200}))
+	doExecute.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{140, 216}))
 
 	ctx.currentState = do
 
@@ -58,7 +63,7 @@ func (t *translator) translateOnceDoStmt(stmt *ir.OnceDoStmt, ctx *context) {
 		ctx.currentState.Location().Add(uppaal.Location{-136, 136}))
 
 	ctx.proc.AddQuery(uppaal.NewQuery(
-		"A[] (not out_of_resources) imply (not (deadlock and $."+start.Name()+"))",
+		"A[] (not out_of_resources) imply (not (deadlock and $."+enter.Name()+"))",
 		"check deadlock with pending once operation unreachable",
 		t.program.FileSet().Position(stmt.Pos()).String(),
 		uppaal.NoOnceRelatedDeadlocks))
