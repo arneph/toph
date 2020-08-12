@@ -71,7 +71,6 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 	case *ast.SelectorExpr:
 		return b.processSelectorExpr(e, ctx)
 	case *ast.SliceExpr:
-		b.processExpr(e.X, ctx)
 		if e.Low != nil {
 			b.processExpr(e.Low, ctx)
 		}
@@ -81,7 +80,15 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 		if e.Max != nil {
 			b.processExpr(e.Max, ctx)
 		}
-		return nil
+		result := b.processExpr(e.X, ctx)
+		if result != nil {
+			if e.Low != nil || e.High != nil || e.Max != nil {
+				p := b.fset.Position(e.Pos())
+				eStr := b.nodeToString(e)
+				b.addWarning(fmt.Errorf("%v: ignoring indices of slice expression: %s", p, eStr))
+			}
+		}
+		return result
 	case *ast.StarExpr:
 		return b.processExpr(e.X, ctx)
 	case *ast.TypeAssertExpr:
