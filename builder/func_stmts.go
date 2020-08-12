@@ -392,6 +392,14 @@ func (b *builder) liftedSpecialOpFunc(specialOp ir.SpecialOp) *ir.Func {
 		waitGroupOpStmt := ir.NewWaitGroupOpStmt(waitGroupVar, specialOp.(ir.WaitGroupOp), delta, token.NoPos, token.NoPos)
 		subCtx.body.AddStmt(waitGroupOpStmt)
 
+	case ir.Do:
+		onceVar := b.program.NewVariable("oc", ir.OnceType.UninitializedValue())
+		irFunc.AddArg(0, onceVar)
+		fVar := b.program.NewVariable("f", ir.FuncType.UninitializedValue())
+		irFunc.AddArg(1, fVar)
+		onceDoStmt := ir.NewOnceDoStmt(onceVar, fVar, token.NoPos, token.NoPos)
+		subCtx.body.AddStmt(onceDoStmt)
+
 	case ir.DeadEnd:
 		deadEndStmt := ir.NewDeadEndStmt(token.NoPos, token.NoPos)
 		subCtx.body.AddStmt(deadEndStmt)
@@ -485,16 +493,12 @@ func (b *builder) processSpecialOpCallExprWithCallKind(callExpr *ast.CallExpr, c
 			return nil
 		}
 
-		if callKind != ir.Call {
-			p := b.fset.Position(callExpr.Args[0].Pos())
-			fStr := b.nodeToString(callExpr.Args[0])
-			b.addWarning(fmt.Errorf("%v: sync.Once.Do only supported as direct function call: %s", p, fStr))
+		if callKind == ir.Call {
+			onceDoStmt := ir.NewOnceDoStmt(onceVal, f, callExpr.Pos(), callExpr.End())
+			ctx.body.AddStmt(onceDoStmt)
 			return nil
 		}
-
-		onceDoStmt := ir.NewOnceDoStmt(onceVal, f, callExpr.Pos(), callExpr.End())
-		ctx.body.AddStmt(onceDoStmt)
-		return nil
+		liftedFuncArgs = []ir.RValue{onceVal.(ir.RValue), f}
 
 	case ir.DeadEnd:
 		if callKind == ir.Call {
