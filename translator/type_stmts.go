@@ -66,6 +66,29 @@ func (t *translator) translateMakeContainerStmt(stmt *ir.MakeContainerStmt, ctx 
 	ctx.addLocation(made.Location())
 }
 
+func (t *translator) translateCopySliceStmt(stmt *ir.CopySliceStmt, ctx *context) {
+	var rvs randomVariableSupplier
+	dstHandle, dstUsesGlobals := t.translateLValue(stmt.DestinationVal(), &rvs, ctx)
+	srcHandle, srcUsesGlobals := t.translateLValue(stmt.SourceVal(), &rvs, ctx)
+
+	copied := ctx.proc.AddState("copied_"+stmt.SliceType().VariablePrefix()+"_", uppaal.Renaming)
+	copied.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
+	copied.SetLocationAndResetNameAndCommentLocation(
+		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
+	copy := ctx.proc.AddTransition(ctx.currentState, copied)
+	copy.AddUpdate(fmt.Sprintf("copy_between_%s(%s, %s)",
+		stmt.SliceType().VariablePrefix(),
+		dstHandle, srcHandle),
+		dstUsesGlobals || srcUsesGlobals)
+	rvs.addToTrans(copy)
+	copy.SetSelectLocation(ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+	copy.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
+	copy.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
+
+	ctx.currentState = copied
+	ctx.addLocation(copied.Location())
+}
+
 func (t *translator) translateDeleteMapEntryStmt(stmt *ir.DeleteMapEntryStmt, ctx *context) {
 	var rvs randomVariableSupplier
 	handle, _ := t.translateLValue(stmt.MapVal(), &rvs, ctx)

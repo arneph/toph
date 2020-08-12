@@ -275,6 +275,14 @@ func (t *translator) addSliceType(containerType *ir.ContainerType) {
 	if !containerType.HoldsPointers() {
 		initializedValue = t.translateValue(containerType.ElementType().InitializedValue())
 	}
+	oldElementHandle := fmt.Sprintf("%s_slices[old_bid][i]", containerType.VariablePrefix())
+	if containerType.RequiresDeepCopies() {
+		oldElementHandle = t.translateCopyOfRValue(oldElementHandle, containerType.ElementType())
+	}
+	srcElementHandle := fmt.Sprintf("%s_slices[src_bid][i]", containerType.VariablePrefix())
+	if containerType.RequiresDeepCopies() {
+		srcElementHandle = t.translateCopyOfRValue(srcElementHandle, containerType.ElementType())
+	}
 
 	t.system.Declarations().AddFunc(
 		fmt.Sprintf(`int make_%[1]s(int length, bool initialize_elements) {
@@ -316,13 +324,14 @@ func (t *translator) addSliceType(containerType *ir.ContainerType) {
 
 	%[1]s_lengths[new_bid] = %[1]s_lengths[new_bid];
 	for (i = 0; i < %[1]s_lengths[new_bid]; i++) {
-		%[1]s_slices[new_bid][i] = %[1]s_slices[old_bid][i];
+		%[1]s_slices[new_bid][i] = %[3]s;
 	}
 
 	return new_bid;
 }`,
 			containerType.VariablePrefix(),
-			t.containerTypeCount(containerType)))
+			t.containerTypeCount(containerType),
+			oldElementHandle))
 
 	t.system.Declarations().AddFunc(
 		fmt.Sprintf(`void append_%[1]s(int bid, %[2]s value) {
@@ -337,6 +346,21 @@ func (t *translator) addSliceType(containerType *ir.ContainerType) {
 			containerType.VariablePrefix(),
 			t.uppaalReferenceTypeForIrType(containerType.ElementType()),
 			t.containerTypeCount(containerType)))
+
+	t.system.Declarations().AddFunc(
+		fmt.Sprintf(`void copy_between_%[1]s(int dst_bid, int src_bid) {
+	int i;
+	if (dst_bid == src_bid) {
+		return;
+	}
+	for (i = 0; i < %[1]s_lengths[dst_bid] && i < %[1]s_lengths[src_bid]; i++) {
+		%[1]s_slices[dst_bid][i] = %[4]s;
+	}
+}`,
+			containerType.VariablePrefix(),
+			t.uppaalReferenceTypeForIrType(containerType.ElementType()),
+			t.containerTypeCount(containerType),
+			srcElementHandle))
 }
 
 func (t *translator) addMapType(containerType *ir.ContainerType) {

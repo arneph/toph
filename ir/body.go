@@ -32,7 +32,7 @@ func (b *Body) WalkStmts(visitFunc func(stmt Stmt, scope *Scope)) {
 			*BranchStmt,
 			*MakeChanStmt, *ChanCommOpStmt, *CloseChanStmt,
 			*DeadEndStmt,
-			*DeleteMapEntryStmt,
+			*CopySliceStmt, *DeleteMapEntryStmt,
 			*MutexOpStmt, *WaitGroupOpStmt, *OnceDoStmt,
 			*MakeStructStmt, *MakeContainerStmt,
 			*CallStmt, *ReturnStmt, *RecoverStmt:

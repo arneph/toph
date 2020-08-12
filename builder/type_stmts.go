@@ -351,6 +351,21 @@ func (b *builder) indicesAndValueExprsForArrayOrSliceCompositeLit(compositeLit *
 	return
 }
 
+func (b *builder) processCopyExpr(callExpr *ast.CallExpr, ctx *context) {
+	typesSliceType := ctx.typesInfo.TypeOf(callExpr.Args[0])
+	irType := b.typesTypeToIrType(typesSliceType)
+	if irType == nil {
+		return
+	}
+	dstVal := b.findContainer(callExpr.Args[0], ctx)
+	srcVal := b.findContainer(callExpr.Args[1], ctx)
+	if dstVal == nil || srcVal == nil {
+		return
+	}
+	copyStmt := ir.NewCopySliceStmt(dstVal, srcVal, callExpr.Pos(), callExpr.End())
+	ctx.body.AddStmt(copyStmt)
+}
+
 func (b *builder) processDeleteExpr(callExpr *ast.CallExpr, ctx *context) {
 	typesMapType := ctx.typesInfo.TypeOf(callExpr.Args[0])
 	irType := b.typesTypeToIrType(typesMapType)

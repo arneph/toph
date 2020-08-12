@@ -394,6 +394,12 @@ func (b *callGraphBuilder) findCalleesInfoForBody(body *ir.Body) (res callsInfo)
 			} else {
 				res.addTypeAllocations(stmt.ContainerType(), 1)
 			}
+		case *ir.CopySliceStmt:
+			if stmt.SliceType().RequiresDeepCopies() {
+				subRes := b.findCalleesForTypeCopy(stmt.SliceType().ElementType())
+				subRes.multiply(b.config.ContainerCapacity)
+				res.add(subRes)
+			}
 		case *ir.IfStmt:
 			res.add(b.findCalleesInfoForIfStmt(stmt))
 		case *ir.SwitchStmt:

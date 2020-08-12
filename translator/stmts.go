@@ -33,6 +33,8 @@ func (t *translator) translateStmt(stmt ir.Stmt, ctx *context) {
 		t.translateMakeStructStmt(stmt, ctx)
 	case *ir.MakeContainerStmt:
 		t.translateMakeContainerStmt(stmt, ctx)
+	case *ir.CopySliceStmt:
+		t.translateCopySliceStmt(stmt, ctx)
 	case *ir.DeleteMapEntryStmt:
 		t.translateDeleteMapEntryStmt(stmt, ctx)
 	case *ir.MakeChanStmt:

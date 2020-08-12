@@ -279,7 +279,7 @@ func (b *builder) isKnownBuiltin(callExpr *ast.CallExpr, ctx *context) (string, 
 	switch usedTypesObj := usedTypesObj.(type) {
 	case *types.Builtin:
 		switch name := usedTypesObj.Name(); name {
-		case "append", "delete", "new", "panic", "recover":
+		case "append", "copy", "delete", "new", "panic", "recover":
 			return name, true
 		case "make":
 			astTypeArg := callExpr.Args[0]

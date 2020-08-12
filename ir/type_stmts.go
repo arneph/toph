@@ -102,6 +102,49 @@ func (s *MakeContainerStmt) tree(b *strings.Builder, indent int) {
 	fmt.Fprintf(b, "%s <- make(%s, %s)", s.containerVar.Handle(), s.containerVar.Type(), arg2)
 }
 
+// CopySliceStmt represents a copy(dst, src []T) call.
+type CopySliceStmt struct {
+	dstVal LValue
+	srcVal LValue
+
+	Node
+}
+
+// NewCopySliceStmt creats a new CopySliceStmt for the given source and
+// destination slice values.
+func NewCopySliceStmt(dstVal, srcVal LValue, pos, end token.Pos) *CopySliceStmt {
+	if dstVal.Type() != srcVal.Type() {
+		panic("attempted to create slice copy stmt between different slice types")
+	}
+	s := new(CopySliceStmt)
+	s.dstVal = dstVal
+	s.srcVal = srcVal
+	s.pos = pos
+	s.end = end
+
+	return s
+}
+
+// DestinationVal returns the lvalue holding the slice to copy to.
+func (s *CopySliceStmt) DestinationVal() LValue {
+	return s.dstVal
+}
+
+// SourceVal returns the lvalue holding the slice to copy from.
+func (s *CopySliceStmt) SourceVal() LValue {
+	return s.srcVal
+}
+
+// SliceType returns the type of the slice to copy from and to.
+func (s *CopySliceStmt) SliceType() *ContainerType {
+	return s.dstVal.Type().(*ContainerType)
+}
+
+func (s *CopySliceStmt) tree(b *strings.Builder, indent int) {
+	writeIndent(b, indent)
+	fmt.Fprintf(b, "copy(%s, %s)", s.dstVal.Handle(), s.srcVal.Handle())
+}
+
 // DeleteMapEntryStmt represents a delete(map[K]V, k) call.
 type DeleteMapEntryStmt struct {
 	mapVal LValue

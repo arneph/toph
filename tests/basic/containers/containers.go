@@ -22,7 +22,9 @@ func (w *Worker) Work() {
 	}
 	close(w.io[1])
 
-	for _, h := range w.completionHandlers {
+	handlers := make([]func(w *Worker), len(w.completionHandlers))
+	copy(handlers, w.completionHandlers)
+	for _, h := range handlers {
 		h(w)
 	}
 }

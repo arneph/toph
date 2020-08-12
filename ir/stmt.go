@@ -22,6 +22,7 @@ func (s *ChanCommOpStmt) stmt()     {}
 func (s *ChanRangeStmt) stmt()      {}
 func (s *CloseChanStmt) stmt()      {}
 func (s *ContainerRangeStmt) stmt() {}
+func (s *CopySliceStmt) stmt()      {}
 func (s *DeadEndStmt) stmt()        {}
 func (s *DeleteMapEntryStmt) stmt() {}
 func (s *ForStmt) stmt()            {}

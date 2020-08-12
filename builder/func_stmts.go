@@ -145,6 +145,8 @@ func (b *builder) processCallExprWithCallKind(callExpr *ast.CallExpr, callKind i
 			if resultVar != nil {
 				return map[int]*ir.Variable{0: resultVar}
 			}
+		case "copy":
+			b.processCopyExpr(callExpr, ctx)
 		case "delete":
 			b.processDeleteExpr(callExpr, ctx)
 		case "make":
