@@ -112,7 +112,8 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 			panic("found nil expression in AST")
 		}
 		p := b.fset.Position(e.Pos())
-		b.addWarning(fmt.Errorf("%v: ignoring %T expression", p, e))
+		eStr := b.nodeToString(e)
+		b.addWarning(fmt.Errorf("%v: ignoring %T expression: %s", p, e, eStr))
 		return nil
 	}
 }
