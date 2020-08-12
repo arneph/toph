@@ -65,8 +65,8 @@ func (b *callGraphBuilder) addCallsToFuncCallGraph() {
 					return
 				}
 				switch callee := stmt.F().(type) {
-				case *ir.Func:
-					b.fcg.addStaticCall(caller, callee)
+				case ir.Value:
+					b.fcg.addStaticCall(caller, b.program.Func(ir.FuncIndex(callee.Value())))
 				case ir.LValue:
 					calleeSig := types.NewSignature(nil, nil, nil, false)
 					b.fcg.addDynamicCaller(caller, calleeSig)
@@ -366,13 +366,16 @@ func (b *callGraphBuilder) findCalleesInfoForBody(body *ir.Body) (res callsInfo)
 				continue
 			}
 			res.addCallCount(1)
-			if callee, ok := stmt.F().(*ir.Func); ok {
-				res.addCalleeCount(callee, 1)
-			} else {
+			switch callee := stmt.F().(type) {
+			case ir.Value:
+				res.addCalleeCount(b.program.Func(ir.FuncIndex(callee.Value())), 1)
+			case ir.LValue:
 				calleeSig := types.NewSignature(nil, nil, nil, false)
 				for _, dynCallee := range b.fcg.DynamicCallees(calleeSig) {
 					res.addCalleeCount(dynCallee, 1)
 				}
+			default:
+				panic(fmt.Errorf("unexpected callee type: %T", callee))
 			}
 		case ir.SpecialOpStmt:
 			res.addSpecialOpCount(stmt.SpecialOp(), 1)

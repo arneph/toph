@@ -162,14 +162,14 @@ func (o OnceOp) String() string {
 // OnceDoStmt represents a sync.Once.Do call.
 type OnceDoStmt struct {
 	once LValue
-	f    Callable
+	f    RValue
 
 	Node
 }
 
 // NewOnceDoStmt creates a new once do statement for the given once and
 // function value.
-func NewOnceDoStmt(once LValue, f Callable, pos, end token.Pos) *OnceDoStmt {
+func NewOnceDoStmt(once LValue, f RValue, pos, end token.Pos) *OnceDoStmt {
 	s := new(OnceDoStmt)
 	s.once = once
 	s.f = f
@@ -185,7 +185,7 @@ func (s *OnceDoStmt) Once() LValue {
 }
 
 // F returns the function that may or may not get called by once.
-func (s *OnceDoStmt) F() Callable {
+func (s *OnceDoStmt) F() RValue {
 	return s.f
 }
 
@@ -196,12 +196,5 @@ func (s *OnceDoStmt) SpecialOp() SpecialOp {
 
 func (s *OnceDoStmt) tree(b *strings.Builder, indent int) {
 	writeIndent(b, indent)
-	switch callee := s.f.(type) {
-	case *Func:
-		fmt.Fprintf(b, "once_do %s %s", s.once.Handle(), callee.FuncValue())
-	case LValue:
-		fmt.Fprintf(b, "once_do %s %s", s.once.Handle(), callee.Handle())
-	default:
-		panic(fmt.Errorf("unexpected callee type: %T", callee))
-	}
+	fmt.Fprintf(b, "once_do %s %s", s.once.Handle(), s.f.String())
 }

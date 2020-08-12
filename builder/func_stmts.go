@@ -477,7 +477,7 @@ func (b *builder) processSpecialOpCallExprWithCallKind(callExpr *ast.CallExpr, c
 		if onceVal == nil {
 			return nil
 		}
-		f, _ := b.findCallee(callExpr.Args[0], ctx)
+		f := b.processExpr(callExpr.Args[0], ctx)
 		if f == nil {
 			p := b.fset.Position(callExpr.Args[0].Pos())
 			fStr := b.nodeToString(callExpr.Args[0])

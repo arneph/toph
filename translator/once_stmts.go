@@ -48,9 +48,19 @@ func (t *translator) translateOnceDoStmt(stmt *ir.OnceDoStmt, ctx *context) {
 
 	ctx.currentState = do
 
+	var callee ir.Callable
+	switch f := stmt.F().(type) {
+	case ir.Value:
+		callee = t.program.Func(ir.FuncIndex(f.Value()))
+	case ir.LValue:
+		callee = f.(ir.Callable)
+	default:
+		panic("unexpected rvalue type")
+	}
+
 	t.translateCallStmt(
 		ir.NewCallStmt(
-			stmt.F(),
+			callee,
 			types.NewSignature(nil, nil, nil, false),
 			ir.Call, stmt.Pos(), stmt.End()),
 		ctx)
