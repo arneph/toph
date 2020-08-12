@@ -387,6 +387,9 @@ func (b *callGraphBuilder) findCalleesInfoForBody(body *ir.Body) (res callsInfo)
 			}
 		case *ir.MakeContainerStmt:
 			if stmt.InitializeElements() {
+				if stmt.ContainerType().Kind() != ir.Array {
+					res.addTypeAllocations(stmt.ContainerType(), 1)
+				}
 				res.add(b.findCalleesForInitializedType(stmt.ContainerType()))
 			} else {
 				res.addTypeAllocations(stmt.ContainerType(), 1)
