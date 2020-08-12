@@ -362,6 +362,9 @@ func (b *callGraphBuilder) findCalleesInfoForBody(body *ir.Body) (res callsInfo)
 			res.add(b.findCalleesInfoForCallStmt(stmt))
 		case *ir.OnceDoStmt:
 			res.addSpecialOpCount(ir.Do, 1)
+			if ir.Call&b.callKinds == 0 {
+				continue
+			}
 			res.addCallCount(1)
 			if callee, ok := stmt.F().(*ir.Func); ok {
 				res.addCalleeCount(callee, 1)
