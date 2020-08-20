@@ -20,14 +20,14 @@ var (
 
 	debug = flag.Bool("debug", false, "generate debug output files")
 
-	maxProcessCount   = flag.Int("max-processes", 100, "set maximum number of function process instances in Uppaal")
-	maxDeferCount     = flag.Int("max-defers", 100, "set maximum number of deferred function calls per function process instance in Uppaal")
-	maxChannelCount   = flag.Int("max-channels", 100, "set maximum number of channels in Uppaal")
-	maxMutexCount     = flag.Int("max-mutexes", 100, "set maximum number of sync.Mutexes and sync.RWMutexes in Uppaal")
-	maxWaitGroupCount = flag.Int("max-wait-groups", 100, "set maximum number of sync.WaitGroups in Uppaal")
-	maxOnceCount      = flag.Int("max-once", 100, "set maximum number of sync.Once in Uppaal")
-	maxStructCount    = flag.Int("max-structs", 100, "set maximum number of struct instances (per defined struct) in Uppaal")
-	maxContainerCount = flag.Int("max-containers", 100, "set maximum number of array, slice, or map instances (per element type) in Uppaal")
+	maxProcessCount   = flag.Int("max-processes", 10, "set maximum number of function process instances in Uppaal")
+	maxDeferCount     = flag.Int("max-defers", 10, "set maximum number of deferred function calls per function process instance in Uppaal")
+	maxChannelCount   = flag.Int("max-channels", 20, "set maximum number of channels in Uppaal")
+	maxMutexCount     = flag.Int("max-mutexes", 20, "set maximum number of sync.Mutexes and sync.RWMutexes in Uppaal")
+	maxWaitGroupCount = flag.Int("max-wait-groups", 20, "set maximum number of sync.WaitGroups in Uppaal")
+	maxOnceCount      = flag.Int("max-once", 20, "set maximum number of sync.Once in Uppaal")
+	maxStructCount    = flag.Int("max-structs", 20, "set maximum number of struct instances (per defined struct) in Uppaal")
+	maxContainerCount = flag.Int("max-containers", 20, "set maximum number of array, slice, or map instances (per element type) in Uppaal")
 
 	containerCapacity = flag.Int("container-capacity", 5, "set the constant capacity of arrays, slices, and maps in Uppaal")
 
