@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/arneph/toph/ir"
+	"github.com/arneph/toph/uppaal"
 )
 
 func (t *translator) isTypeUsed(typ ir.Type) bool {
@@ -150,7 +151,8 @@ func (t *translator) addStructType(structType *ir.StructType) {
 	t.system.Declarations().AddFunc(
 		fmt.Sprintf(`int make_%[1]s(bool initialize_fields) {
 	int sid;
-	if (%[1]s_count == %[2]d) {
+	if (%[1]s_count >= %[2]d) {
+		%[1]s_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -171,7 +173,8 @@ func (t *translator) addStructType(structType *ir.StructType) {
 	t.system.Declarations().AddFunc(
 		fmt.Sprintf(`int copy_%[1]s(int old_sid) {
 	int new_sid;
-	if (%[1]s_count == %[2]d) {
+	if (%[1]s_count >= %[2]d) {
+		%[1]s_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -184,6 +187,12 @@ func (t *translator) addStructType(structType *ir.StructType) {
 			structType.VariablePrefix(),
 			t.structTypeCount(structType),
 			copyFieldsStmts.String()))
+
+	t.system.AddQuery(uppaal.NewQuery(
+		fmt.Sprintf("A[] %s_count < %d", structType.VariablePrefix(), t.structTypeCount(structType)+1),
+		fmt.Sprintf("check resource bound never reached through %s creation", structType.String()),
+		"",
+		uppaal.ResourceBoundUnreached))
 }
 
 func (t *translator) addArrayType(containerType *ir.ContainerType) {
@@ -209,7 +218,8 @@ func (t *translator) addArrayType(containerType *ir.ContainerType) {
 	t.system.Declarations().AddFunc(
 		fmt.Sprintf(`int make_%[1]s(bool initialize_elements) {
 	int aid;
-	if (%[1]s_count == %[2]d) {
+	if (%[1]s_count >= %[2]d) {
+		%[1]s_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -237,7 +247,8 @@ func (t *translator) addArrayType(containerType *ir.ContainerType) {
 	t.system.Declarations().AddFunc(
 		fmt.Sprintf(`int copy_%[1]s(int old_aid) {
 	int new_aid;
-	if (%[1]s_count == %[2]d) {
+	if (%[1]s_count >= %[2]d) {
+		%[1]s_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -254,6 +265,12 @@ func (t *translator) addArrayType(containerType *ir.ContainerType) {
 			t.containerTypeCount(containerType),
 			containerType.Len()-1,
 			oldElementHandle))
+
+	t.system.AddQuery(uppaal.NewQuery(
+		fmt.Sprintf("A[] %s_count < %d", containerType.VariablePrefix(), t.containerTypeCount(containerType)+1),
+		fmt.Sprintf("check resource bound never reached through %s creation", containerType.String()),
+		"",
+		uppaal.ResourceBoundUnreached))
 }
 
 func (t *translator) addSliceType(containerType *ir.ContainerType) {
@@ -287,7 +304,8 @@ func (t *translator) addSliceType(containerType *ir.ContainerType) {
 	t.system.Declarations().AddFunc(
 		fmt.Sprintf(`int make_%[1]s(int length, bool initialize_elements) {
 	int bid, i;
-	if (%[1]s_count == %[2]d) {
+	if (%[1]s_count >= %[2]d) {
+		%[1]s_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -315,7 +333,8 @@ func (t *translator) addSliceType(containerType *ir.ContainerType) {
 	t.system.Declarations().AddFunc(
 		fmt.Sprintf(`int copy_%[1]s(int old_bid) {
 	int new_bid, i;
-	if (%[1]s_count == %[2]d) {
+	if (%[1]s_count >= %[2]d) {
+		%[1]s_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -336,7 +355,7 @@ func (t *translator) addSliceType(containerType *ir.ContainerType) {
 	t.system.Declarations().AddFunc(
 		fmt.Sprintf(`void append_%[1]s(int bid, %[2]s value) {
 	int index = %[1]s_lengths[bid];
-	if (index == %[3]d) {
+	if (index >= %[3]d) {
 		out_of_resources = true;
 		return;
 	}
@@ -361,6 +380,12 @@ func (t *translator) addSliceType(containerType *ir.ContainerType) {
 			t.uppaalReferenceTypeForIrType(containerType.ElementType()),
 			t.containerTypeCount(containerType),
 			srcElementHandle))
+
+	t.system.AddQuery(uppaal.NewQuery(
+		fmt.Sprintf("A[] %s_count < %d", containerType.VariablePrefix(), t.containerTypeCount(containerType)+1),
+		fmt.Sprintf("check resource bound never reached through %s creation", containerType.String()),
+		"",
+		uppaal.ResourceBoundUnreached))
 }
 
 func (t *translator) addMapType(containerType *ir.ContainerType) {
@@ -393,7 +418,8 @@ func (t *translator) addMapType(containerType *ir.ContainerType) {
 	t.system.Declarations().AddFunc(
 		fmt.Sprintf(`int make_%[1]s() {
 	int mid;
-	if (%[1]s_count == %[2]d) {
+	if (%[1]s_count >= %[2]d) {
+		%[1]s_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -447,4 +473,10 @@ func (t *translator) addMapType(containerType *ir.ContainerType) {
 			containerType.VariablePrefix(),
 			currentElementHandle,
 			nextElementHandle))
+
+	t.system.AddQuery(uppaal.NewQuery(
+		fmt.Sprintf("A[] %s_count < %d", containerType.VariablePrefix(), t.containerTypeCount(containerType)+1),
+		fmt.Sprintf("check resource bound never reached through %s creation", containerType.String()),
+		"",
+		uppaal.ResourceBoundUnreached))
 }

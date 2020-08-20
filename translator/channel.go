@@ -216,7 +216,8 @@ func (t *translator) addChannelDeclarations() {
 	t.system.Declarations().AddFunc(fmt.Sprintf(
 		`int make_chan(int buffer) {
 	int cid;
-	if (chan_count == %d) {
+	if (chan_count >= %d) {
+		chan_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -226,6 +227,12 @@ func (t *translator) addChannelDeclarations() {
 	chan_buffer[cid] = buffer;
 	return cid;
 }`, t.channelCount()))
+
+	t.system.AddQuery(uppaal.NewQuery(
+		fmt.Sprintf("A[] chan_count < %d", t.channelCount()+1),
+		"check resource bound never reached through channel creation",
+		"",
+		uppaal.ResourceBoundUnreached))
 }
 
 func (t *translator) addChannelProcessInstances() {

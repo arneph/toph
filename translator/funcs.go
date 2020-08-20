@@ -87,7 +87,8 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 		t.system.Declarations().AddFunc(
 			fmt.Sprintf(`int make_%[1]s() {
 	int pid;
-	if (%[1]s_count == %[2]d) {
+	if (%[1]s_count >= %[2]d) {
+		%[1]s_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -99,7 +100,8 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 		t.system.Declarations().AddFunc(
 			fmt.Sprintf(`int make_%[1]s(int par_pid) {
 	int pid;
-	if (%[1]s_count == %[2]d) {
+	if (%[1]s_count >= %[2]d) {
+		%[1]s_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -109,6 +111,11 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 	return pid;
 }`, proc.Name(), t.callCount(f), externalPanicInit))
 	}
+	t.system.AddQuery(uppaal.NewQuery(
+		fmt.Sprintf("A[] %s_count < %d", proc.Name(), t.callCount(f)+1),
+		fmt.Sprintf("check resource bound never reached through %s creation", proc.Name()),
+		"",
+		uppaal.ResourceBoundUnreached))
 }
 
 func (t *translator) translateFunc(f *ir.Func) {

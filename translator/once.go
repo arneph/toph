@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/arneph/toph/ir"
+	"github.com/arneph/toph/uppaal"
 )
 
 func (t *translator) onceCount() int {
@@ -24,7 +25,8 @@ func (t *translator) addOnces() {
 	t.system.Declarations().AddFunc(fmt.Sprintf(
 		`int make_once() {
 	int oid;
-	if (once_count == %d) {
+	if (once_count >= %d) {
+		once_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -33,4 +35,9 @@ func (t *translator) addOnces() {
 	once_values[oid] = 0;
 	return oid;
 }`, t.onceCount()))
+	t.system.AddQuery(uppaal.NewQuery(
+		fmt.Sprintf("A[] once_count < %d", t.onceCount()+1),
+		"check resource bound never reached through once creation",
+		"",
+		uppaal.ResourceBoundUnreached))
 }

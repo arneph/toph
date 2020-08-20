@@ -195,7 +195,8 @@ func (t *translator) addMutexDeclarations() {
 	t.system.Declarations().AddFunc(fmt.Sprintf(
 		`int make_mutex() {
 	int mid;
-	if (mutex_count == %d) {
+	if (mutex_count >= %d) {
+		mutex_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -205,6 +206,11 @@ func (t *translator) addMutexDeclarations() {
 	mutex_pending_writers[mid] = 0;
 	return mid;
 }`, t.mutexCount()))
+	t.system.AddQuery(uppaal.NewQuery(
+		fmt.Sprintf("A[] mutex_count < %d", t.mutexCount()+1),
+		"check resource bound never reached through mutex creation",
+		"",
+		uppaal.ResourceBoundUnreached))
 }
 
 func (t *translator) addMutexProcessInstances() {

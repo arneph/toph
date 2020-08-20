@@ -123,7 +123,8 @@ func (t *translator) addWaitGroupDeclarations() {
 	t.system.Declarations().AddFunc(fmt.Sprintf(
 		`int make_wait_group() {
 	int wid;
-	if (wait_group_count == %d) {
+	if (wait_group_count >= %d) {
+		wait_group_count++;
 		out_of_resources = true;
 		return 0;
 	}
@@ -133,6 +134,11 @@ func (t *translator) addWaitGroupDeclarations() {
 	wait_group_waiters[wid] = 0;
 	return wid;
 }`, t.waitGroupCount()))
+	t.system.AddQuery(uppaal.NewQuery(
+		fmt.Sprintf("A[] wait_group_count < %d", t.waitGroupCount()+1),
+		"check resource bound never reached through wait group creation",
+		"",
+		uppaal.ResourceBoundUnreached))
 }
 
 func (t *translator) addWaitGroupProcessInstances() {
