@@ -85,7 +85,6 @@ func BuildProgram(paths []string, config *c.Config) (program *ir.Program, entryF
 		} else if config.ShouldExcludeEntirePackage(pkg.PkgPath) {
 			return false
 		}
-		fmt.Println(pkg.PkgPath)
 		b.typesPkgs[pkg.Types] = struct{}{}
 		return true
 	}, func(pkg *packages.Package) {

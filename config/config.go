@@ -2,7 +2,6 @@ package config
 
 import (
 	"go/build"
-	"strings"
 )
 
 // Config holds paramters for the Run function.
@@ -39,7 +38,6 @@ func (pei *PackageExcludeInfo) ShouldExcludeEntirePackage(packagePath string) bo
 	if (*pei) == nil {
 		return false
 	}
-	if (strings.SplitAfter())
 	_, ok := (*pei)[packagePath]
 	return ok
 }
