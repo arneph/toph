@@ -856,7 +856,6 @@ func (ld *loader) loadPackage(lpkg *loaderPackage) {
 			pkgDir = filepath.Dir(compiledGoFiles[0])
 		}
 		if pkgDir == "" {
-			fmt.Println(lpkg.Name)
 			goto parse
 		}
 		buildPackage, err := build.Default.ImportDir(pkgDir, 0)
@@ -867,14 +866,14 @@ func (ld *loader) loadPackage(lpkg *loaderPackage) {
 		if buildPackage.Goroot || len(buildPackage.CgoFiles) == 0 {
 			goto parse
 		}
-		tmpdir, err := ioutil.TempDir("", strings.Replace(buildPackage.ImportPath, "/", "_", -1)+"_C")
+		tmpDir, err := ioutil.TempDir("", strings.Replace(buildPackage.ImportPath, "/", "_", -1)+"_C")
 		if err != nil {
 			appendError(fmt.Errorf("generating temporary cgo dir: %v", err))
 			goto parse
 		}
-		defer os.RemoveAll(tmpdir)
+		defer os.RemoveAll(tmpDir)
 
-		cgoFiles, originalFiles, err := cgo.Run(buildPackage, pkgDir, tmpdir, true)
+		cgoFiles, originalFiles, err := cgo.Run(buildPackage, pkgDir, tmpDir, true)
 		if err != nil {
 			appendError(err)
 			goto parse
