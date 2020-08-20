@@ -36,13 +36,13 @@ const (
 	RunFailedWritingOutputFiles
 )
 
-// Run translates the package at the given path and returns whether it was
+// Run translates the packages at the given paths and returns whether it was
 // successful or failed.
-func Run(path string, config *c.Config) Result {
+func Run(paths []string, config *c.Config) Result {
 	warnings := false
 
 	// Builder
-	program, entryFuncs, errs := builder.BuildProgram(path, config)
+	program, entryFuncs, errs := builder.BuildProgram(paths, config)
 	warnings = warnings || len(errs) > 0
 	for _, err := range errs {
 		fmt.Fprintln(os.Stderr, err)

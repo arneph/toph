@@ -1,10 +1,14 @@
 package config
 
-import "go/build"
+import (
+	"go/build"
+	"strings"
+)
 
 // Config holds paramters for the Run function.
 type Config struct {
 	BuildContext *build.Context
+	PackageExcludeInfo
 
 	MaxProcessCount   int
 	MaxDeferCount     int
@@ -26,4 +30,23 @@ type Config struct {
 	OutName string
 	// OutFormats lists the generated output file formats (supports xml, xta, ugi, q)
 	OutFormats map[string]bool
+}
+
+// PackageExcludeInfo stores which packages and members of packages should be excluded from translation.
+type PackageExcludeInfo map[string]struct{}
+
+func (pei *PackageExcludeInfo) ShouldExcludeEntirePackage(packagePath string) bool {
+	if (*pei) == nil {
+		return false
+	}
+	if (strings.SplitAfter())
+	_, ok := (*pei)[packagePath]
+	return ok
+}
+
+func (pei *PackageExcludeInfo) SetExcludeEntirePackage(packagePath string) {
+	if (*pei) == nil {
+		*pei = make(PackageExcludeInfo)
+	}
+	(*pei)[packagePath] = struct{}{}
 }

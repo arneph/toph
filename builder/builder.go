@@ -32,15 +32,18 @@ const parserMode parser.Mode = parser.ParseComments |
 	parser.AllErrors
 
 // BuildProgram parses the Go files at the given path and builds an ir.Program.
-func BuildProgram(path string, config *c.Config) (program *ir.Program, entryFuncs []*ir.Func, errs []error) {
+func BuildProgram(paths []string, config *c.Config) (program *ir.Program, entryFuncs []*ir.Func, errs []error) {
 	b := new(builder)
 	b.config = config
 
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		b.addWarning(fmt.Errorf("could not find absolute path for %q: %v", path, err))
-	} else {
-		path = absPath
+	absPaths := make([]string, len(paths))
+	for i, path := range paths {
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			b.addWarning(fmt.Errorf("could not find absolute path for %q: %v", path, err))
+		} else {
+			absPaths[i] = absPath
+		}
 	}
 
 	// Parse program:
@@ -62,7 +65,7 @@ func BuildProgram(path string, config *c.Config) (program *ir.Program, entryFunc
 		Fset:  b.fset,
 		Tests: true,
 	}
-	rootPackages, err := packages.Load(packagesConfig, absPath)
+	rootPackages, err := packages.Load(packagesConfig, absPaths...)
 	if err != nil {
 		b.addWarning(err)
 		return
@@ -79,7 +82,10 @@ func BuildProgram(path string, config *c.Config) (program *ir.Program, entryFunc
 			return false
 		} else if strings.HasPrefix(pkg.GoFiles[0], config.BuildContext.GOROOT) {
 			return false
+		} else if config.ShouldExcludeEntirePackage(pkg.PkgPath) {
+			return false
 		}
+		fmt.Println(pkg.PkgPath)
 		b.typesPkgs[pkg.Types] = struct{}{}
 		return true
 	}, func(pkg *packages.Package) {

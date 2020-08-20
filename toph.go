@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"go/build"
+	"io/ioutil"
 	"os"
 	"strings"
 
@@ -14,6 +15,8 @@ import (
 var (
 	goos   = flag.String("goos", build.Default.GOOS, "target operating system, e.g. windows, linux")
 	goarch = flag.String("goarch", build.Default.GOARCH, "target architecture, e.g. 386, amd64")
+
+	excludeFile = flag.String("exclude", "", "set file containing a list of packages to exclude from translation")
 
 	debug = flag.Bool("debug", false, "generate debug output files")
 
@@ -37,7 +40,7 @@ var (
 
 func main() {
 	flag.Usage = func() {
-		fmt.Fprintf(os.Stderr, "Usage: toph [flags] [package directory]\n\n")
+		fmt.Fprintf(os.Stderr, "Usage: toph [flags] [package directories]\n\n")
 		flag.PrintDefaults()
 	}
 	flag.Parse()
@@ -48,7 +51,6 @@ func main() {
 	buildContext := build.Default
 	buildContext.GOOS = *goos
 	buildContext.GOARCH = *goarch
-	path := flag.Arg(0)
 	ffmts := make(map[string]bool)
 	for _, ffmt := range strings.Split(*outFormats, ",") {
 		ffmts[ffmt] = true
@@ -70,7 +72,22 @@ func main() {
 		OutName:              *outName,
 		OutFormats:           ffmts,
 	}
-	result := api.Run(path, &config)
+	if *excludeFile != "" {
+		content, err := ioutil.ReadFile(*excludeFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "failed to read exclude file: %v", err)
+			os.Exit(-1)
+		}
+		lines := strings.Split(string(content), "\n")
+		for _, packagePath := range lines {
+			if packagePath == "" {
+				continue
+			}
+			config.SetExcludeEntirePackage(packagePath)
+		}
+	}
+
+	result := api.Run(flag.Args(), &config)
 
 	os.Exit(int(result))
 }
