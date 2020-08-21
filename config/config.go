@@ -19,6 +19,18 @@ type Config struct {
 	MaxContainerCount int
 	ContainerCapacity int
 
+	GenerateResourceBoundQueries            bool
+	GenerateChannelSafetyQueries            bool
+	GenerateMutexSafetyQueries              bool
+	GenerateWaitGroupSafetyQueries          bool
+	GenerateChannelRelatedDeadlockQueries   bool
+	GenerateMutexRelatedDeadlockQueries     bool
+	GenerateWaitGroupRelatedDeadlockQueries bool
+	GenerateOnceRelatedDeadlockQueries      bool
+	GenerateFunctionCallsWithNilQueries     bool
+	GenerateGoroutineExitWithPanicQueries   bool
+	GenerateReachabilityQueries             bool
+
 	OptimizeIR           bool
 	OptimizeUppaalSystem bool
 

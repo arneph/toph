@@ -49,11 +49,13 @@ func (t *translator) translateWaitGroupOpSmt(stmt *ir.WaitGroupOpStmt, ctx *cont
 		register.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
 		register.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
 
-		ctx.proc.AddQuery(uppaal.NewQuery(
-			"A[] (not out_of_resources) imply (not (deadlock and $."+registered.Name()+"))",
-			"check deadlock with pending wait group operation unreachable",
-			t.program.FileSet().Position(stmt.Pos()).String(),
-			uppaal.NoWaitGroupRelatedDeadlocks))
+		if t.config.GenerateWaitGroupRelatedDeadlockQueries {
+			ctx.proc.AddQuery(uppaal.NewQuery(
+				"A[] (not out_of_resources) imply (not (deadlock and $."+registered.Name()+"))",
+				"check deadlock with pending wait group operation unreachable",
+				t.program.FileSet().Position(stmt.Pos()).String(),
+				uppaal.NoWaitGroupRelatedDeadlocks))
+		}
 
 		ctx.currentState = registered
 		ctx.addLocation(registered.Location())

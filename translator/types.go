@@ -188,11 +188,13 @@ func (t *translator) addStructType(structType *ir.StructType) {
 			t.structTypeCount(structType),
 			copyFieldsStmts.String()))
 
-	t.system.AddQuery(uppaal.NewQuery(
-		fmt.Sprintf("A[] %s_count < %d", structType.VariablePrefix(), t.structTypeCount(structType)+1),
-		fmt.Sprintf("check resource bound never reached through %s creation", structType.String()),
-		"",
-		uppaal.ResourceBoundUnreached))
+	if t.config.GenerateResourceBoundQueries {
+		t.system.AddQuery(uppaal.NewQuery(
+			fmt.Sprintf("A[] %s_count < %d", structType.VariablePrefix(), t.structTypeCount(structType)+1),
+			fmt.Sprintf("check resource bound never reached through %s creation", structType.String()),
+			"",
+			uppaal.ResourceBoundUnreached))
+	}
 }
 
 func (t *translator) addArrayType(containerType *ir.ContainerType) {
@@ -266,11 +268,13 @@ func (t *translator) addArrayType(containerType *ir.ContainerType) {
 			containerType.Len()-1,
 			oldElementHandle))
 
-	t.system.AddQuery(uppaal.NewQuery(
-		fmt.Sprintf("A[] %s_count < %d", containerType.VariablePrefix(), t.containerTypeCount(containerType)+1),
-		fmt.Sprintf("check resource bound never reached through %s creation", containerType.String()),
-		"",
-		uppaal.ResourceBoundUnreached))
+	if t.config.GenerateResourceBoundQueries {
+		t.system.AddQuery(uppaal.NewQuery(
+			fmt.Sprintf("A[] %s_count < %d", containerType.VariablePrefix(), t.containerTypeCount(containerType)+1),
+			fmt.Sprintf("check resource bound never reached through %s creation", containerType.String()),
+			"",
+			uppaal.ResourceBoundUnreached))
+	}
 }
 
 func (t *translator) addSliceType(containerType *ir.ContainerType) {
@@ -381,11 +385,13 @@ func (t *translator) addSliceType(containerType *ir.ContainerType) {
 			t.containerTypeCount(containerType),
 			srcElementHandle))
 
-	t.system.AddQuery(uppaal.NewQuery(
-		fmt.Sprintf("A[] %s_count < %d", containerType.VariablePrefix(), t.containerTypeCount(containerType)+1),
-		fmt.Sprintf("check resource bound never reached through %s creation", containerType.String()),
-		"",
-		uppaal.ResourceBoundUnreached))
+	if t.config.GenerateResourceBoundQueries {
+		t.system.AddQuery(uppaal.NewQuery(
+			fmt.Sprintf("A[] %s_count < %d", containerType.VariablePrefix(), t.containerTypeCount(containerType)+1),
+			fmt.Sprintf("check resource bound never reached through %s creation", containerType.String()),
+			"",
+			uppaal.ResourceBoundUnreached))
+	}
 }
 
 func (t *translator) addMapType(containerType *ir.ContainerType) {
@@ -474,9 +480,11 @@ func (t *translator) addMapType(containerType *ir.ContainerType) {
 			currentElementHandle,
 			nextElementHandle))
 
-	t.system.AddQuery(uppaal.NewQuery(
-		fmt.Sprintf("A[] %s_count < %d", containerType.VariablePrefix(), t.containerTypeCount(containerType)+1),
-		fmt.Sprintf("check resource bound never reached through %s creation", containerType.String()),
-		"",
-		uppaal.ResourceBoundUnreached))
+	if t.config.GenerateResourceBoundQueries {
+		t.system.AddQuery(uppaal.NewQuery(
+			fmt.Sprintf("A[] %s_count < %d", containerType.VariablePrefix(), t.containerTypeCount(containerType)+1),
+			fmt.Sprintf("check resource bound never reached through %s creation", containerType.String()),
+			"",
+			uppaal.ResourceBoundUnreached))
+	}
 }

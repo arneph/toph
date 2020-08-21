@@ -36,10 +36,12 @@ func (t *translator) addWaitGroupProcess() {
 	proc.AddParameter(fmt.Sprintf("int[0, %d] i", t.waitGroupCount()-1))
 
 	// Queries:
-	proc.AddQuery(uppaal.NewQuery(
-		"A[] (not out_of_resources) imply (not $.bad)",
-		"check WaitGroup.bad state unreachable", "",
-		uppaal.WaitGroupSafety))
+	if t.config.GenerateWaitGroupSafetyQueries {
+		proc.AddQuery(uppaal.NewQuery(
+			"A[] (not out_of_resources) imply (not $.bad)",
+			"check WaitGroup.bad state unreachable", "",
+			uppaal.WaitGroupSafety))
+	}
 
 	// States:
 	idle := proc.AddState("idle", uppaal.NoRenaming)
@@ -134,11 +136,14 @@ func (t *translator) addWaitGroupDeclarations() {
 	wait_group_waiters[wid] = 0;
 	return wid;
 }`, t.waitGroupCount()))
-	t.system.AddQuery(uppaal.NewQuery(
-		fmt.Sprintf("A[] wait_group_count < %d", t.waitGroupCount()+1),
-		"check resource bound never reached through wait group creation",
-		"",
-		uppaal.ResourceBoundUnreached))
+
+	if t.config.GenerateResourceBoundQueries {
+		t.system.AddQuery(uppaal.NewQuery(
+			fmt.Sprintf("A[] wait_group_count < %d", t.waitGroupCount()+1),
+			"check resource bound never reached through wait group creation",
+			"",
+			uppaal.ResourceBoundUnreached))
+	}
 }
 
 func (t *translator) addWaitGroupProcessInstances() {

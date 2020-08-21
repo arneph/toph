@@ -36,10 +36,12 @@ func (t *translator) addMutexProcess() {
 	proc.AddParameter(fmt.Sprintf("int[0, %d] i", t.mutexCount()-1))
 
 	// Queries:
-	proc.AddQuery(uppaal.NewQuery(
-		"A[] (not out_of_resources) imply (not $.bad)",
-		"check Mutex.bad state unreachable", "",
-		uppaal.MutexSafety))
+	if t.config.GenerateMutexSafetyQueries {
+		proc.AddQuery(uppaal.NewQuery(
+			"A[] (not out_of_resources) imply (not $.bad)",
+			"check Mutex.bad state unreachable", "",
+			uppaal.MutexSafety))
+	}
 
 	// Local Declarations:
 	proc.Declarations().AddVariable("active_readers", "int", "0")
@@ -206,11 +208,13 @@ func (t *translator) addMutexDeclarations() {
 	mutex_pending_writers[mid] = 0;
 	return mid;
 }`, t.mutexCount()))
-	t.system.AddQuery(uppaal.NewQuery(
-		fmt.Sprintf("A[] mutex_count < %d", t.mutexCount()+1),
-		"check resource bound never reached through mutex creation",
-		"",
-		uppaal.ResourceBoundUnreached))
+	if t.config.GenerateResourceBoundQueries {
+		t.system.AddQuery(uppaal.NewQuery(
+			fmt.Sprintf("A[] mutex_count < %d", t.mutexCount()+1),
+			"check resource bound never reached through mutex creation",
+			"",
+			uppaal.ResourceBoundUnreached))
+	}
 }
 
 func (t *translator) addMutexProcessInstances() {

@@ -76,11 +76,13 @@ func (t *translator) translateChanCommOpStmt(stmt *ir.ChanCommOpStmt, ctx *conte
 	confirm.SetSyncLocation(
 		pending.Location().Add(uppaal.Location{4, 60}))
 
-	ctx.proc.AddQuery(uppaal.NewQuery(
-		"A[] (not out_of_resources) imply (not (deadlock and $."+pending.Name()+"))",
-		"check deadlock with pending channel operation unreachable",
-		t.program.FileSet().Position(stmt.Pos()).String(),
-		uppaal.NoChannelRelatedDeadlocks))
+	if t.config.GenerateChannelRelatedDeadlockQueries {
+		ctx.proc.AddQuery(uppaal.NewQuery(
+			"A[] (not out_of_resources) imply (not (deadlock and $."+pending.Name()+"))",
+			"check deadlock with pending channel operation unreachable",
+			t.program.FileSet().Position(stmt.Pos()).String(),
+			uppaal.NoChannelRelatedDeadlocks))
+	}
 
 	ctx.currentState = confirmed
 	ctx.addLocation(pending.Location())
@@ -188,11 +190,13 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		pass2.SetLocationAndResetNameAndCommentLocation(
 			ctx.currentState.Location().Add(uppaal.Location{0, 272}))
 
-		ctx.proc.AddQuery(uppaal.NewQuery(
-			"A[] (not out_of_resources) imply (not (deadlock and $."+pass2.Name()+"))",
-			"check deadlock with blocked select statement unreachable",
-			t.program.FileSet().Position(stmt.Pos()).String(),
-			uppaal.NoChannelRelatedDeadlocks))
+		if t.config.GenerateChannelRelatedDeadlockQueries {
+			ctx.proc.AddQuery(uppaal.NewQuery(
+				"A[] (not out_of_resources) imply (not (deadlock and $."+pass2.Name()+"))",
+				"check deadlock with blocked select statement unreachable",
+				t.program.FileSet().Position(stmt.Pos()).String(),
+				uppaal.NoChannelRelatedDeadlocks))
+		}
 
 		if len(stmt.Cases()) > 0 {
 			caseXs[0] = ctx.currentState.Location()[0] + 136
@@ -212,18 +216,20 @@ func (t *translator) translateSelectStmt(stmt *ir.SelectStmt, ctx *context) {
 		caseEnters[i] = caseEnter
 
 		// Add queries for reachability:
-		if c.ReachReq() == ir.Reachable {
-			ctx.proc.AddQuery(uppaal.NewQuery(
-				"E<> (not out_of_resources) and $."+caseEnter.Name(),
-				"check reachable: "+ctx.proc.Name()+"."+caseEnter.Name(),
-				t.program.FileSet().Position(c.Pos()).String(),
-				uppaal.ReachabilityRequirements))
-		} else if c.ReachReq() == ir.Unreachable {
-			ctx.proc.AddQuery(uppaal.NewQuery(
-				"A[] (not out_of_resources) imply (not $."+caseEnter.Name()+")",
-				"check unreachable: "+ctx.proc.Name()+"."+caseEnter.Name(),
-				t.program.FileSet().Position(c.Pos()).String(),
-				uppaal.ReachabilityRequirements))
+		if t.config.GenerateReachabilityQueries {
+			if c.ReachReq() == ir.Reachable {
+				ctx.proc.AddQuery(uppaal.NewQuery(
+					"E<> (not out_of_resources) and $."+caseEnter.Name(),
+					"check reachable: "+ctx.proc.Name()+"."+caseEnter.Name(),
+					t.program.FileSet().Position(c.Pos()).String(),
+					uppaal.ReachabilityRequirements))
+			} else if c.ReachReq() == ir.Unreachable {
+				ctx.proc.AddQuery(uppaal.NewQuery(
+					"A[] (not out_of_resources) imply (not $."+caseEnter.Name()+")",
+					"check unreachable: "+ctx.proc.Name()+"."+caseEnter.Name(),
+					t.program.FileSet().Position(c.Pos()).String(),
+					uppaal.ReachabilityRequirements))
+			}
 		}
 
 		bodySubCtx := ctx.subContextForStmt(stmt, c.Body(), caseEnter, exitSelect, nil, exitSelect)

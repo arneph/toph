@@ -36,10 +36,12 @@ func (t *translator) addChannelProcess() {
 	proc.AddParameter(fmt.Sprintf("int[0, %d] i", t.channelCount()-1))
 
 	// Queries:
-	proc.AddQuery(uppaal.NewQuery(
-		"A[] (not out_of_resources) imply (not $.bad)",
-		"check Channel.bad state unreachable", "",
-		uppaal.ChannelSafety))
+	if t.config.GenerateChannelSafetyQueries {
+		proc.AddQuery(uppaal.NewQuery(
+			"A[] (not out_of_resources) imply (not $.bad)",
+			"check Channel.bad state unreachable", "",
+			uppaal.ChannelSafety))
+	}
 
 	// States:
 	// Open
@@ -228,11 +230,13 @@ func (t *translator) addChannelDeclarations() {
 	return cid;
 }`, t.channelCount()))
 
-	t.system.AddQuery(uppaal.NewQuery(
-		fmt.Sprintf("A[] chan_count < %d", t.channelCount()+1),
-		"check resource bound never reached through channel creation",
-		"",
-		uppaal.ResourceBoundUnreached))
+	if t.config.GenerateResourceBoundQueries {
+		t.system.AddQuery(uppaal.NewQuery(
+			fmt.Sprintf("A[] chan_count < %d", t.channelCount()+1),
+			"check resource bound never reached through channel creation",
+			"",
+			uppaal.ResourceBoundUnreached))
+	}
 }
 
 func (t *translator) addChannelProcessInstances() {

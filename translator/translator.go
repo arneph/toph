@@ -55,10 +55,12 @@ func (t *translator) translateProgram() {
 
 	t.system.AddProgressMeasure("out_of_resources")
 
-	t.system.AddQuery(uppaal.NewQuery(
-		"A[] not out_of_resources",
-		"check system never runs out of resources", "",
-		uppaal.ResourceBoundUnreached))
+	if t.config.GenerateResourceBoundQueries {
+		t.system.AddQuery(uppaal.NewQuery(
+			"A[] not out_of_resources",
+			"check system never runs out of resources", "",
+			uppaal.ResourceBoundUnreached))
+	}
 
 	t.system.Declarations().SetInitFuncName("global_initialize")
 

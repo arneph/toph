@@ -72,11 +72,13 @@ func (t *translator) translateOnceDoStmt(stmt *ir.OnceDoStmt, ctx *context) {
 	exit.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{-136, 136}))
 
-	ctx.proc.AddQuery(uppaal.NewQuery(
-		"A[] (not out_of_resources) imply (not (deadlock and $."+enter.Name()+"))",
-		"check deadlock with pending once operation unreachable",
-		t.program.FileSet().Position(stmt.Pos()).String(),
-		uppaal.NoOnceRelatedDeadlocks))
+	if t.config.GenerateOnceRelatedDeadlockQueries {
+		ctx.proc.AddQuery(uppaal.NewQuery(
+			"A[] (not out_of_resources) imply (not (deadlock and $."+enter.Name()+"))",
+			"check deadlock with pending once operation unreachable",
+			t.program.FileSet().Position(stmt.Pos()).String(),
+			uppaal.NoOnceRelatedDeadlocks))
+	}
 
 	ctx.currentState = exit
 	ctx.addLocation(do.Location())

@@ -57,11 +57,13 @@ func (t *translator) translateMutexOpStmt(stmt *ir.MutexOpStmt, ctx *context) {
 		register.SetGuardLocation(ctx.currentState.Location().Add(uppaal.Location{4, 64}))
 		register.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
 
-		ctx.proc.AddQuery(uppaal.NewQuery(
-			"A[] (not out_of_resources) imply (not (deadlock and $."+registered.Name()+"))",
-			"check deadlock with pending mutex operation unreachable",
-			t.program.FileSet().Position(stmt.Pos()).String(),
-			uppaal.NoMutexRelatedDeadlocks))
+		if t.config.GenerateMutexRelatedDeadlockQueries {
+			ctx.proc.AddQuery(uppaal.NewQuery(
+				"A[] (not out_of_resources) imply (not (deadlock and $."+registered.Name()+"))",
+				"check deadlock with pending mutex operation unreachable",
+				t.program.FileSet().Position(stmt.Pos()).String(),
+				uppaal.NoMutexRelatedDeadlocks))
+		}
 
 		ctx.currentState = registered
 		ctx.addLocation(registered.Location())

@@ -35,9 +35,11 @@ func (t *translator) addOnces() {
 	once_values[oid] = 0;
 	return oid;
 }`, t.onceCount()))
-	t.system.AddQuery(uppaal.NewQuery(
-		fmt.Sprintf("A[] once_count < %d", t.onceCount()+1),
-		"check resource bound never reached through once creation",
-		"",
-		uppaal.ResourceBoundUnreached))
+	if t.config.GenerateResourceBoundQueries {
+		t.system.AddQuery(uppaal.NewQuery(
+			fmt.Sprintf("A[] once_count < %d", t.onceCount()+1),
+			"check resource bound never reached through once creation",
+			"",
+			uppaal.ResourceBoundUnreached))
+	}
 }

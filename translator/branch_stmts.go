@@ -259,11 +259,13 @@ func (t *translator) translateChanRangeStmt(stmt *ir.ChanRangeStmt, ctx *context
 	confirm.SetSyncLocation(
 		receiving.Location().Add(uppaal.Location{4, 60}))
 
-	ctx.proc.AddQuery(uppaal.NewQuery(
-		"A[] (not out_of_resources) imply (not (deadlock and $."+receiving.Name()+"))",
-		"check deadlock with pending channel operation unreachable",
-		t.program.FileSet().Position(stmt.Pos()).String(),
-		uppaal.NoChannelRelatedDeadlocks))
+	if t.config.GenerateChannelRelatedDeadlockQueries {
+		ctx.proc.AddQuery(uppaal.NewQuery(
+			"A[] (not out_of_resources) imply (not (deadlock and $."+receiving.Name()+"))",
+			"check deadlock with pending channel operation unreachable",
+			t.program.FileSet().Position(stmt.Pos()).String(),
+			uppaal.NoChannelRelatedDeadlocks))
+	}
 
 	bodyEnter, bodyExit, loopExit := t.translateLoopBody(stmt, body, received.Location().Add(uppaal.Location{0, 136}), ctx)
 

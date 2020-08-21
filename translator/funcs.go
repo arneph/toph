@@ -111,11 +111,13 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 	return pid;
 }`, proc.Name(), t.callCount(f), externalPanicInit))
 	}
-	t.system.AddQuery(uppaal.NewQuery(
-		fmt.Sprintf("A[] %s_count < %d", proc.Name(), t.callCount(f)+1),
-		fmt.Sprintf("check resource bound never reached through %s creation", proc.Name()),
-		"",
-		uppaal.ResourceBoundUnreached))
+	if t.config.GenerateResourceBoundQueries {
+		t.system.AddQuery(uppaal.NewQuery(
+			fmt.Sprintf("A[] %s_count < %d", proc.Name(), t.callCount(f)+1),
+			fmt.Sprintf("check resource bound never reached through %s creation", proc.Name()),
+			"",
+			uppaal.ResourceBoundUnreached))
+	}
 }
 
 func (t *translator) translateFunc(f *ir.Func) {
@@ -164,12 +166,14 @@ func (t *translator) translateFunc(f *ir.Func) {
 	if f == t.program.InitFunc() {
 		sourceLocation = ""
 	}
-	if !t.config.OptimizeIR || t.completeFCG.CanPanic(f) {
-		proc.AddQuery(uppaal.NewQuery(
-			"A[] (not out_of_resources) imply (not ($.ending and !$.is_sync and $.internal_panic))",
-			"check goroutine does not exit with panic",
-			sourceLocation,
-			uppaal.NoGoroutineExitWithPanic))
+	if t.config.GenerateGoroutineExitWithPanicQueries {
+		if !t.config.OptimizeIR || t.completeFCG.CanPanic(f) {
+			proc.AddQuery(uppaal.NewQuery(
+				"A[] (not out_of_resources) imply (not ($.ending and !$.is_sync and $.internal_panic))",
+				"check goroutine does not exit with panic",
+				sourceLocation,
+				uppaal.NoGoroutineExitWithPanic))
+		}
 	}
 
 	var deferred *uppaal.State

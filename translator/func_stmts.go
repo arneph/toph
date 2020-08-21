@@ -40,11 +40,13 @@ func (t *translator) translateCallStmt(stmt *ir.CallStmt, ctx *context) {
 		nilState.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 		nilState.SetLocationAndResetNameAndCommentLocation(
 			ctx.currentState.Location().Add(uppaal.Location{0, 272}))
-		ctx.proc.AddQuery(uppaal.NewQuery(
-			"A[] (not out_of_resources) imply (not $."+nilState.Name()+")",
-			"check function variable not nil",
-			t.program.FileSet().Position(stmt.Pos()).String(),
-			uppaal.NoFunctionCallsWithNilVariable))
+		if t.config.GenerateFunctionCallsWithNilQueries {
+			ctx.proc.AddQuery(uppaal.NewQuery(
+				"A[] (not out_of_resources) imply (not $."+nilState.Name()+")",
+				"check function variable not nil",
+				t.program.FileSet().Position(stmt.Pos()).String(),
+				uppaal.NoFunctionCallsWithNilVariable))
+		}
 		nilTrans := ctx.proc.AddTransition(dynamicCallEnter, nilState)
 		nilTrans.SetGuard(funcVar+".id == -1", false)
 		nilTrans.SetGuardLocation(
