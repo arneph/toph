@@ -5,6 +5,8 @@ import (
 	"strings"
 
 	"github.com/arneph/toph/ir"
+
+	gv "github.com/awalterschulze/gographviz"
 )
 
 // TypeGraph represents a directed graph of types.
@@ -164,6 +166,30 @@ func (tg *TypeGraph) updateTopologicalOrder() {
 			panic("internal error: type graph contains circle")
 		}
 	}
+}
+
+// Graph returns a graphviz graph representation of the type graph.
+func (tg *TypeGraph) Graph() (*gv.Graph, error) {
+	g := gv.NewGraph()
+	if err := g.SetName("tg"); err != nil {
+		return nil, err
+	}
+	if err := g.SetDir(true); err != nil {
+		return nil, err
+	}
+	for t := range tg.dependeesToDependants {
+		if err := g.AddNode("fcg", t.VariablePrefix(), map[string]string{"label": "\"" + t.String() + "\""}); err != nil {
+			return nil, err
+		}
+	}
+	for dependant, dependees := range tg.dependantsToDependees {
+		for dependee := range dependees {
+			if err := g.AddEdge(dependant.VariablePrefix(), dependee.VariablePrefix(), true, nil); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return g, nil
 }
 
 func (tg *TypeGraph) String() string {

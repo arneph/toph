@@ -4,3 +4,5 @@ tests/**/*.xta
 tests/**/*.ugi
 tests/**/*.q
 tests/**/*.txt
+tests/**/*.dot
+tests/**/*.png

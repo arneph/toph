@@ -161,27 +161,59 @@ func outputIRProgram(program *ir.Program, outName string, stepName string, confi
 
 	programFile.WriteString(program.Tree())
 
-	// FCG file
-	fcgPath := fmt.Sprintf("./%s.%s.fcg.txt", outName, stepName)
-	fcgFile, err := os.Create(fcgPath)
+	// FCG files
+	fcgTxtPath := fmt.Sprintf("./%s.%s.fcg.txt", outName, stepName)
+	fcgTxtFile, err := os.Create(fcgTxtPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not write fcg.txt file: %v\n", err)
 		return
 	}
-	defer fcgFile.Close()
+	defer fcgTxtFile.Close()
 
-	fcgFile.WriteString(fcg.String())
+	fcgTxtFile.WriteString(fcg.String())
 
-	// TG file
-	tgPath := fmt.Sprintf("./%s.%s.tg.txt", outName, stepName)
-	tgFile, err := os.Create(tgPath)
+	fcgDotPath := fmt.Sprintf("./%s.%s.fcg.dot", outName, stepName)
+	fcgDotFile, err := os.Create(fcgDotPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not write fcg.dot file: %v\n", err)
+		return
+	}
+	defer fcgDotFile.Close()
+
+	fcgGraph, err := fcg.Graph()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not create content for fct.dot file")
+		return
+	}
+
+	fcgDotFile.WriteString(fcgGraph.String())
+
+	// TG files
+	tgTxtPath := fmt.Sprintf("./%s.%s.tg.txt", outName, stepName)
+	tgTxtFile, err := os.Create(tgTxtPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "could not write tg.txt file: %v\n", err)
 		return
 	}
-	defer tgFile.Close()
+	defer tgTxtFile.Close()
 
-	tgFile.WriteString(tg.String())
+	tgTxtFile.WriteString(tg.String())
+
+	tgDotPath := fmt.Sprintf("./%s.%s.tg.dot", outName, stepName)
+	tgDotFile, err := os.Create(tgDotPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not write tg.dot file: %v\n", err)
+		return
+	}
+	defer tgDotFile.Close()
+
+	tgGraph, err := tg.Graph()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "could not create content for tg.dot file")
+		return
+	}
+
+	tgDotFile.WriteString(tgGraph.String())
 
 	// VI file
 	viPath := fmt.Sprintf("./%s.%s.vi.txt", outName, stepName)

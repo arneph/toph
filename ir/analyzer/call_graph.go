@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/arneph/toph/ir"
+
+	gv "github.com/awalterschulze/gographviz"
 )
 
 // MaxCallCounts defines the maximum number of calls to a function that get counted.
@@ -408,6 +410,30 @@ func (fcg *FuncCallGraph) updateSCCs() {
 			strongConnect(f)
 		}
 	}
+}
+
+// Graph returns a graphviz graph representation of the function call graph.
+func (fcg *FuncCallGraph) Graph() (*gv.Graph, error) {
+	g := gv.NewGraph()
+	if err := g.SetName("fcg"); err != nil {
+		return nil, err
+	}
+	if err := g.SetDir(true); err != nil {
+		return nil, err
+	}
+	for f := range fcg.callerToCallees {
+		if err := g.AddNode("fcg", f.Handle(), nil); err != nil {
+			return nil, err
+		}
+	}
+	for caller, callees := range fcg.callerToCallees {
+		for callee := range callees {
+			if err := g.AddEdge(caller.Handle(), callee.Handle(), true, nil); err != nil {
+				return nil, err
+			}
+		}
+	}
+	return g, nil
 }
 
 func (fcg *FuncCallGraph) String() string {
