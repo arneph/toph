@@ -133,7 +133,8 @@ func (b *builder) canIgnoreCall(callExpr *ast.CallExpr, ctx *context) bool {
 				return true
 			}
 			switch funcType.Pkg().Name() {
-			case "bytes",
+			case "binary",
+				"bytes",
 				"errors",
 				"flag",
 				"fmt",
@@ -185,6 +186,10 @@ func (b *builder) canIgnoreCall(callExpr *ast.CallExpr, ctx *context) bool {
 					return true
 				}
 			case "testing":
+				if funcType.FullName() == "testing.Short" ||
+					funcType.FullName() == "testing.Verbose" {
+					return true
+				}
 				if strings.HasPrefix(funcType.FullName(), "(*testing.T)") ||
 					strings.HasPrefix(funcType.FullName(), "(*testing.B)") ||
 					strings.HasPrefix(funcType.FullName(), "(*testing.common)") {
@@ -256,7 +261,9 @@ func (b *builder) specialOpForCall(callExpr *ast.CallExpr, ctx *context) (ir.Spe
 			return ir.Wait, true
 		case "(*sync.Once).Do":
 			return ir.Do, true
-		case "os.Exit":
+		case "os.Exit",
+			"log.Fatal", "log.Fatalf", "log.Fatalln",
+			"(*log.Logger).Fatal", "(*log.Logger).Fatalf", "(*log.Logger).Fatalln":
 			return ir.DeadEnd, true
 		}
 	}
@@ -297,7 +304,13 @@ func (b *builder) isKnownBuiltin(callExpr *ast.CallExpr, ctx *context) (string, 
 			"(*testing.common).Fatalf",
 			"(*testing.common).Skip",
 			"(*testing.common).SkipNow",
-			"(*testing.common).Skipf":
+			"(*testing.common).Skipf",
+			"log.Panic",
+			"log.Panicf",
+			"log.Panicln",
+			"(*log.Logger).Panic",
+			"(*log.Logger).Panicf",
+			"(*log.Logger).Panicln":
 			return "panic", true
 		}
 	}
