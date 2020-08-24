@@ -65,6 +65,42 @@ func (b *builder) processSwitchStmt(stmt *ast.SwitchStmt, label string, ctx *con
 	}
 }
 
+func (b *builder) processTypeSwitchStmt(stmt *ast.TypeSwitchStmt, label string, ctx *context) {
+	if stmt.Init != nil {
+		b.processStmt(stmt.Init, ctx)
+	}
+	var typeAssertExpr *ast.TypeAssertExpr
+	if assignStmt, ok := stmt.Assign.(*ast.AssignStmt); ok {
+		typeAssertExpr = assignStmt.Rhs[0].(*ast.TypeAssertExpr)
+	} else {
+		typeAssertExpr = stmt.Assign.(*ast.ExprStmt).X.(*ast.TypeAssertExpr)
+	}
+	b.processExpr(typeAssertExpr.X, ctx)
+
+	switchStmt := ir.NewSwitchStmt(ctx.body.Scope(), stmt.Pos(), stmt.End())
+	ctx.body.AddStmt(switchStmt)
+
+	for _, s := range stmt.Body.List {
+		caseClause := s.(*ast.CaseClause)
+		switchCase := switchStmt.AddCase(caseClause.Case)
+
+		if caseClause.List == nil {
+			switchCase.SetIsDefault(true)
+		} else {
+			switchCase.AddCond(caseClause.Pos(), caseClause.End()+1)
+		}
+
+		subCtx := ctx.subContextForBody(switchStmt, label, switchCase.Body())
+		for _, s := range caseClause.Body {
+			if branchStmt, ok := s.(*ast.BranchStmt); ok && branchStmt.Tok == token.FALLTHROUGH {
+				switchCase.SetHasFallthrough(true)
+				break
+			}
+			b.processStmt(s, subCtx)
+		}
+	}
+}
+
 func (b *builder) processLabeledStmt(labeledStmt *ast.LabeledStmt, ctx *context) {
 	label := labeledStmt.Label.Name
 	switch stmt := labeledStmt.Stmt.(type) {
@@ -76,6 +112,8 @@ func (b *builder) processLabeledStmt(labeledStmt *ast.LabeledStmt, ctx *context)
 		b.processSelectStmt(stmt, label, ctx)
 	case *ast.SwitchStmt:
 		b.processSwitchStmt(stmt, label, ctx)
+	case *ast.TypeSwitchStmt:
+		b.processTypeSwitchStmt(stmt, label, ctx)
 	default:
 		p := b.fset.Position(labeledStmt.Pos())
 		b.addWarning(
