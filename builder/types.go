@@ -134,6 +134,15 @@ func (b *builder) typesContainerToIrType(typesType types.Type) ir.Type {
 }
 
 func (b *builder) shouldModelType(typesType types.Type, seen []types.Type) bool {
+	if typesType.String() == "sync.Mutex" {
+		return true
+	} else if typesType.String() == "sync.RWMutex" {
+		return true
+	} else if typesType.String() == "sync.WaitGroup" {
+		return true
+	} else if typesType.String() == "sync.Once" {
+		return true
+	}
 	if typesNamed, ok := typesType.(*types.Named); ok {
 		_, ok := b.typesPkgs[typesNamed.Obj().Pkg()]
 		if !ok {

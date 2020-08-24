@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"sync"
+	"time"
 )
 
 func mutex() {
@@ -44,4 +45,17 @@ func main() {
 	} else {
 		rwMutex()
 	}
+	var db quickDB
+	quickDBTest(&db)
+}
+
+type quickDB struct {
+	sync.RWMutex
+	m map[string]interface{}
+}
+
+func quickDBTest(db *quickDB) {
+	db.RLock()
+	time.Sleep(1 * time.Second)
+	db.RUnlock()
 }
