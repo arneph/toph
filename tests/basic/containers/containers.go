@@ -40,6 +40,7 @@ func completionDone(w *Worker) {
 var wg sync.WaitGroup
 
 func main() {
+	testNilLoops()
 	chA := make(chan int, 0)
 	chB := make(chan int, 0)
 	chStart := chA
@@ -67,4 +68,15 @@ func main() {
 	}
 	close(chStart)
 	wg.Wait()
+}
+
+func testNilLoops() {
+	var mySlice []chan int
+	var myMap map[string]chan int
+	for _, myChan := range mySlice {
+		myChan <- 42
+	}
+	for _, myChan := range myMap {
+		<-myChan
+	}
 }

@@ -313,13 +313,17 @@ func (t *translator) translateContainerRangeStmt(stmt *ir.ContainerRangeStmt, ct
 	body := stmt.Body()
 
 	var container string
+	var skipIfNil bool
 	switch containerType.Kind() {
 	case ir.Array:
 		container = "array"
+		skipIfNil = false
 	case ir.Slice:
 		container = "slice"
+		skipIfNil = true
 	case ir.Map:
 		container = "map"
+		skipIfNil = true
 	default:
 		panic("unexpected container kind")
 	}
@@ -349,21 +353,39 @@ func (t *translator) translateContainerRangeStmt(stmt *ir.ContainerRangeStmt, ct
 	trans1.SetUpdateLocation(ctx.currentState.Location().Add(uppaal.Location{4, 80}))
 	trans1.AddNail(ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	trans2 := ctx.proc.AddTransition(rangeEnter, loopExit)
-	trans2.SetGuard(fmt.Sprintf("%s >= %s_lengths[%s]",
-		counterVar,
-		containerType.VariablePrefix(),
-		containerVar),
-		containerUsesGlobals)
+	if !skipIfNil {
+		trans2.SetGuard(fmt.Sprintf("%s >= %s_lengths[%s]",
+			counterVar,
+			containerType.VariablePrefix(),
+			containerVar),
+			containerUsesGlobals)
+	} else {
+		trans2.SetGuard(fmt.Sprintf("%s == -1 || %s >= %s_lengths[%s]",
+			containerVar,
+			counterVar,
+			containerType.VariablePrefix(),
+			containerVar),
+			containerUsesGlobals)
+	}
 	trans2.SetGuardLocation(
 		rangeEnter.Location().Add(uppaal.Location{4, 48}))
 	trans2.AddNail(rangeEnter.Location().Add(uppaal.Location{0, 68}))
 	trans2.AddNail(rangeEnter.Location().Add(uppaal.Location{-136, 136}))
 	trans3 := ctx.proc.AddTransition(rangeEnter, assigning)
-	trans3.SetGuard(fmt.Sprintf("%s < %s_lengths[%s]",
-		counterVar,
-		containerType.VariablePrefix(),
-		containerVar),
-		containerUsesGlobals)
+	if !skipIfNil {
+		trans3.SetGuard(fmt.Sprintf("%s < %s_lengths[%s]",
+			counterVar,
+			containerType.VariablePrefix(),
+			containerVar),
+			containerUsesGlobals)
+	} else {
+		trans3.SetGuard(fmt.Sprintf("%s != -1 && %s < %s_lengths[%s]",
+			containerVar,
+			counterVar,
+			containerType.VariablePrefix(),
+			containerVar),
+			containerUsesGlobals)
+	}
 	trans3.SetGuardLocation(
 		rangeEnter.Location().Add(uppaal.Location{4, 64}))
 	trans4 := ctx.proc.AddTransition(assigning, bodyEnter)
