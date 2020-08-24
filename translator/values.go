@@ -63,6 +63,8 @@ func (t *translator) translateRValue(v ir.RValue, rvs *randomVariableSupplier, c
 		return t.translateVariable(v, ctx)
 	case *ir.FieldSelection:
 		return t.translateFieldSelection(v, rvs, ctx)
+	case *ir.ContainerLength:
+		return t.translateContainerLength(v, rvs, ctx)
 	case *ir.ContainerAccess:
 		return t.translateContainerAccess(v, rvs, ctx)
 	default:
@@ -120,6 +122,21 @@ func (t *translator) translateFieldSelection(fs *ir.FieldSelection, rvs *randomV
 		fs.StructType().VariablePrefix(),
 		handle,
 		fs.Field().Handle()), usesGlobals
+}
+
+func (t *translator) translateContainerLength(cl *ir.ContainerLength, rvs *randomVariableSupplier, ctx *context) (string, bool) {
+	handle, _ := t.translateLValue(cl.ContainerVal(), rvs, ctx)
+	switch cl.ContainerType().Kind() {
+	case ir.Array:
+		return fmt.Sprintf("%d", cl.ContainerType().Len()), false
+	case ir.Slice, ir.Map:
+		return fmt.Sprintf("(%s != -1) ? %s_lengths[%s] : 0",
+			handle,
+			cl.ContainerType().VariablePrefix(),
+			handle), true
+	default:
+		panic("unexpected container kind")
+	}
 }
 
 func (t *translator) translateContainerAccess(ca *ir.ContainerAccess, rvs *randomVariableSupplier, ctx *context) (string, bool) {

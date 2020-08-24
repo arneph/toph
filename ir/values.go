@@ -145,6 +145,45 @@ func (fs *FieldSelection) String() string {
 	return fs.Handle()
 }
 
+// ContainerLength represents a call to the builtin len function for a slice
+// or map.
+type ContainerLength struct {
+	containerVal LValue
+}
+
+// NewContainerLength creates a new container length value for the given
+// container variable.
+func NewContainerLength(containerVal LValue) *ContainerLength {
+	if containerVal == nil {
+		panic("attempted to create ContainerAccess with nil struct variable")
+	}
+
+	cl := new(ContainerLength)
+	cl.containerVal = containerVal
+
+	return cl
+}
+
+// ContainerVal returns the lvalue holding the container which's length is
+// assessed.
+func (cl *ContainerLength) ContainerVal() LValue {
+	return cl.containerVal
+}
+
+// ContainerType returns the type of the accessed container.
+func (cl *ContainerLength) ContainerType() *ContainerType {
+	return cl.containerVal.Type().(*ContainerType)
+}
+
+// Type returns the type of the length value (always IntType).
+func (cl *ContainerLength) Type() Type {
+	return IntType
+}
+
+func (cl *ContainerLength) String() string {
+	return "len_" + cl.containerVal.Name()
+}
+
 // AccessKind defines if a container access is a read or a write.
 type AccessKind int
 
@@ -251,6 +290,7 @@ type RValue interface {
 func (v Value) rvalue()             {}
 func (v *Variable) rvalue()         {}
 func (fs *FieldSelection) rvalue()  {}
+func (cl *ContainerLength) rvalue() {}
 func (ca *ContainerAccess) rvalue() {}
 
 // LValue represents a storage location that can be assigned to.

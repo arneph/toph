@@ -282,7 +282,7 @@ func (b *builder) processCallArgVals(callExpr *ast.CallExpr, calleeSignature *ty
 			irSlice := b.program.NewVariable("", irSliceType.UninitializedValue())
 			ctx.body.Scope().AddVariable(irSlice)
 
-			makeContainerStmt := ir.NewMakeContainerStmt(irSlice, length, false, callExpr.Pos(), callExpr.End())
+			makeContainerStmt := ir.NewMakeContainerStmt(irSlice, ir.MakeValue(int64(length), ir.IntType), false, callExpr.Pos(), callExpr.End())
 			ctx.body.AddStmt(makeContainerStmt)
 
 			for i := 0; i < length; i++ {
@@ -459,14 +459,16 @@ func (b *builder) processSpecialOpCallExprWithCallKind(callExpr *ast.CallExpr, c
 		}
 		var delta ir.RValue = ir.MakeValue(-1, ir.IntType)
 		if specialOp == ir.Add && selExpr.Sel.Name == "Add" {
-			a := callExpr.Args[0]
-			res, ok := b.staticIntEval(a, ctx)
-			if !ok {
-				p := b.fset.Position(a.Pos())
-				aStr := b.nodeToString(a)
-				b.addWarning(fmt.Errorf("%v: can not process sync.WaitGroup.Add argument: %s", p, aStr))
+			deltaExpr := callExpr.Args[0]
+
+			if res := b.processContainerLength(deltaExpr, ctx); res != nil {
+				delta = res
+			} else if res := b.staticIntEval(deltaExpr, ctx); res != nil {
+				delta = res
 			} else {
-				delta = ir.MakeValue(int64(res), ir.IntType)
+				p := b.fset.Position(deltaExpr.Pos())
+				aStr := b.nodeToString(deltaExpr)
+				b.addWarning(fmt.Errorf("%v: can not process sync.WaitGroup.Add argument: %s", p, aStr))
 			}
 		}
 

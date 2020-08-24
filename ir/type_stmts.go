@@ -54,14 +54,14 @@ func (s *MakeStructStmt) tree(b *strings.Builder, indent int) {
 // MakeContainerStmt represents a make([]T), make(map[T]U) call or a container literal.
 type MakeContainerStmt struct {
 	containerVar       *Variable
-	containerLen       int
+	containerLen       RValue
 	initializeElements bool
 
 	Node
 }
 
 // NewMakeContainerStmt creates a new MakeContainerStmt for the given container value.
-func NewMakeContainerStmt(containerVar *Variable, containerLen int, initializeElements bool, pos, end token.Pos) *MakeContainerStmt {
+func NewMakeContainerStmt(containerVar *Variable, containerLen RValue, initializeElements bool, pos, end token.Pos) *MakeContainerStmt {
 	s := new(MakeContainerStmt)
 	s.containerVar = containerVar
 	s.containerLen = containerLen
@@ -78,7 +78,7 @@ func (s *MakeContainerStmt) ContainerVar() *Variable {
 }
 
 // ContainerLen returns the length of the newly allocated container.
-func (s *MakeContainerStmt) ContainerLen() int {
+func (s *MakeContainerStmt) ContainerLen() RValue {
 	return s.containerLen
 }
 

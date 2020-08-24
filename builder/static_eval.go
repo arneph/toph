@@ -5,6 +5,8 @@ import (
 	"go/constant"
 	"go/token"
 	"go/types"
+
+	"github.com/arneph/toph/ir"
 )
 
 type staticVarInfo struct {
@@ -13,17 +15,17 @@ type staticVarInfo struct {
 	val  constant.Value
 }
 
-func (b *builder) staticIntEval(expr ast.Expr, ctx *context) (int, bool) {
+func (b *builder) staticIntEval(expr ast.Expr, ctx *context) ir.RValue {
 	val, ok := b.staticExprEval(expr, nil, ctx)
 	if !ok {
-		return 0, false
+		return nil
 	}
 	val = constant.ToInt(val)
 	if val.Kind() == constant.Unknown {
-		return 0, false
+		return nil
 	}
 	x, _ := constant.Int64Val(val)
-	return int(x), true
+	return ir.MakeValue(x, ir.IntType)
 }
 
 func (b *builder) staticExprEval(expr ast.Expr, vars []staticVarInfo, ctx *context) (val constant.Value, ok bool) {

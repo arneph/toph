@@ -127,6 +127,10 @@ func (vi *VarInfo) addRValueUse(rvalue ir.RValue, f *ir.Func) {
 		vi.typeUsesInFuncs[v.Type()][f]++
 		vi.totalTypeUses[v.Type()]++
 		vi.addLValueUse(v.StructVal(), f)
+	case *ir.ContainerLength:
+		vi.typeUsesInFuncs[v.Type()][f]++
+		vi.totalTypeUses[v.Type()]++
+		vi.addLValueUse(v.ContainerVal(), f)
 	case *ir.ContainerAccess:
 		vi.typeUsesInFuncs[v.Type()][f]++
 		vi.totalTypeUses[v.Type()]++

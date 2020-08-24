@@ -29,6 +29,7 @@ func (t *translator) translateMakeStructStmt(stmt *ir.MakeStructStmt, ctx *conte
 }
 
 func (t *translator) translateMakeContainerStmt(stmt *ir.MakeContainerStmt, ctx *context) {
+	var rvs randomVariableSupplier
 	handle, usesGlobals := t.translateVariable(stmt.ContainerVar(), ctx)
 	name := stmt.ContainerVar().Name()
 
@@ -45,12 +46,14 @@ func (t *translator) translateMakeContainerStmt(stmt *ir.MakeContainerStmt, ctx 
 			stmt.InitializeElements()),
 			usesGlobals)
 	case ir.Slice:
-		make.AddUpdate(fmt.Sprintf("%s = make_%s(%d, %t)",
+		lenHandle, lenUsesGlobals := t.translateRValue(stmt.ContainerLen(), &rvs, ctx)
+		make.AddUpdate(fmt.Sprintf("%s = make_%s(%s, %t)",
 			handle,
 			stmt.ContainerType().VariablePrefix(),
-			stmt.ContainerLen(),
+			lenHandle,
 			stmt.InitializeElements()),
-			usesGlobals)
+			usesGlobals || lenUsesGlobals)
+		rvs.addToTrans(make)
 	case ir.Map:
 		make.AddUpdate(fmt.Sprintf("%s = make_%s()",
 			handle,
@@ -59,8 +62,12 @@ func (t *translator) translateMakeContainerStmt(stmt *ir.MakeContainerStmt, ctx 
 	default:
 		panic("unexpected container kind")
 	}
+	make.SetSelectLocation(
+		ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+	make.SetGuardLocation(
+		ctx.currentState.Location().Add(uppaal.Location{4, 64}))
 	make.SetUpdateLocation(
-		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
+		ctx.currentState.Location().Add(uppaal.Location{4, 80}))
 
 	ctx.currentState = made
 	ctx.addLocation(made.Location())

@@ -269,8 +269,10 @@ func (b *builder) procesIndexExpr(indexExpr *ast.IndexExpr, ctx *context) ir.RVa
 	irContainerIndex := ir.RValue(ir.RandomIndex)
 	if irContainerType.Kind() == ir.Array ||
 		irContainerType.Kind() == ir.Slice {
-		if res, ok := b.staticIntEval(iExpr, ctx); ok {
-			irContainerIndex = ir.MakeValue(int64(res), ir.IntType)
+		if res := b.processContainerLength(iExpr, ctx); res != nil {
+			irContainerIndex = res
+		} else if res := b.staticIntEval(iExpr, ctx); res != nil {
+			irContainerIndex = res
 		} else if iIdent, ok := iExpr.(*ast.Ident); ok {
 			typesVar, ok := ctx.typesInfo.Uses[iIdent].(*types.Var)
 			if ok {

@@ -21,17 +21,18 @@ func (b *builder) findChannel(chanExpr ast.Expr, ctx *context) ir.LValue {
 }
 
 func (b *builder) processMakeChanExpr(callExpr *ast.CallExpr, ctx *context) *ir.Variable {
-	bufferSize := 0
+	var bufferSize ir.RValue = ir.MakeValue(0, ir.IntType)
 	if len(callExpr.Args) > 1 {
-		a := callExpr.Args[1]
+		bufferSizeExpr := callExpr.Args[1]
 
-		res, ok := b.staticIntEval(a, ctx)
-		if !ok {
-			p := b.fset.Position(a.Pos())
-			aStr := b.nodeToString(a)
-			b.addWarning(fmt.Errorf("%v: can not process buffer size: %s", p, aStr))
-		} else {
+		if res := b.processContainerLength(bufferSizeExpr, ctx); res != nil {
 			bufferSize = res
+		} else if res := b.staticIntEval(bufferSizeExpr, ctx); res != nil {
+			bufferSize = res
+		} else {
+			p := b.fset.Position(bufferSizeExpr.Pos())
+			aStr := b.nodeToString(bufferSizeExpr)
+			b.addWarning(fmt.Errorf("%v: can not process buffer size: %s", p, aStr))
 		}
 	}
 

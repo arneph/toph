@@ -44,7 +44,7 @@ func (b *builder) processNewExpr(callExpr *ast.CallExpr, ctx *context) *ir.Varia
 		irVar := b.program.NewVariable("", irType.UninitializedValue())
 		ctx.body.Scope().AddVariable(irVar)
 
-		makeStructStmt := ir.NewMakeContainerStmt(irVar, -1, true, callExpr.Pos(), callExpr.End())
+		makeStructStmt := ir.NewMakeContainerStmt(irVar, ir.MakeValue(int64(-1), ir.IntType), true, callExpr.Pos(), callExpr.End())
 		ctx.body.AddStmt(makeStructStmt)
 
 		return irVar
@@ -69,18 +69,20 @@ func (b *builder) processMakeContainerExpr(callExpr *ast.CallExpr, ctx *context)
 		b.addWarning(fmt.Errorf("%v: unexpected make with non-container type: %s", p, callExprStr))
 		return nil
 	}
-	var length int
+	var length ir.RValue = ir.MakeValue(0, ir.IntType)
 	switch irContainerType.Kind() {
 	case ir.Slice:
 		if len(callExpr.Args) >= 2 {
 			lengthExpr := callExpr.Args[1]
-			res, ok := b.staticIntEval(lengthExpr, ctx)
-			if !ok {
+
+			if res := b.processContainerLength(lengthExpr, ctx); res != nil {
+				length = res
+			} else if res := b.staticIntEval(lengthExpr, ctx); res != nil {
+				length = res
+			} else {
 				p := b.fset.Position(lengthExpr.Pos())
 				aStr := b.nodeToString(lengthExpr)
 				b.addWarning(fmt.Errorf("%v: can not process slice legnth: %s", p, aStr))
-			} else {
-				length = res
 			}
 		}
 	case ir.Map:
@@ -249,7 +251,7 @@ func (b *builder) processContainerCompositeLit(compositeLit *ast.CompositeLit,
 		panic("unexpected container kind")
 	}
 
-	makeContainerStmt := ir.NewMakeContainerStmt(irVar, length, false, compositeLit.Pos(), compositeLit.End())
+	makeContainerStmt := ir.NewMakeContainerStmt(irVar, ir.MakeValue(int64(length), ir.IntType), false, compositeLit.Pos(), compositeLit.End())
 	ctx.body.AddStmt(makeContainerStmt)
 
 	switch irContainerType.Kind() {
@@ -330,13 +332,14 @@ func (b *builder) indicesAndValueExprsForArrayOrSliceCompositeLit(compositeLit *
 		if keyValueExpr, ok := valExpr.(*ast.KeyValueExpr); ok {
 			keyExpr := keyValueExpr.Key
 			valExpr = keyValueExpr.Value
-			res, ok := b.staticIntEval(keyExpr, ctx)
-			if !ok {
+			res := b.staticIntEval(keyExpr, ctx)
+			resInt, ok := res.(ir.Value)
+			if res != nil || !ok {
 				p := b.fset.Position(keyExpr.Pos())
 				keyExprStr := b.nodeToString(keyExpr)
 				b.addWarning(fmt.Errorf("%v: could not evaluate index value: %s", p, keyExprStr))
 			} else {
-				index = res
+				index = int(resInt.Value())
 			}
 		}
 		if length <= index {
@@ -379,4 +382,24 @@ func (b *builder) processDeleteExpr(callExpr *ast.CallExpr, ctx *context) {
 	}
 	deleteStmt := ir.NewDeleteMapEntryStmt(mapVal, callExpr.Pos(), callExpr.End())
 	ctx.body.AddStmt(deleteStmt)
+}
+
+func (b *builder) processContainerLength(expr ast.Expr, ctx *context) *ir.ContainerLength {
+	callExpr, ok := expr.(*ast.CallExpr)
+	if !ok {
+		return nil
+	}
+	funcIdent, ok := callExpr.Fun.(*ast.Ident)
+	if !ok || funcIdent.Name != "len" {
+		return nil
+	}
+	funcType := ctx.typesInfo.ObjectOf(funcIdent)
+	if funcType == nil || funcType.Parent() != types.Universe {
+		return nil
+	}
+	containerVal := b.findContainer(callExpr.Args[0], ctx)
+	if containerVal == nil {
+		return nil
+	}
+	return ir.NewContainerLength(containerVal)
 }

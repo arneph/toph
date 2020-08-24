@@ -8,18 +8,26 @@ import (
 )
 
 func (t *translator) translateMakeChanStmt(stmt *ir.MakeChanStmt, ctx *context) {
+	var rvs randomVariableSupplier
 	handle, usesGlobals := t.translateVariable(stmt.Channel(), ctx)
 	name := stmt.Channel().Name()
-	b := stmt.BufferSize()
+	bufferSize := stmt.BufferSize()
+	bufferSizeHandle, bufferSizeUsesGlobals := t.translateRValue(bufferSize, &rvs, ctx)
 
 	made := ctx.proc.AddState("made_"+name+"_", uppaal.Renaming)
 	made.SetComment(t.program.FileSet().Position(stmt.Pos()).String())
 	made.SetLocationAndResetNameAndCommentLocation(
 		ctx.currentState.Location().Add(uppaal.Location{0, 136}))
 	make := ctx.proc.AddTransition(ctx.currentState, made)
-	make.AddUpdate(fmt.Sprintf("%s = make_chan(%d)", handle, b), usesGlobals)
+	make.AddUpdate(fmt.Sprintf("%s = make_chan(%s)", handle, bufferSizeHandle),
+		usesGlobals || bufferSizeUsesGlobals)
+	rvs.addToTrans(make)
+	make.SetSelectLocation(
+		ctx.currentState.Location().Add(uppaal.Location{4, 48}))
+	make.SetGuardLocation(
+		ctx.currentState.Location().Add(uppaal.Location{4, 64}))
 	make.SetUpdateLocation(
-		ctx.currentState.Location().Add(uppaal.Location{4, 60}))
+		ctx.currentState.Location().Add(uppaal.Location{4, 80}))
 
 	ctx.currentState = made
 	ctx.addLocation(made.Location())
