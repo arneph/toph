@@ -60,7 +60,7 @@ func (b *builder) processExpr(expr ast.Expr, ctx *context) ir.RValue {
 	case *ast.Ident:
 		return b.processIdent(e, ctx)
 	case *ast.IndexExpr:
-		return b.procesIndexExpr(e, ctx)
+		return b.processIndexExpr(e, ctx)
 	case *ast.KeyValueExpr:
 		b.processExpr(e.Key, ctx)
 		b.processExpr(e.Value, ctx)
@@ -244,7 +244,7 @@ func (b *builder) processSelectorExpr(selExpr *ast.SelectorExpr, ctx *context) i
 	return ir.NewFieldSelection(irStructVal, irField)
 }
 
-func (b *builder) procesIndexExpr(indexExpr *ast.IndexExpr, ctx *context) ir.RValue {
+func (b *builder) processIndexExpr(indexExpr *ast.IndexExpr, ctx *context) ir.RValue {
 	xExpr := indexExpr.X
 	iExpr := indexExpr.Index
 	defer b.processExpr(iExpr, ctx)
