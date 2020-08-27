@@ -29,17 +29,18 @@ var (
 	maxStructCount    = flag.Int("max-structs", 20, "set maximum number of struct instances (per defined struct) in Uppaal")
 	maxContainerCount = flag.Int("max-containers", 20, "set maximum number of array, slice, or map instances (per element type) in Uppaal")
 
-	queryResourceBounds           = flag.Bool("query-resource-bounds", false, "generate queries checking that resource bounds are never exceeded")
-	queryChannelSafety            = flag.Bool("query-channel-safety", false, "generate queries checking for channel safety")
-	queryMutexSafety              = flag.Bool("query-mutex-safety", false, "generate queries checking for sync.Mutex and sync.RWMutex safety")
-	queryWaitGroupSafety          = flag.Bool("query-wait-group-safety", false, "generate queries checking for sync.WaitGroup safety")
-	queryChannelRelatedDeadlock   = flag.Bool("query-channel-deadlock", false, "generate queries checking for channel related deadlocks")
-	queryMutexRelatedDeadlock     = flag.Bool("query-mutex-deadlock", false, "generate queries checking for sync.Mutex and sync.RWMutex related deadlocks")
-	queryWaitGroupRelatedDeadlock = flag.Bool("query-wait-group-deadlock", false, "generate queries checking for sync.WaitGroup related deadlocks")
-	queryOnceRelatedDeadlock      = flag.Bool("query-once-deadlock", false, "generate queries checking for sync.Once related deadlocks")
-	queryFunctionCallsWithNil     = flag.Bool("query-function-call-with-nil", false, "generate queries checking for function calls with nil variables")
-	queryGoroutineExitWithPanic   = flag.Bool("query-goroutine-exit-with-panic", false, "generate queries checking for goroutines exiting with a panic")
-	queryReachability             = flag.Bool("query-reachability", false, "generate queries checking for the (un)reachability of code (requires annotations)")
+	queryResourceBounds             = flag.Bool("query-resource-bounds", false, "generate queries checking that resource bounds are never exceeded")
+	queryResourceBoundsIndividually = flag.Bool("query-resource-bounds-individually", false, "generate queries checking that resource bounds for particular resources are never exceeded")
+	queryChannelSafety              = flag.Bool("query-channel-safety", false, "generate queries checking for channel safety")
+	queryMutexSafety                = flag.Bool("query-mutex-safety", false, "generate queries checking for sync.Mutex and sync.RWMutex safety")
+	queryWaitGroupSafety            = flag.Bool("query-wait-group-safety", false, "generate queries checking for sync.WaitGroup safety")
+	queryChannelRelatedDeadlock     = flag.Bool("query-channel-deadlock", false, "generate queries checking for channel related deadlocks")
+	queryMutexRelatedDeadlock       = flag.Bool("query-mutex-deadlock", false, "generate queries checking for sync.Mutex and sync.RWMutex related deadlocks")
+	queryWaitGroupRelatedDeadlock   = flag.Bool("query-wait-group-deadlock", false, "generate queries checking for sync.WaitGroup related deadlocks")
+	queryOnceRelatedDeadlock        = flag.Bool("query-once-deadlock", false, "generate queries checking for sync.Once related deadlocks")
+	queryFunctionCallsWithNil       = flag.Bool("query-function-call-with-nil", false, "generate queries checking for function calls with nil variables")
+	queryGoroutineExitWithPanic     = flag.Bool("query-goroutine-exit-with-panic", false, "generate queries checking for goroutines exiting with a panic")
+	queryReachability               = flag.Bool("query-reachability", false, "generate queries checking for the (un)reachability of code (requires annotations)")
 
 	containerCapacity = flag.Int("container-capacity", 5, "set the constant capacity of arrays, slices, and maps in Uppaal")
 
@@ -55,7 +56,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Usage: toph [flags] [package directories]\n\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\n")
-		fmt.Fprintf(os.Stderr, "Note: If none of the query flags are set, all kinds of queries are generated.\n")
+		fmt.Fprintf(os.Stderr, "Note: If none of the query flags are set, all kinds of queries, excpet individual resource bound queries, are generated.\n")
 	}
 	flag.Parse()
 	if flag.NArg() < 1 {
@@ -105,6 +106,7 @@ func main() {
 		MaxContainerCount:                       *maxContainerCount,
 		ContainerCapacity:                       *containerCapacity,
 		GenerateResourceBoundQueries:            *queryResourceBounds,
+		GenerateIndividualResourceBoundQueries:  *queryResourceBoundsIndividually,
 		GenerateChannelSafetyQueries:            *queryChannelSafety,
 		GenerateMutexSafetyQueries:              *queryMutexSafety,
 		GenerateWaitGroupSafetyQueries:          *queryWaitGroupSafety,

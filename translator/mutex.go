@@ -208,7 +208,7 @@ func (t *translator) addMutexDeclarations() {
 	mutex_pending_writers[mid] = 0;
 	return mid;
 }`, t.mutexCount()))
-	if t.config.GenerateResourceBoundQueries {
+	if t.config.GenerateIndividualResourceBoundQueries {
 		t.system.AddQuery(uppaal.NewQuery(
 			fmt.Sprintf("A[] mutex_count < %d", t.mutexCount()+1),
 			"check resource bound never reached through mutex creation",

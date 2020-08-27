@@ -111,7 +111,7 @@ func (t translator) addFuncDeclarations(f *ir.Func) {
 	return pid;
 }`, proc.Name(), t.callCount(f), externalPanicInit))
 	}
-	if t.config.GenerateResourceBoundQueries {
+	if t.config.GenerateIndividualResourceBoundQueries {
 		t.system.AddQuery(uppaal.NewQuery(
 			fmt.Sprintf("A[] %s_count < %d", proc.Name(), t.callCount(f)+1),
 			fmt.Sprintf("check resource bound never reached through %s creation", proc.Name()),

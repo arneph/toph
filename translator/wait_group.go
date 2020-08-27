@@ -137,7 +137,7 @@ func (t *translator) addWaitGroupDeclarations() {
 	return wid;
 }`, t.waitGroupCount()))
 
-	if t.config.GenerateResourceBoundQueries {
+	if t.config.GenerateIndividualResourceBoundQueries {
 		t.system.AddQuery(uppaal.NewQuery(
 			fmt.Sprintf("A[] wait_group_count < %d", t.waitGroupCount()+1),
 			"check resource bound never reached through wait group creation",

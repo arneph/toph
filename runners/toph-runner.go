@@ -64,6 +64,7 @@ func main() {
 				MaxContainerCount:                       100,
 				ContainerCapacity:                       5,
 				GenerateResourceBoundQueries:            true,
+				GenerateIndividualResourceBoundQueries:  true,
 				GenerateChannelSafetyQueries:            true,
 				GenerateMutexSafetyQueries:              true,
 				GenerateWaitGroupSafetyQueries:          true,

@@ -230,7 +230,7 @@ func (t *translator) addChannelDeclarations() {
 	return cid;
 }`, t.channelCount()))
 
-	if t.config.GenerateResourceBoundQueries {
+	if t.config.GenerateIndividualResourceBoundQueries {
 		t.system.AddQuery(uppaal.NewQuery(
 			fmt.Sprintf("A[] chan_count < %d", t.channelCount()+1),
 			"check resource bound never reached through channel creation",

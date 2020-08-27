@@ -20,6 +20,7 @@ type Config struct {
 	ContainerCapacity int
 
 	GenerateResourceBoundQueries            bool
+	GenerateIndividualResourceBoundQueries  bool
 	GenerateChannelSafetyQueries            bool
 	GenerateMutexSafetyQueries              bool
 	GenerateWaitGroupSafetyQueries          bool
