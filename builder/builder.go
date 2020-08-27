@@ -98,6 +98,8 @@ func BuildProgram(paths []string, config *c.Config) (program *ir.Program, entryF
 			return
 		} else if strings.HasPrefix(pkg.GoFiles[0], config.BuildContext.GOROOT) {
 			return
+		} else if config.ShouldExcludeEntirePackage(pkg.PkgPath) {
+			return
 		}
 		b.pkgs = append(b.pkgs, pkg)
 	})
