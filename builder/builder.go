@@ -101,6 +101,9 @@ func BuildProgram(paths []string, config *c.Config) (program *ir.Program, entryF
 		} else if config.ShouldExcludeEntirePackage(pkg.PkgPath) {
 			return
 		}
+		if config.Debug {
+			b.addWarning(fmt.Errorf("translating package: %s", pkg.PkgPath))
+		}
 		b.pkgs = append(b.pkgs, pkg)
 	})
 
